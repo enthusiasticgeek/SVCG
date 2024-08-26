@@ -18,6 +18,8 @@ class Block:
         self.fill_color = (0.8, 0.8, 0.8)  # Default fill color (light gray)
         self.text_color = (0, 0, 0)  # Default text color (black)
         self.rotation = 0  # Initial rotation angle in degrees
+        self.input_points = []
+        self.output_points = []
 
     def draw(self, cr):
         cr.save()
@@ -40,6 +42,13 @@ class Block:
             self.draw_xnor_block(cr)
         else:
             self.draw_default_block(cr)
+
+        # Draw input and output points
+        cr.set_source_rgb(0, 0.5, 0)  # Green color for points
+        for point in self.input_points + self.output_points:
+            cr.arc(point[0], point[1], 3, 0, 2 * math.pi)
+            cr.fill()
+
         cr.restore()
 
     def draw_default_block(self, cr):
@@ -93,6 +102,10 @@ class Block:
         cr.set_source_rgb(*self.border_color)
         cr.arc(x_offset + 20 * scale, y_offset + 35 * scale, 5 * scale, 0, 2 * 3.14159)
         cr.stroke()
+
+        # Add input and output points
+        self.input_points = [(20, -3)]
+        self.output_points = [(20, self.height+3)]
 
     def draw_not_block(self, cr):
         cr.set_source_rgb(*self.fill_color)
@@ -148,6 +161,10 @@ class Block:
         #cr.show_text(self.text)
         #cr.stroke()
 
+        # Add input and output points
+        self.input_points = [(0, -3),(40,-3)]
+        self.output_points = [(20, self.height+3)]
+
     def draw_and_block(self, cr):
         cr.set_source_rgb(*self.fill_color)
         cr.rectangle(0, 0, self.width, self.height)
@@ -199,6 +216,10 @@ class Block:
         )
         cr.line_to(0 * scale + x_offset, 0 * scale + y_offset)
         cr.fill()
+
+        # Add input and output points
+        self.input_points = [(0, -3),(40,-3)]
+        self.output_points = [(20, self.height+3)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -275,6 +296,10 @@ class Block:
         )
         cr.close_path()
         cr.stroke()
+
+        # Add input and output points
+        self.input_points = [(0, -3),(40,-3)]
+        self.output_points = [(20, self.height+3)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -356,6 +381,10 @@ class Block:
         cr.set_source_rgb(*self.border_color)
         cr.arc(x_offset + 20 * scale, y_offset + 43 * scale, 5 * scale, 0, 2 * 3.14159)
         cr.stroke()
+
+        # Add input and output points
+        self.input_points = [(0, -3),(40,-3)]
+        self.output_points = [(20, self.height+3)]
 
 
         # Draw the text
@@ -448,6 +477,10 @@ class Block:
         -10 * scale + y_offset
         )
         cr.stroke()
+
+        # Add input and output points
+        self.input_points = [(0, -3),(40,-3)]
+        self.output_points = [(20, self.height+3)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -542,6 +575,10 @@ class Block:
         cr.set_source_rgb(*self.border_color)
         cr.arc(x_offset + 20 * scale, y_offset + 43 * scale, 5 * scale, 0, 2 * 3.14159)
         cr.stroke()
+
+        # Add input and output points
+        self.input_points = [(0, -3),(40,-3)]
+        self.output_points = [(20, self.height+3)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
