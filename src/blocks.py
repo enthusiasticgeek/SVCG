@@ -64,7 +64,7 @@ class Block:
 
         # Define the vertices of the isosceles triangle
         base_length = 40 * scale
-        height = 20 * scale
+        height = 30 * scale
 
         # Calculate the coordinates of the vertices
         x1 = x_offset
@@ -91,7 +91,7 @@ class Block:
 
         # Draw the small circle for NOT
         cr.set_source_rgb(*self.border_color)
-        cr.arc(x_offset + 20 * scale, y_offset + 25 * scale, 5 * scale, 0, 2 * 3.14159)
+        cr.arc(x_offset + 20 * scale, y_offset + 35 * scale, 5 * scale, 0, 2 * 3.14159)
         cr.stroke()
 
     def draw_not_block(self, cr):
