@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import cairo
 import math
+from datetime import datetime
 
 class Block:
     def __init__(self, x, y, width, height, text, block_type, grid_size):
@@ -20,6 +21,16 @@ class Block:
         self.rotation = 0  # Initial rotation angle in degrees
         self.input_points = []
         self.output_points = []
+        self.timestamp = datetime.now().isoformat(' ', 'seconds')
+        self.update_points()
+
+    def update_points(self):
+        if self.block_type == "NOT":
+            self.input_points = [(self.x + 20, self.y - 3)]
+            self.output_points = [(self.x + 20, self.y + self.height + 3)]
+        elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
+            self.input_points = [(self.x, self.y - 3), (self.x + 40, self.y - 3)]
+            self.output_points = [(self.x + 20, self.y + self.height + 3)]
 
     def draw(self, cr):
         cr.save()
@@ -625,6 +636,7 @@ class Block:
                 self.x = new_x
             if new_y >= 0 and new_y + self.height <= max_y:
                 self.y = new_y
+            self.update_points()
 
     def end_drag(self):
         self.dragging = False
@@ -632,7 +644,9 @@ class Block:
         self.y = round(self.y / self.grid_size) * self.grid_size
         self.width = round(self.width / self.grid_size) * self.grid_size
         self.height = round(self.height / self.grid_size) * self.grid_size
+        self.update_points()
 
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
+        self.update_points()
 

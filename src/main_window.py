@@ -5,6 +5,7 @@ from gi.repository import Gtk, Gdk
 from blocks import Block
 from context_menu import ContextMenu
 from drawing_area import DrawingArea
+from datetime import datetime
 
 class BlocksWindow(Gtk.Window):
     def __init__(self):
@@ -56,7 +57,8 @@ class BlocksWindow(Gtk.Window):
         initial_y = round(50 / self.grid_size) * self.grid_size
         initial_width = round(50 / self.grid_size) * self.grid_size  # Half of the current width
         initial_height = round(50 / self.grid_size) * self.grid_size
-        new_block = Block(initial_x, initial_y, initial_width, initial_height, block_type, block_type, self.grid_size)
+        timestamp = datetime.now().isoformat(' ', 'seconds')
+        new_block = Block(initial_x, initial_y, initial_width, initial_height, f"{block_type} {timestamp}", block_type, self.grid_size)
         self.blocks.append(new_block)
         self.drawing_area.queue_draw()
 
