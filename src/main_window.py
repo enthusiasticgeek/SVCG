@@ -4,6 +4,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
 from blocks import Block
 from context_menu import ContextMenu
+from context_menu import PinContextMenu
 from drawing_area import DrawingArea
 from datetime import datetime
 
@@ -48,6 +49,7 @@ class BlocksWindow(Gtk.Window):
 
         # Create context menu
         self.context_menu = ContextMenu(self)
+        self.pin_context_menu = PinContextMenu(self)
 
         self.selected_block = None
 
@@ -97,17 +99,22 @@ class BlocksWindow(Gtk.Window):
         return label
 
     def on_button_press(self, widget, event):
-        if event.button == 1:  # Left click
-            for block in self.blocks:
-                if block.contains_point(event.x, event.y):
-                    block.start_drag(event.x, event.y)
-                    break
-        elif event.button == 3:  # Right click
-            for block in self.blocks:
-                if block.contains_point(event.x, event.y):
-                    self.selected_block = block
-                    self.context_menu.popup(event)
-                    break
+            if event.button == 1:  # Left click
+                for block in self.blocks:
+                    if block.contains_point(event.x, event.y):
+                        block.start_drag(event.x, event.y)
+                        break
+            elif event.button == 3:  # Right click
+                for block in self.blocks:
+                    if block.contains_point(event.x, event.y):
+                        self.selected_block = block
+                        if block.contains_pin(event.x, event.y):
+                            self.pin_context_menu.popup(event)
+                        else:
+                            self.context_menu.popup(event)
+                        break
+
+
 
     def on_button_release(self, widget, event):
         for block in self.blocks:
@@ -209,6 +216,15 @@ class BlocksWindow(Gtk.Window):
             self.blocks.remove(self.selected_block)
             self.selected_block = None
             self.drawing_area.queue_draw()
+
+    def on_connect_pin(self, widget):
+        if self.selected_block:
+           print("Connect pin")  # Placeholder for connect action
+
+    def on_disconnect_pin(self, widget):
+        if self.selected_block:
+           print("Disconnect pin")  # Placeholder for disconnect action
+
 
 if __name__ == "__main__":
     win = BlocksWindow()

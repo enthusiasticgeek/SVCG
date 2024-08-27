@@ -69,3 +69,27 @@ class ContextMenu:
     def on_delete_block(self, widget):
         self.parent_window.on_delete_block(widget)
 
+class PinContextMenu:
+    def __init__(self, parent_window):
+        self.parent_window = parent_window
+        self.context_menu = Gtk.Menu()
+
+        connect_item = Gtk.MenuItem(label="Connect")
+        disconnect_item = Gtk.MenuItem(label="Disconnect")
+
+        connect_item.connect("activate", self.on_connect)
+        disconnect_item.connect("activate", self.on_disconnect)
+
+        self.context_menu.append(connect_item)
+        self.context_menu.append(disconnect_item)
+        self.context_menu.show_all()
+
+    def popup(self, event):
+        self.context_menu.popup(None, None, None, None, event.button, event.time)
+
+    def on_connect(self, widget):
+        self.parent_window.on_connect_pin(widget)
+
+    def on_disconnect(self, widget):
+        self.parent_window.on_disconnect_pin(widget)
+

@@ -63,6 +63,17 @@ class Block:
 
         cr.restore()
 
+    def contains_pin(self, x, y):
+        self.update_points()
+        for point in self.input_points + self.output_points:
+            if (point[0] - 10 <= int(x) <= point[0] + 10 and
+               point[1] - 10 <= int(y) <= point[1] + 10):
+               print(f'contains pin {x},{y},{point[0]},{point[1]}')
+               return True
+        print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
+        return False
+
+
     def draw_default_block(self, cr):
         cr.set_source_rgb(*self.fill_color)
         cr.rectangle(0, 0, self.width, self.height)
