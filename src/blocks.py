@@ -26,11 +26,11 @@ class Block:
 
     def update_points(self):
         if self.block_type == "NOT":
-            self.input_points = [(self.x + 20, self.y - 3)]
-            self.output_points = [(self.x + 20, self.y + self.height + 3)]
+            self.input_points = [(self.x + 20, self.y - 0)]
+            self.output_points = [(self.x + 20, self.y + self.height + 0)]
         elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
-            self.input_points = [(self.x, self.y - 3), (self.x + 40, self.y - 3)]
-            self.output_points = [(self.x + 20, self.y + self.height + 3)]
+            self.input_points = [(self.x, self.y - 0), (self.x + 40, self.y - 0)]
+            self.output_points = [(self.x + 20, self.y + self.height + 0)]
 
     def draw(self, cr):
         cr.save()
@@ -53,12 +53,13 @@ class Block:
             self.draw_xnor_block(cr)
         else:
             self.draw_default_block(cr)
+        cr.stroke()
 
         # Draw input and output points
-        cr.set_source_rgb(0, 0.5, 0)  # Green color for points
+        cr.set_source_rgb(0, 1, 0)  # Green color for points
         for point in self.input_points + self.output_points:
-            cr.arc(point[0], point[1], 3, 0, 2 * math.pi)
-            cr.fill()
+            cr.arc(point[0], point[1], 4, 0, 2 * math.pi)
+            cr.stroke()
 
         cr.restore()
 
@@ -115,8 +116,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(20, -3)]
-        self.output_points = [(20, self.height+3)]
+        self.input_points = [(20, -0)]
+        self.output_points = [(20, self.height+0)]
 
     def draw_not_block(self, cr):
         cr.set_source_rgb(*self.fill_color)
@@ -127,7 +128,7 @@ class Block:
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
 
-        self.draw_not_gate(cr, 10, 13, 0.5)
+        self.draw_not_gate(cr, 15, 13, 0.3)
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
@@ -173,8 +174,8 @@ class Block:
         #cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -3),(40,-3)]
-        self.output_points = [(20, self.height+3)]
+        self.input_points = [(0, -0),(40,-0)]
+        self.output_points = [(20, self.height+0)]
 
     def draw_and_block(self, cr):
         cr.set_source_rgb(*self.fill_color)
@@ -185,7 +186,7 @@ class Block:
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
 
-        self.draw_and_gate(cr, 10, 15, 0.5)
+        self.draw_and_gate(cr, 15, 15, 0.3)
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
@@ -229,8 +230,8 @@ class Block:
         cr.fill()
 
         # Add input and output points
-        self.input_points = [(0, -3),(40,-3)]
-        self.output_points = [(20, self.height+3)]
+        self.input_points = [(0, -0),(40,-0)]
+        self.output_points = [(20, self.height+0)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -248,7 +249,7 @@ class Block:
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
 
-        self.draw_nand_gate(cr, 10, 15, 0.5)
+        self.draw_nand_gate(cr, 15, 15, 0.3)
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
@@ -309,8 +310,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -3),(40,-3)]
-        self.output_points = [(20, self.height+3)]
+        self.input_points = [(0, -0),(40,-0)]
+        self.output_points = [(20, self.height+0)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -328,7 +329,7 @@ class Block:
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
 
-        self.draw_or_gate(cr, 10, 15, 0.5)
+        self.draw_or_gate(cr, 15, 15, 0.3)
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
@@ -394,8 +395,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -3),(40,-3)]
-        self.output_points = [(20, self.height+3)]
+        self.input_points = [(0, -0),(40,-0)]
+        self.output_points = [(20, self.height+0)]
 
 
         # Draw the text
@@ -414,7 +415,7 @@ class Block:
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
 
-        self.draw_nor_gate(cr, 10, 15, 0.5)
+        self.draw_nor_gate(cr, 15, 15, 0.3)
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
@@ -490,8 +491,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -3),(40,-3)]
-        self.output_points = [(20, self.height+3)]
+        self.input_points = [(0, -0),(40,-0)]
+        self.output_points = [(20, self.height+0)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -509,7 +510,7 @@ class Block:
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
 
-        self.draw_xor_gate(cr, 10, 15, 0.5)
+        self.draw_xor_gate(cr, 15, 15, 0.3)
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
@@ -588,8 +589,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -3),(40,-3)]
-        self.output_points = [(20, self.height+3)]
+        self.input_points = [(0, -0),(40,-0)]
+        self.output_points = [(20, self.height+0)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -607,7 +608,7 @@ class Block:
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
 
-        self.draw_xnor_gate(cr, 10, 15, 0.5)
+        self.draw_xnor_gate(cr, 15, 15, 0.3)
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
