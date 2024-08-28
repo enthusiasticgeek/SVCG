@@ -56,10 +56,11 @@ class Block:
         cr.stroke()
 
         # Draw input and output points
-        cr.set_source_rgb(0, 1, 0)  # Green color for points
+        cr.set_source_rgb(0, 0.6, 0)  # Green color for points
         for point in self.input_points + self.output_points:
             cr.arc(point[0], point[1], 4, 0, 2 * math.pi)
-            cr.stroke()
+            #cr.stroke()
+            cr.fill()
 
         cr.restore()
 
@@ -661,4 +662,21 @@ class Block:
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
         self.update_points()
+
+    def to_dict(self):
+        return {
+        "name": self.text,
+        "block_type": self.block_type,
+        "x": self.x,
+        "y": self.y,
+        "width": self.width,
+        "height": self.height,
+        "rotation": self.rotation,
+        "input_points": self.input_points,
+        "output_points": self.output_points,
+        "border_color": self.border_color,
+        "fill_color": self.fill_color,
+        "text_color": self.text_color,
+        "timestamp": self.timestamp
+        }
 

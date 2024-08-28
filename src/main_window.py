@@ -7,6 +7,7 @@ from context_menu import ContextMenu
 from context_menu import PinContextMenu
 from drawing_area import DrawingArea
 from datetime import datetime
+import json
 
 class BlocksWindow(Gtk.Window):
     def __init__(self):
@@ -63,6 +64,7 @@ class BlocksWindow(Gtk.Window):
         new_block = Block(initial_x, initial_y, initial_width, initial_height, f"{block_type} {timestamp}", block_type, self.grid_size)
         self.blocks.append(new_block)
         self.drawing_area.queue_draw()
+        self.update_json()
 
     def on_draw(self, widget, cr):
         # Draw grid
@@ -120,6 +122,7 @@ class BlocksWindow(Gtk.Window):
         for block in self.blocks:
             block.end_drag()
         self.drawing_area.queue_draw()
+        self.update_json()
 
     def on_motion_notify(self, widget, event):
         width, height = self.drawing_area.get_allocated_width(), self.drawing_area.get_allocated_height()
@@ -210,12 +213,14 @@ class BlocksWindow(Gtk.Window):
             new_block.rotation = self.selected_block.rotation
             self.blocks.append(new_block)
             self.drawing_area.queue_draw()
+            self.update_json()
 
     def on_delete_block(self, widget):
         if self.selected_block:
             self.blocks.remove(self.selected_block)
             self.selected_block = None
             self.drawing_area.queue_draw()
+            self.update_json()
 
     def on_connect_pin(self, widget):
         if self.selected_block:
@@ -225,6 +230,13 @@ class BlocksWindow(Gtk.Window):
         if self.selected_block:
            print("Disconnect pin")  # Placeholder for disconnect action
 
+    def blocks_to_json(self):
+        blocks_dict = [block.to_dict() for block in self.blocks]
+        return json.dumps(blocks_dict, indent=4)
+
+    def update_json(self):
+        with open("blocks.json", "w") as file:
+            file.write(self.blocks_to_json())
 
 if __name__ == "__main__":
     win = BlocksWindow()
