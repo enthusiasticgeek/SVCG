@@ -22,6 +22,8 @@ class Block:
         self.input_points = []
         self.output_points = []
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
+        self.input_connections = {}  # Dictionary to track input connections
+        self.output_connections = {}  # Dictionary to track output connections
         self.update_points()
 
     def update_points(self):
@@ -31,6 +33,13 @@ class Block:
         elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
             self.input_points = [(self.x, self.y - 0), (self.x + 40, self.y - 0)]
             self.output_points = [(self.x + 20, self.y + self.height + 0)]
+        # Initialize connections for new points
+        self.input_connections = {point: None for point in self.input_points}
+        self.output_connections = {point: None for point in self.output_points}
+        #for point in self.input_points + self.output_points:
+        #    if point not in self.connections:
+        #        self.connections[point] = None
+
 
     def draw(self, cr):
         cr.save()
@@ -664,6 +673,8 @@ class Block:
         self.update_points()
 
     def to_dict(self):
+        input_connections_dict = {str(k): v for k, v in self.input_connections.items()}
+        output_connections_dict = {str(k): v for k, v in self.output_connections.items()}
         return {
         "name": self.text,
         "block_type": self.block_type,
@@ -677,6 +688,27 @@ class Block:
         "border_color": self.border_color,
         "fill_color": self.fill_color,
         "text_color": self.text_color,
-        "timestamp": self.timestamp
+        "timestamp": self.timestamp,
+        "input_connections": input_connections_dict,  # Include connections in the JSON
+        "output_connections": output_connections_dict  # Include connections in the JSON
         }
+
+    @classmethod
+    def from_dict(cls, data):
+        block = cls(
+        data["x"],
+        data["y"],
+        data["width"],
+        data["height"],
+        data["name"],
+        data["block_type"],
+        data["grid_size"]
+        )
+        block.border_color = tuple(data["border_color"])
+        block.fill_color = tuple(data["fill_color"])
+        block.text_color = tuple(data["text_color"])
+        block.rotation = data["rotation"]
+        block.input_connections = {eval(k): v for k, v in data["input_connections"].items()}
+        block.output_connections = {eval(k): v for k, v in data["output_connections"].items()}
+        return block
 
