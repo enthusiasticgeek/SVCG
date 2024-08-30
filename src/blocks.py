@@ -24,15 +24,21 @@ class Block:
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
         self.input_connections = {}  # Dictionary to track input connections
         self.output_connections = {}  # Dictionary to track output connections
+        self.input_names = []
+        self.output_names = []
         self.update_points()
 
     def update_points(self):
         if self.block_type == "NOT":
             self.input_points = [(self.x + 20, self.y - 0)]
             self.output_points = [(self.x + 20, self.y + self.height + 0)]
+            self.input_names = ["IN1"]
+            self.output_names = ["OUT1"]
         elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
             self.input_points = [(self.x, self.y - 0), (self.x + 40, self.y - 0)]
             self.output_points = [(self.x + 20, self.y + self.height + 0)]
+            self.input_names = ["IN1", "IN2"]
+            self.output_names = ["OUT1"]
         # Initialize connections for new points
         self.input_connections = {point: None for point in self.input_points}
         self.output_connections = {point: None for point in self.output_points}
@@ -64,12 +70,35 @@ class Block:
             self.draw_default_block(cr)
         cr.stroke()
 
+
         # Draw input and output points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
         for point in self.input_points + self.output_points:
             cr.arc(point[0], point[1], 4, 0, 2 * math.pi)
             #cr.stroke()
             cr.fill()
+
+
+        # Draw input and output points
+        cr.set_source_rgb(0, 0.6, 0)  # Green color for points
+        for point in self.input_points:
+          for name in self.input_names:
+            cr.set_source_rgb(*self.text_color)
+            cr.set_font_size(8)
+            cr.move_to(point[0]+5, point[1] - 10)
+            cr.show_text(name)
+            cr.stroke()
+
+        # Draw input and output points
+        cr.set_source_rgb(0, 0.6, 0)  # Green color for points
+        for point in self.output_points:
+          for name in self.output_names:
+            cr.set_source_rgb(*self.text_color)
+            cr.set_font_size(8)
+            cr.move_to(point[0]+5, point[1] + 10)
+            cr.show_text(name)
+            cr.stroke()
+
 
         cr.restore()
 
@@ -637,7 +666,7 @@ class Block:
 
     def draw_text(self, cr, text, x, y):
         cr.set_source_rgb(*self.text_color)
-        cr.set_font_size(10)  # Reduced font size
+        cr.set_font_size(8)  # Reduced font size
         cr.move_to(x, y)
         cr.show_text(text)
 
@@ -690,7 +719,9 @@ class Block:
         "text_color": self.text_color,
         "timestamp": self.timestamp,
         "input_connections": input_connections_dict,  # Include connections in the JSON
-        "output_connections": output_connections_dict  # Include connections in the JSON
+        "output_connections": output_connections_dict,  # Include connections in the JSON
+        "input_names": self.input_names,
+        "output_names": self.output_names
         }
 
     @classmethod
@@ -710,5 +741,7 @@ class Block:
         block.rotation = data["rotation"]
         block.input_connections = {eval(k): v for k, v in data["input_connections"].items()}
         block.output_connections = {eval(k): v for k, v in data["output_connections"].items()}
+        block.input_names = data["input_names"]
+        block.output_names = data["output_names"]
         return block
 
