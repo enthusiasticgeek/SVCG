@@ -168,7 +168,9 @@ class BlocksWindow(Gtk.Window):
             if response == Gtk.ResponseType.OK:
                 self.selected_block.text = entry.get_text()
                 self.drawing_area.queue_draw()
+                self.update_json()  # Update the JSON file
             dialog.destroy()
+
 
     def on_change_text_color(self, widget):
         if self.selected_block:
