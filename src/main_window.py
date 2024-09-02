@@ -37,13 +37,38 @@ class BlocksWindow(Gtk.Window):
             ("XNOR Gate", "XNOR")
         ]
 
+        # Create an expander_ops for the operations menu
+        self.expander_ops = Gtk.Expander(label="Edit Operations")
+        self.left_pane.pack_start(self.expander_ops, False, False, 0)
+
+        self.ops_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.expander_ops.add(self.ops_box)
+
         for label, block_type in buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             self.gate_box.pack_start(button, False, False, 0)
 
+        # Add undo/redo buttons
+        self.undo_button = Gtk.Button(label="Undo")
+        self.undo_button.connect("clicked", self.on_undo)
+        self.ops_box.pack_start(self.undo_button, False, False, 0)
+
+        self.redo_button = Gtk.Button(label="Redo")
+        self.redo_button.connect("clicked", self.on_redo)
+        self.ops_box.pack_start(self.redo_button, False, False, 0)
+
+
+        #self.drawing_area = DrawingArea(self)
+        #self.box.pack_start(self.drawing_area, True, True, 0)
+
+
+        # Wrap the DrawingArea in a ScrolledWindow
+        self.scrolled_window = Gtk.ScrolledWindow()
+        self.scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.drawing_area = DrawingArea(self)
-        self.box.pack_start(self.drawing_area, True, True, 0)
+        self.scrolled_window.add(self.drawing_area)
+        self.box.pack_start(self.scrolled_window, True, True, 0)
 
         self.blocks = []
         self.grid_size = 20
@@ -54,7 +79,16 @@ class BlocksWindow(Gtk.Window):
 
         self.selected_block = None
 
+        # Initialize undo/redo stacks
+        self.undo_stack = []
+        self.redo_stack = []
+
+        self.update_undo_redo_buttons()  # Initialize the sensitivity of the buttons
+
+
+
     def on_button_clicked(self, widget, block_type):
+        self.push_undo()
         # Ensure the initial position and size are multiples of the grid size
         initial_x = round(50 / self.grid_size) * self.grid_size
         initial_y = round(50 / self.grid_size) * self.grid_size
@@ -65,6 +99,7 @@ class BlocksWindow(Gtk.Window):
         self.blocks.append(new_block)
         self.drawing_area.queue_draw()
         self.update_json()
+        #self.push_undo()
 
     def on_draw(self, widget, cr):
         # Draw grid
@@ -123,12 +158,15 @@ class BlocksWindow(Gtk.Window):
             block.end_drag()
         self.drawing_area.queue_draw()
         self.update_json()
+        self.push_undo()
 
     def on_motion_notify(self, widget, event):
         width, height = self.drawing_area.get_allocated_width(), self.drawing_area.get_allocated_height()
         for block in self.blocks:
             block.drag(event.x, event.y, width, height)
         self.drawing_area.queue_draw()
+        self.update_json()
+        #self.push_undo()
 
     def on_change_border_color(self, widget):
         if self.selected_block:
@@ -138,6 +176,8 @@ class BlocksWindow(Gtk.Window):
                 color = dialog.get_rgba()
                 self.selected_block.border_color = (color.red, color.green, color.blue)
                 self.drawing_area.queue_draw()
+                self.update_json()  # Update the JSON file
+                self.push_undo()
             dialog.destroy()
 
     def on_change_fill_color(self, widget):
@@ -148,6 +188,8 @@ class BlocksWindow(Gtk.Window):
                 color = dialog.get_rgba()
                 self.selected_block.fill_color = (color.red, color.green, color.blue)
                 self.drawing_area.queue_draw()
+                self.update_json()  # Update the JSON file
+                self.push_undo()
             dialog.destroy()
 
     def on_change_text(self, widget):
@@ -169,6 +211,7 @@ class BlocksWindow(Gtk.Window):
                 self.selected_block.text = entry.get_text()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
+                self.push_undo()
             dialog.destroy()
 
 
@@ -180,22 +223,30 @@ class BlocksWindow(Gtk.Window):
                 color = dialog.get_rgba()
                 self.selected_block.text_color = (color.red, color.green, color.blue)
                 self.drawing_area.queue_draw()
+                self.update_json()  # Update the JSON file
+                self.push_undo()
             dialog.destroy()
 
     def on_rotate_90(self, widget):
         if self.selected_block:
             self.selected_block.rotate(90)
             self.drawing_area.queue_draw()
+            self.update_json()  # Update the JSON file
+            self.push_undo()
 
     def on_rotate_180(self, widget):
         if self.selected_block:
             self.selected_block.rotate(180)
             self.drawing_area.queue_draw()
+            self.update_json()  # Update the JSON file
+            self.push_undo()
 
     def on_rotate_270(self, widget):
         if self.selected_block:
             self.selected_block.rotate(270)
             self.drawing_area.queue_draw()
+            self.update_json()  # Update the JSON file
+            self.push_undo()
 
     def on_copy_block(self, widget):
         if self.selected_block:
@@ -216,13 +267,16 @@ class BlocksWindow(Gtk.Window):
             self.blocks.append(new_block)
             self.drawing_area.queue_draw()
             self.update_json()
+            self.push_undo()
 
     def on_delete_block(self, widget):
         if self.selected_block:
+            self.push_undo()
             self.blocks.remove(self.selected_block)
             self.selected_block = None
             self.drawing_area.queue_draw()
             self.update_json()
+            #self.push_undo()
 
     def on_connect_pin(self, widget):
         if self.selected_block:
@@ -239,6 +293,42 @@ class BlocksWindow(Gtk.Window):
     def update_json(self):
         with open("blocks.json", "w") as file:
             file.write(self.blocks_to_json())
+
+    def push_undo(self):
+        print("push undo")
+        self.undo_stack.append(self.blocks_to_json())
+        self.redo_stack = []
+        self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
+
+    def redo(self):
+        if self.redo_stack:
+           print("redo")
+           self.undo_stack.append(self.blocks_to_json())
+           self.blocks = [Block.from_dict(block_dict) for block_dict in json.loads(self.redo_stack.pop())]
+           self.drawing_area.queue_draw()
+           self.update_json()
+           self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
+
+
+    def undo(self):
+        if self.undo_stack:
+           print("undo")
+           self.redo_stack.append(self.blocks_to_json())
+           self.blocks = [Block.from_dict(block_dict) for block_dict in json.loads(self.undo_stack.pop())]
+           self.drawing_area.queue_draw()
+           self.update_json()
+           self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
+
+    def on_undo(self, widget):
+        self.undo()
+
+    def on_redo(self, widget):
+        self.redo()
+
+    def update_undo_redo_buttons(self):
+        self.undo_button.set_sensitive(len(self.undo_stack) > 0)
+        self.redo_button.set_sensitive(len(self.redo_stack) > 0)
+
 
 if __name__ == "__main__":
     win = BlocksWindow()

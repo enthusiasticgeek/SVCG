@@ -721,7 +721,8 @@ class Block:
         "input_connections": input_connections_dict,  # Include connections in the JSON
         "output_connections": output_connections_dict,  # Include connections in the JSON
         "input_names": self.input_names,
-        "output_names": self.output_names
+        "output_names": self.output_names,
+        "grid_size": self.grid_size  # Include grid_size in the JSON
         }
 
     @classmethod
