@@ -91,6 +91,7 @@ class BlocksWindow(Gtk.Window):
         self.scrolled_window = Gtk.ScrolledWindow()
         self.scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.drawing_area = DrawingArea(self)
+        self.drawing_area.set_size_request(10000, 10000)  # Set a large size to trigger scroll bars
         self.scrolled_window.add(self.drawing_area)
         self.box.pack_start(self.scrolled_window, True, True, 0)
 
@@ -110,7 +111,6 @@ class BlocksWindow(Gtk.Window):
         self.redo_stack = []
 
         self.update_undo_redo_buttons()  # Initialize the sensitivity of the buttons
-
         self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
 
 
@@ -194,6 +194,9 @@ class BlocksWindow(Gtk.Window):
         for pin in self.pins:
             pin.draw(cr)
 
+        # for CTRL+z or CTRL+r not loosing drawing area focus
+        self.drawing_area.grab_focus()
+
     def get_column_label(self, index):
         label = ""
         while index >= 0:
@@ -228,6 +231,7 @@ class BlocksWindow(Gtk.Window):
                         else:
                             self.context_menu.popup(event)
                         break
+            self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
 
 
     def on_key_press(self, widget, event):
@@ -236,6 +240,7 @@ class BlocksWindow(Gtk.Window):
             self.undo()
         elif key == "r" and event.state & Gdk.ModifierType.CONTROL_MASK:
             self.redo()
+        print(f"Key pressed: {key}")  # Debug print statement
 
 
     def on_button_release(self, widget, event):
@@ -246,6 +251,7 @@ class BlocksWindow(Gtk.Window):
         self.drawing_area.queue_draw()
         self.update_json()
         self.push_undo()
+        self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
 
     def on_motion_notify(self, widget, event):
         width, height = self.drawing_area.get_allocated_width(), self.drawing_area.get_allocated_height()
@@ -255,6 +261,7 @@ class BlocksWindow(Gtk.Window):
             pin.drag(event.x, event.y, width, height)
         self.drawing_area.queue_draw()
         self.update_json()
+        self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
         #self.push_undo()
 
     def on_change_border_color(self, widget):
