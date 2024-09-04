@@ -19,11 +19,13 @@ class Block:
         self.fill_color = (0.8, 0.8, 0.8)  # Default fill color (light gray)
         self.text_color = (0, 0, 0)  # Default text color (black)
         self.rotation = 0  # Initial rotation angle in degrees
+        self.selected = False  # Attribute to track selection state
         self.input_points = []
         self.output_points = []
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
         self.input_connections = {}  # Dictionary to track input connections
         self.output_connections = {}  # Dictionary to track output connections
+        self.selected = False  # Attribute to track selection state
         self.input_names = []
         self.output_names = []
         self.update_points()
@@ -105,8 +107,8 @@ class Block:
     def contains_pin(self, x, y):
         self.update_points()
         for point in self.input_points + self.output_points:
-            if (point[0] - 10 <= int(x) <= point[0] + 10 and
-               point[1] - 10 <= int(y) <= point[1] + 10):
+            if (point[0] - 5 <= int(x) <= point[0] + 5 and
+               point[1] - 5 <= int(y) <= point[1] + 5):
                print(f'contains pin {x},{y},{point[0]},{point[1]}')
                return True
         print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
@@ -114,7 +116,10 @@ class Block:
 
 
     def draw_default_block(self, cr):
-        cr.set_source_rgb(*self.fill_color)
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -170,7 +175,10 @@ class Block:
         self.output_points = [(20, self.height+0)]
 
     def draw_not_block(self, cr):
-        cr.set_source_rgb(*self.fill_color)
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -228,7 +236,10 @@ class Block:
         self.output_points = [(20, self.height+0)]
 
     def draw_and_block(self, cr):
-        cr.set_source_rgb(*self.fill_color)
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -291,7 +302,10 @@ class Block:
         #cr.stroke()
 
     def draw_nand_block(self, cr):
-        cr.set_source_rgb(*self.fill_color)
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -371,7 +385,10 @@ class Block:
         #cr.stroke()
 
     def draw_or_block(self, cr):
-        cr.set_source_rgb(*self.fill_color)
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -457,7 +474,10 @@ class Block:
         #cr.stroke()
 
     def draw_nor_block(self, cr):
-        cr.set_source_rgb(*self.fill_color)
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -552,7 +572,10 @@ class Block:
         #cr.stroke()
 
     def draw_xor_block(self, cr):
-        cr.set_source_rgb(*self.fill_color)
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -650,7 +673,10 @@ class Block:
         #cr.stroke()
 
     def draw_xnor_block(self, cr):
-        cr.set_source_rgb(*self.fill_color)
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 

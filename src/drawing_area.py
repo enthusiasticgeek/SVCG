@@ -11,10 +11,13 @@ class DrawingArea(Gtk.DrawingArea):
         self.connect("draw", self.on_draw)
         self.set_events(Gdk.EventMask.BUTTON_PRESS_MASK |
                         Gdk.EventMask.BUTTON_RELEASE_MASK |
-                        Gdk.EventMask.POINTER_MOTION_MASK)
+                        Gdk.EventMask.POINTER_MOTION_MASK |
+                        Gdk.EventMask.KEY_PRESS_MASK)  
         self.connect("button-press-event", self.on_button_press)
         self.connect("button-release-event", self.on_button_release)
         self.connect("motion-notify-event", self.on_motion_notify)
+        self.connect("key-press-event", self.on_key_press)
+        self.set_can_focus(True)  # Allow the widget to receive focus
 
     def on_draw(self, widget, cr):
         self.parent_window.on_draw(widget, cr)
@@ -27,4 +30,8 @@ class DrawingArea(Gtk.DrawingArea):
 
     def on_motion_notify(self, widget, event):
         self.parent_window.on_motion_notify(widget, event)
+
+    def on_key_press(self, widget, event):
+        self.parent_window.on_key_press(widget, event)
+
 
