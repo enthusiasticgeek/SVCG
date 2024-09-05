@@ -32,22 +32,28 @@ class Block:
 
     def update_points(self):
         if self.block_type == "NOT":
-            self.input_points = [(self.x + 20, self.y - 0)]
-            self.output_points = [(self.x + 20, self.y + self.height + 0)]
+            self.input_points = [self.rotate_point(self.x + 20, self.y)]
+            self.output_points = [self.rotate_point(self.x + 20, self.y + self.height)]
             self.input_names = ["IN1"]
             self.output_names = ["OUT1"]
         elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
-            self.input_points = [(self.x, self.y - 0), (self.x + 40, self.y - 0)]
-            self.output_points = [(self.x + 20, self.y + self.height + 0)]
+            self.input_points = [self.rotate_point(self.x, self.y), self.rotate_point(self.x + 40, self.y)]
+            self.output_points = [self.rotate_point(self.x + 20, self.y + self.height)]
             self.input_names = ["IN1", "IN2"]
             self.output_names = ["OUT1"]
         # Initialize connections for new points
         self.input_connections = {point: None for point in self.input_points}
         self.output_connections = {point: None for point in self.output_points}
-        #for point in self.input_points + self.output_points:
-        #    if point not in self.connections:
-        #        self.connections[point] = None
-
+    
+    def rotate_point(self, x, y):
+        # Rotate the point around the center of the block
+        cx, cy = self.x + self.width / 2, self.y + self.height / 2
+        angle = math.radians(self.rotation)
+        dx, dy = x - cx, y - cy
+        new_x = cx + dx * math.cos(angle) - dy * math.sin(angle)
+        new_y = cy + dx * math.sin(angle) + dy * math.cos(angle)
+        return (new_x, new_y)
+ 
 
     def draw(self, cr):
         cr.save()
@@ -119,7 +125,7 @@ class Block:
         # Set fill color based on selection state
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
-        cr.set_source_rgb(fill_color)
+        cr.set_source_rgb(*fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -178,7 +184,7 @@ class Block:
         # Set fill color based on selection state
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
-        cr.set_source_rgb(fill_color)
+        cr.set_source_rgb(*fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -239,7 +245,7 @@ class Block:
         # Set fill color based on selection state
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
-        cr.set_source_rgb(fill_color)
+        cr.set_source_rgb(*fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -305,7 +311,7 @@ class Block:
         # Set fill color based on selection state
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
-        cr.set_source_rgb(fill_color)
+        cr.set_source_rgb(*fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -388,7 +394,7 @@ class Block:
         # Set fill color based on selection state
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
-        cr.set_source_rgb(fill_color)
+        cr.set_source_rgb(*fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -477,7 +483,7 @@ class Block:
         # Set fill color based on selection state
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
-        cr.set_source_rgb(fill_color)
+        cr.set_source_rgb(*fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -575,7 +581,7 @@ class Block:
         # Set fill color based on selection state
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
-        cr.set_source_rgb(fill_color)
+        cr.set_source_rgb(*fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 
@@ -676,7 +682,7 @@ class Block:
         # Set fill color based on selection state
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
-        cr.set_source_rgb(fill_color)
+        cr.set_source_rgb(*fill_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.fill()
 

@@ -204,7 +204,7 @@ class BlocksWindow(Gtk.Window):
             index = index // 26 - 1
         return label
 
-    def on_button_press(self, widget, event):
+    def on_button_press_old(self, widget, event):
             if event.button == 1:  # Left click
                 for block in self.blocks:
                     if block.contains_point(event.x, event.y):
@@ -227,6 +227,36 @@ class BlocksWindow(Gtk.Window):
                     if pin.contains_point(event.x, event.y):
                         self.selected_pin = pin
                         if pin.contains_pin(event.x, event.y):
+                            self.pin_context_menu.popup(event)
+                        else:
+                            self.context_menu.popup(event)
+                        break
+            self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
+
+    def on_button_press(self, widget, event):
+            if event.button == 1:  # Left click
+                for block in self.blocks:
+                    if block.contains_point(event.x, event.y):
+                        block.start_drag(event.x, event.y)
+                        break
+                for pin in self.pins:
+                    if pin.contains_point(event.x, event.y):
+                        pin.start_drag(event.x, event.y)
+                        break
+            elif event.button == 3:  # Right click
+                for block in self.blocks:
+                    if block.contains_point(event.x, event.y):
+                        self.selected_block = block
+                        if block.contains_pin(event.x, event.y):
+                            self.pin_context_menu.popup(event)
+                        else:
+                            self.context_menu.popup(event)
+                        break
+                for pin in self.pins:
+                    if pin.contains_point(event.x, event.y):
+                        self.selected_pin = pin
+                        connection_point = pin.contains_pin(event.x, event.y)
+                        if connection_point:
                             self.pin_context_menu.popup(event)
                         else:
                             self.context_menu.popup(event)
