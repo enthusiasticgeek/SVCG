@@ -61,17 +61,17 @@ class BlocksWindow(Gtk.Window):
             ("XNOR Gate", "XNOR")
         ]
 
+        for label, block_type in buttons:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", self.on_button_clicked, block_type)
+            self.gate_box.pack_start(button, False, False, 0)
+
         # Create an expander_ops for the operations menu
         self.expander_ops = Gtk.Expander(label="Edit Operations")
         self.left_pane.pack_start(self.expander_ops, False, False, 0)
 
         self.ops_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.expander_ops.add(self.ops_box)
-
-        for label, block_type in buttons:
-            button = Gtk.Button(label=label)
-            button.connect("clicked", self.on_button_clicked, block_type)
-            self.gate_box.pack_start(button, False, False, 0)
 
         # Add undo/redo buttons
         self.undo_button = Gtk.Button(label="Undo")
@@ -112,6 +112,9 @@ class BlocksWindow(Gtk.Window):
 
         self.update_undo_redo_buttons()  # Initialize the sensitivity of the buttons
         self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
+
+        #self.connect("key-press-event", self.on_key_press)
+
 
 
     def on_button_clicked(self, widget, block_type):
@@ -204,43 +207,19 @@ class BlocksWindow(Gtk.Window):
             index = index // 26 - 1
         return label
 
-    def on_button_press_old(self, widget, event):
+
+    def on_button_press(self, widget, event):
             if event.button == 1:  # Left click
-                for block in self.blocks:
-                    if block.contains_point(event.x, event.y):
-                        block.start_drag(event.x, event.y)
-                        break
-                for pin in self.pins:
-                    if pin.contains_point(event.x, event.y):
-                        pin.start_drag(event.x, event.y)
-                        break
-            elif event.button == 3:  # Right click
+                self.selected_block = None
+                self.selected_pin = None
                 for block in self.blocks:
                     if block.contains_point(event.x, event.y):
                         self.selected_block = block
-                        if block.contains_pin(event.x, event.y):
-                            self.pin_context_menu.popup(event)
-                        else:
-                            self.context_menu.popup(event)
+                        block.start_drag(event.x, event.y)
                         break
                 for pin in self.pins:
                     if pin.contains_point(event.x, event.y):
                         self.selected_pin = pin
-                        if pin.contains_pin(event.x, event.y):
-                            self.pin_context_menu.popup(event)
-                        else:
-                            self.context_menu.popup(event)
-                        break
-            self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
-
-    def on_button_press(self, widget, event):
-            if event.button == 1:  # Left click
-                for block in self.blocks:
-                    if block.contains_point(event.x, event.y):
-                        block.start_drag(event.x, event.y)
-                        break
-                for pin in self.pins:
-                    if pin.contains_point(event.x, event.y):
                         pin.start_drag(event.x, event.y)
                         break
             elif event.button == 3:  # Right click
@@ -261,15 +240,17 @@ class BlocksWindow(Gtk.Window):
                         else:
                             self.context_menu.popup(event)
                         break
-            self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
-
+            self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus:
 
     def on_key_press(self, widget, event):
+        self.drawing_area.grab_focus()
         key = Gdk.keyval_name(event.keyval)
         if key == "z" and event.state & Gdk.ModifierType.CONTROL_MASK:
             self.undo()
         elif key == "r" and event.state & Gdk.ModifierType.CONTROL_MASK:
             self.redo()
+        elif key == "c" and event.state & Gdk.ModifierType.CONTROL_MASK:
+            self.on_copy_block(widget)
         print(f"Key pressed: {key}")  # Debug print statement
 
 
@@ -440,6 +421,7 @@ class BlocksWindow(Gtk.Window):
             self.push_undo()
 
     def on_copy_block(self, widget):
+        print('copy block')
         if self.selected_block:
             # Create a copy of the selected block
             new_block = Block(

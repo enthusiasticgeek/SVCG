@@ -73,6 +73,7 @@ class Pin:
             self.draw_bus(cr)
         if "input_output_bus" in self.pin_type.lower():
             self.draw_bus(cr)
+        self.update_points()
 
         cr.restore()
 
