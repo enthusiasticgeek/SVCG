@@ -233,7 +233,9 @@ class BlocksWindow(Gtk.Window):
                             self.context_menu.popup(event)
                         break
                 for pin in self.pins:
+                    print("here1")
                     if pin.contains_point(event.x, event.y):
+                        print("here2")
                         self.selected_pin = pin
                         connection_point = pin.contains_pin(event.x, event.y)
                         if connection_point:

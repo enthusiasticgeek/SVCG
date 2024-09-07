@@ -25,7 +25,6 @@ class Pin:
         self.connections = {}  # Dictionary to track connections
         self.update_points()
 
-
     def update_points(self):
         # Define points for pins (similar to blocks)
         if "bus" in self.pin_type.lower():
@@ -37,6 +36,9 @@ class Pin:
         else:
             # For single pins, create a single connection point
             self.connection_points = [self.rotate_point(self.x + self.width / 2, self.y + self.height)]
+
+        # Print the connection points for debugging
+        #print(f"Updated connection points for pin {self.text}: {self.connection_points}")
     
         self.connections = {point: None for point in self.connection_points}
     
@@ -48,7 +50,6 @@ class Pin:
         new_x = cx + dx * math.cos(angle) - dy * math.sin(angle)
         new_y = cy + dx * math.sin(angle) + dy * math.cos(angle)
         return (new_x, new_y)
- 
 
     def draw(self, cr):
         cr.save()
@@ -96,81 +97,6 @@ class Pin:
         cr.set_source_rgb(*self.border_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
-
-    def draw_bus_new(self, cr):
-        cr.set_line_width(1)
-    
-        # Set fill color based on selection state
-        fill_color = (1, 1, 0) if self.selected else self.fill_color
-    
-        pin_width = self.width / self.num_pins  # Width of each pin
-    
-        # Draw the pin shape
-        cr.set_source_rgb(*fill_color)
-        cr.rectangle(0, 0, self.width, self.height)
-        cr.fill()
-    
-        cr.set_source_rgb(*self.border_color)
-        cr.rectangle(0, 0, self.width, self.height)
-        cr.stroke()
-    
-        cr.set_source_rgb(*self.text_color)
-        cr.set_font_size(8)  # Reduced font size
-        cr.move_to(0, -5)
-        cr.show_text(self.text)
-    
-        # Draw the individual pins within the large rectangle
-        for i in range(self.num_pins):
-            # Draw the pin shape
-            cr.set_source_rgb(*self.fill_color)
-            cr.rectangle(i * pin_width, 0, pin_width, self.height)
-            cr.fill()
-    
-            cr.set_source_rgb(*self.border_color)
-            cr.rectangle(i * pin_width, 0, pin_width, self.height)
-            cr.stroke()
-    
-            cr.set_source_rgb(*self.text_color)
-            cr.set_font_size(8)  # Reduced font size
-            cr.move_to(i * pin_width + 5, self.height - 5)
-            cr.show_text(str(i + 1))
-    
-            if "input_bus" in self.pin_type.lower():
-                cr.set_source_rgb(*self.border_color)
-                cr.move_to(i * pin_width + pin_width / 2, self.height)
-                cr.line_to(i * pin_width + pin_width / 2 - 10, self.height - 10)
-                cr.line_to(i * pin_width + pin_width / 2 + 10, self.height - 10)
-                cr.close_path()
-                cr.fill()
-    
-            if "output_bus" in self.pin_type.lower():
-                cr.set_source_rgb(*self.border_color)
-                cr.move_to(i * pin_width + pin_width / 2, 0)
-                cr.line_to(i * pin_width + pin_width / 2 - 10, 10)
-                cr.line_to(i * pin_width + pin_width / 2 + 10, 10)
-                cr.close_path()
-                cr.fill()
-    
-            if "input_output_bus" in self.pin_type.lower():
-                cr.set_source_rgb(*self.border_color)
-                cr.move_to(i * pin_width + pin_width / 2, 0)
-                cr.line_to(i * pin_width + pin_width / 2 - 10, 10)
-                cr.line_to(i * pin_width + pin_width / 2 + 10, 10)
-                cr.close_path()
-                cr.fill()
-    
-                cr.set_source_rgb(*self.border_color)
-                cr.move_to(i * pin_width + pin_width / 2, self.height)
-                cr.line_to(i * pin_width + pin_width / 2 - 10, self.height - 10)
-                cr.line_to(i * pin_width + pin_width / 2 + 10, self.height - 10)
-                cr.close_path()
-                cr.fill()
-    
-            # Show green connection pin
-            cr.set_source_rgb(0, 0.6, 0)  # Green color for points
-            cr.arc(i * pin_width + pin_width / 2, self.height, 4, 0, 2 * math.pi)
-            cr.fill()
-    
 
     def draw_bus(self, cr):
             cr.set_line_width(1)
@@ -250,7 +176,6 @@ class Pin:
                 cr.arc(i*self.width+20, self.height/self.num_pins, 4, 0, 2 * math.pi)
                 cr.fill()
 
-
     def draw_output_arrow(self, cr):
         cr.set_line_width(1)
         cr.set_source_rgb(*self.border_color)
@@ -264,7 +189,6 @@ class Pin:
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
         cr.arc(self.width / 2, self.height/self.num_pins, 4, 0, 2 * math.pi)
         cr.fill()
-
 
     def draw_input_arrow(self, cr):
         cr.set_line_width(1)
@@ -280,10 +204,25 @@ class Pin:
         cr.arc(self.width / 2, self.height/self.num_pins, 4, 0, 2 * math.pi)
         cr.fill()
 
-
-    def contains_point(self, x, y):
+    def contains_point_old(self, x, y):
         return (self.x <= x <= self.x + self.width and
                 self.y <= y <= self.y + self.height)
+
+
+    def contains_point(self, x, y):
+        if "bus" in self.pin_type.lower():
+            # For buses, consider the entire area covered by the connection points
+            for point in self.connection_points:
+                if (point[0] - 10 <= x <= point[0] + 10 and
+                    point[1] - 10 <= y <= point[1] + 10):
+                    return True
+            return (self.x <= x <= self.x + self.width and
+                    self.y <= y <= self.y + self.height)
+        else:
+            # For single pins, use the original bounds check
+            return (self.x <= x <= self.x + self.width and
+                    self.y <= y <= self.y + self.height)
+    
 
     def contains_pin(self, x, y):
         self.update_points()
@@ -294,7 +233,6 @@ class Pin:
                return point  # Return the connection point
         print(f'**DOES NOT contain pin {x},{y}**')
         return None
-
 
     def start_drag(self, x, y):
         self.dragging = True
@@ -360,4 +298,3 @@ class Pin:
         pin.rotation = data.get("rotation", 0)
         pin.connections = {eval(k): v for k, v in data.get("connections", {}).items()}
         return pin
-

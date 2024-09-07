@@ -53,7 +53,6 @@ class Block:
         new_x = cx + dx * math.cos(angle) - dy * math.sin(angle)
         new_y = cy + dx * math.sin(angle) + dy * math.cos(angle)
         return (new_x, new_y)
- 
 
     def draw(self, cr):
         cr.save()
@@ -78,14 +77,12 @@ class Block:
             self.draw_default_block(cr)
         cr.stroke()
 
-
         # Draw input and output points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
         for point in self.input_points + self.output_points:
             cr.arc(point[0], point[1], 4, 0, 2 * math.pi)
             #cr.stroke()
             cr.fill()
-
 
         # Draw input and output points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
@@ -107,7 +104,6 @@ class Block:
             cr.show_text(name)
             cr.stroke()
 
-
         cr.restore()
 
     def contains_pin(self, x, y):
@@ -119,7 +115,6 @@ class Block:
                return True
         print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
         return False
-
 
     def draw_default_block(self, cr):
         # Set fill color based on selection state
@@ -137,7 +132,6 @@ class Block:
         cr.set_font_size(10)  # Reduced font size
         cr.move_to(10, 20)
         cr.show_text(self.text)
-
 
     def draw_not_gate(self, cr, x_offset, y_offset, scale):
         # Set line width and color
@@ -471,7 +465,6 @@ class Block:
         self.input_points = [(0, -0),(40,-0)]
         self.output_points = [(20, self.height+0)]
 
-
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
         #cr.set_font_size(8 * scale)  # Reduced font size
@@ -496,8 +489,6 @@ class Block:
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
         cr.show_text(self.text)
-
-
 
     def draw_xor_gate(self, cr, x_offset, y_offset, scale):
         # Set line width and color
