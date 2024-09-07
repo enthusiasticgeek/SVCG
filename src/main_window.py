@@ -49,7 +49,6 @@ class BlocksWindow(Gtk.Window):
             button.connect("clicked", self.on_pin_button_clicked, pin_type)
             self.pins_box.pack_start(button, False, False, 0)
 
-
         # Create an expander for the digital gates menu
         self.expander = Gtk.Expander(label="Digital Gates")
         self.left_pane.pack_start(self.expander, False, False, 0)
@@ -88,10 +87,8 @@ class BlocksWindow(Gtk.Window):
         self.redo_button.connect("clicked", self.on_redo)
         self.ops_box.pack_start(self.redo_button, False, False, 0)
 
-
         #self.drawing_area = DrawingArea(self)
         #self.box.pack_start(self.drawing_area, True, True, 0)
-
 
         # Wrap the DrawingArea in a ScrolledWindow
         self.scrolled_window = Gtk.ScrolledWindow()
@@ -121,8 +118,6 @@ class BlocksWindow(Gtk.Window):
 
         #self.connect("key-press-event", self.on_key_press)
 
-
-
     def on_button_clicked(self, widget, block_type):
         self.push_undo()
         # Ensure the initial position and size are multiples of the grid size
@@ -136,8 +131,6 @@ class BlocksWindow(Gtk.Window):
         self.drawing_area.queue_draw()
         self.update_json()
         #self.push_undo()
-
-
 
     def on_pin_button_clicked(self, widget, pin_type):
         self.push_undo()
@@ -216,7 +209,6 @@ class BlocksWindow(Gtk.Window):
             index = index // 26 - 1
         return label
 
-
     def on_button_press(self, widget, event):
             if event.button == 1:  # Left click
                 self.selected_block = None
@@ -267,7 +259,6 @@ class BlocksWindow(Gtk.Window):
         elif key == "p" and event.state & Gdk.ModifierType.CONTROL_MASK:
             self.on_rotate_90(widget)
         print(f"Key pressed: {key}")  # Debug print statement
-
 
     def on_button_release(self, widget, event):
         for block in self.blocks:
@@ -376,7 +367,6 @@ class BlocksWindow(Gtk.Window):
                 self.update_json()  # Update the JSON file
                 self.push_undo()
             dialog.destroy()
-
 
     def on_change_text_color(self, widget):
         if self.selected_block:
@@ -498,7 +488,6 @@ class BlocksWindow(Gtk.Window):
             self.update_json()
             #self.push_undo()
 
-
     def on_cut_block(self, widget):
         if self.selected_block:
             self.push_undo()
@@ -568,7 +557,6 @@ class BlocksWindow(Gtk.Window):
         elif self.selected_pin:
            print("Disconnect pin")  # Placeholder for connect action
 
-
     def blocks_to_json(self):
         blocks_dict = [block.to_dict() for block in self.blocks]
         pins_dict = [pin.to_dict() for pin in self.pins]
@@ -584,51 +572,27 @@ class BlocksWindow(Gtk.Window):
         self.redo_stack = []
         self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
 
-    """
-    def redo(self):
-        if self.redo_stack:
-           print("redo")
-           self.undo_stack.append(self.blocks_to_json())
-           self.blocks = [Block.from_dict(block_dict) for block_dict in json.loads(self.redo_stack.pop())]
-           self.pins = [Pin.from_dict(pin_dict) for pin_dict in json.loads(self.redo_stack.pop())]
-           self.drawing_area.queue_draw()
-           self.update_json()
-           self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
-
     def undo(self):
         if self.undo_stack:
            print("undo")
            self.redo_stack.append(self.blocks_to_json())
-           self.blocks = [Block.from_dict(block_dict) for block_dict in json.loads(self.undo_stack.pop())]
-           self.pins = [Pin.from_dict(pin_dict) for pin_dict in json.loads(self.undo_stack.pop())]
+           data = json.loads(self.undo_stack.pop())
+           self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
+           self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
            self.drawing_area.queue_draw()
            self.update_json()
            self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
-    """
-
-
-    def undo(self):
-            if self.undo_stack:
-                print("undo")
-                self.redo_stack.append(self.blocks_to_json())
-                data = json.loads(self.undo_stack.pop())
-                self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
-                self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
 
     def redo(self):
-            if self.redo_stack:
-                print("redo")
-                self.undo_stack.append(self.blocks_to_json())
-                data = json.loads(self.redo_stack.pop())
-                self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
-                self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
-
+        if self.redo_stack:
+           print("redo")
+           self.undo_stack.append(self.blocks_to_json())
+           data = json.loads(self.redo_stack.pop())
+           self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
+           self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
+           self.drawing_area.queue_draw()
+           self.update_json()
+           self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
 
     def on_undo(self, widget):
         self.undo()
@@ -639,7 +603,6 @@ class BlocksWindow(Gtk.Window):
     def update_undo_redo_buttons(self):
         self.undo_button.set_sensitive(len(self.undo_stack) > 0)
         self.redo_button.set_sensitive(len(self.redo_stack) > 0)
-
 
 if __name__ == "__main__":
     win = BlocksWindow()
