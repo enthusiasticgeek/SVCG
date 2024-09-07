@@ -97,6 +97,80 @@ class Pin:
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
 
+    def draw_bus_new(self, cr):
+        cr.set_line_width(1)
+    
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+    
+        pin_width = self.width / self.num_pins  # Width of each pin
+    
+        # Draw the pin shape
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.fill()
+    
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.stroke()
+    
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(8)  # Reduced font size
+        cr.move_to(0, -5)
+        cr.show_text(self.text)
+    
+        # Draw the individual pins within the large rectangle
+        for i in range(self.num_pins):
+            # Draw the pin shape
+            cr.set_source_rgb(*self.fill_color)
+            cr.rectangle(i * pin_width, 0, pin_width, self.height)
+            cr.fill()
+    
+            cr.set_source_rgb(*self.border_color)
+            cr.rectangle(i * pin_width, 0, pin_width, self.height)
+            cr.stroke()
+    
+            cr.set_source_rgb(*self.text_color)
+            cr.set_font_size(8)  # Reduced font size
+            cr.move_to(i * pin_width + 5, self.height - 5)
+            cr.show_text(str(i + 1))
+    
+            if "input_bus" in self.pin_type.lower():
+                cr.set_source_rgb(*self.border_color)
+                cr.move_to(i * pin_width + pin_width / 2, self.height)
+                cr.line_to(i * pin_width + pin_width / 2 - 10, self.height - 10)
+                cr.line_to(i * pin_width + pin_width / 2 + 10, self.height - 10)
+                cr.close_path()
+                cr.fill()
+    
+            if "output_bus" in self.pin_type.lower():
+                cr.set_source_rgb(*self.border_color)
+                cr.move_to(i * pin_width + pin_width / 2, 0)
+                cr.line_to(i * pin_width + pin_width / 2 - 10, 10)
+                cr.line_to(i * pin_width + pin_width / 2 + 10, 10)
+                cr.close_path()
+                cr.fill()
+    
+            if "input_output_bus" in self.pin_type.lower():
+                cr.set_source_rgb(*self.border_color)
+                cr.move_to(i * pin_width + pin_width / 2, 0)
+                cr.line_to(i * pin_width + pin_width / 2 - 10, 10)
+                cr.line_to(i * pin_width + pin_width / 2 + 10, 10)
+                cr.close_path()
+                cr.fill()
+    
+                cr.set_source_rgb(*self.border_color)
+                cr.move_to(i * pin_width + pin_width / 2, self.height)
+                cr.line_to(i * pin_width + pin_width / 2 - 10, self.height - 10)
+                cr.line_to(i * pin_width + pin_width / 2 + 10, self.height - 10)
+                cr.close_path()
+                cr.fill()
+    
+            # Show green connection pin
+            cr.set_source_rgb(0, 0.6, 0)  # Green color for points
+            cr.arc(i * pin_width + pin_width / 2, self.height, 4, 0, 2 * math.pi)
+            cr.fill()
+    
 
     def draw_bus(self, cr):
             cr.set_line_width(1)
@@ -107,9 +181,9 @@ class Pin:
             pin_width = self.width  # Width of each pin
 
             # Draw the pin shape
-            cr.set_source_rgb(*fill_color)
-            cr.rectangle(0, 0, self.height, self.height/self.num_pins)
-            cr.fill()
+            #cr.set_source_rgb(*fill_color)
+            #cr.rectangle(0, 0, self.height, self.height/self.num_pins)
+            #cr.fill()
 
             cr.set_source_rgb(*self.border_color)
             cr.rectangle(0, 0, self.width, self.height/self.num_pins)
