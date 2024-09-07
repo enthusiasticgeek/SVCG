@@ -174,42 +174,6 @@ class BlocksWindow(Gtk.Window):
             self.pins.append(new_pin)
             self.drawing_area.queue_draw()
             self.update_json()
-    
-
-
-    def on_pin_button_clicked_old(self, widget, pin_type):
-        self.push_undo()
-        # Ensure the initial position and size are multiples of the grid size
-        initial_x = round(50 / self.grid_size) * self.grid_size
-        initial_y = round(50 / self.grid_size) * self.grid_size
-        initial_width = round(50 / self.grid_size) * self.grid_size  # Half of the current width
-        initial_height = round(50 / self.grid_size) * self.grid_size
-        timestamp = datetime.now().isoformat(' ', 'seconds')
-
-        if "bus" in pin_type:
-            dialog = Gtk.MessageDialog(
-                transient_for=self,
-                flags=0,
-                message_type=Gtk.MessageType.QUESTION,
-                buttons=Gtk.ButtonsType.OK_CANCEL,
-                text="Enter Number of Pins",
-            )
-            entry = Gtk.Entry()
-            dialog.get_content_area().add(entry)
-            dialog.show_all()
-            response = dialog.run()
-            if response == Gtk.ResponseType.OK:
-                num_pins = int(entry.get_text())
-                new_pin = Pin(initial_x, initial_y, initial_width, initial_height * num_pins, f"{pin_type} {timestamp}", pin_type, self.grid_size, num_pins)
-                self.pins.append(new_pin)
-                self.drawing_area.queue_draw()
-                self.update_json()
-            dialog.destroy()
-        else:
-            new_pin = Pin(initial_x, initial_y, initial_width, initial_height, f"{pin_type} {timestamp}", pin_type, self.grid_size)
-            self.pins.append(new_pin)
-            self.drawing_area.queue_draw()
-            self.update_json()
 
     def on_draw(self, widget, cr):
         # Draw grid
@@ -518,51 +482,6 @@ class BlocksWindow(Gtk.Window):
             self.update_json()
             self.push_undo()
  
-    def on_copy_block_old(self, widget):
-        print('copy block')
-        if self.selected_block:
-            self.clipboard_block = self.selected_block
-            self.clipboard_pin = None  # Clear the pin clipboard
-            # Create a copy of the selected block
-            new_block = Block(
-                self.selected_block.x + self.grid_size,
-                self.selected_block.y + self.grid_size,
-                self.selected_block.width,
-                self.selected_block.height,
-                self.selected_block.text,
-                self.selected_block.block_type,
-                self.grid_size
-            )
-            new_block.border_color = self.selected_block.border_color
-            new_block.fill_color = self.selected_block.fill_color
-            new_block.text_color = self.selected_block.text_color
-            new_block.rotation = self.selected_block.rotation
-            self.blocks.append(new_block)
-            self.drawing_area.queue_draw()
-            self.update_json()
-            self.push_undo()
-        elif self.selected_pin:
-            self.clipboard_pin = self.selected_pin
-            self.clipboard_block = None  # Clear the block clipboard
-            # Create a copy of the selected pin
-            new_pin = Pin(
-                self.selected_pin.x + self.grid_size,
-                self.selected_pin.y + self.grid_size,
-                self.selected_pin.width,
-                self.selected_pin.height,
-                self.selected_pin.text,
-                self.selected_pin.pin_type,
-                self.grid_size
-            )
-            new_pin.border_color = self.selected_pin.border_color
-            new_pin.fill_color = self.selected_pin.fill_color
-            new_pin.text_color = self.selected_pin.text_color
-            new_pin.rotation = self.selected_pin.rotation
-            self.pins.append(new_pin)
-            self.drawing_area.queue_draw()
-            self.update_json()
-            self.push_undo()
-
     def on_delete_block(self, widget):
         if self.selected_block:
             self.push_undo()
@@ -637,45 +556,6 @@ class BlocksWindow(Gtk.Window):
             self.drawing_area.queue_draw()
             self.update_json()
  
-    def on_paste_block_old(self, widget):
-        if self.clipboard_block:
-            self.push_undo()
-            new_block = Block(
-                self.mouse_x,
-                self.mouse_y,
-                self.clipboard_block.width,
-                self.clipboard_block.height,
-                self.clipboard_block.text,
-                self.clipboard_block.block_type,
-                self.grid_size
-            )
-            new_block.border_color = self.clipboard_block.border_color
-            new_block.fill_color = self.clipboard_block.fill_color
-            new_block.text_color = self.clipboard_block.text_color
-            new_block.rotation = self.clipboard_block.rotation
-            self.blocks.append(new_block)
-            self.drawing_area.queue_draw()
-            self.update_json()
-        elif self.clipboard_pin:
-            self.push_undo()
-            new_pin = Pin(
-                self.mouse_x,
-                self.mouse_y,
-                self.clipboard_pin.width,
-                self.clipboard_pin.height,
-                self.clipboard_pin.text,
-                self.clipboard_pin.pin_type,
-                self.grid_size,
-                self.clipboard_pin.num_pins  # Include number of pins for buses
-            )
-            new_pin.border_color = self.clipboard_pin.border_color
-            new_pin.fill_color = self.clipboard_pin.fill_color
-            new_pin.text_color = self.clipboard_pin.text_color
-            new_pin.rotation = self.clipboard_pin.rotation
-            self.pins.append(new_pin)
-            self.drawing_area.queue_draw()
-            self.update_json()
-    
     def on_connect_pin(self, widget):
         if self.selected_block:
            print("Connect pin")  # Placeholder for connect action
