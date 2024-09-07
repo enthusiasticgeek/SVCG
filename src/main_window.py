@@ -233,9 +233,7 @@ class BlocksWindow(Gtk.Window):
                             self.context_menu.popup(event)
                         break
                 for pin in self.pins:
-                    print("here1")
                     if pin.contains_point(event.x, event.y):
-                        print("here2")
                         self.selected_pin = pin
                         connection_point = pin.contains_pin(event.x, event.y)
                         if connection_point:
@@ -258,6 +256,8 @@ class BlocksWindow(Gtk.Window):
             self.on_cut_block(widget)
         elif key == "v" and event.state & Gdk.ModifierType.CONTROL_MASK:
             self.on_paste_block(widget)
+        elif key == "d" and event.state & Gdk.ModifierType.CONTROL_MASK:
+            self.on_delete_block(widget)
         elif key == "p" and event.state & Gdk.ModifierType.CONTROL_MASK:
             self.on_rotate_90(widget)
         print(f"Key pressed: {key}")  # Debug print statement
