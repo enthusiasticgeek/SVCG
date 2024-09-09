@@ -2,6 +2,7 @@
 import cairo
 import math
 from datetime import datetime
+from wire import Wire
 
 class Block:
     def __init__(self, x, y, width, height, text, block_type, grid_size):
@@ -723,6 +724,12 @@ class Block:
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
         self.update_points()
+
+    def connect_wire(self, start_point, end_point):
+        if start_point in self.output_points:
+           self.output_connections[start_point] = end_point
+        if start_point in self.input_points:
+           self.input_connections[start_point] = end_point
 
     def to_dict(self):
         input_connections_dict = {str(k): v for k, v in self.input_connections.items()}

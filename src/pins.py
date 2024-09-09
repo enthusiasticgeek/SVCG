@@ -2,6 +2,7 @@
 import cairo
 import math
 from datetime import datetime
+from wire import Wire
 
 class Pin:
     def __init__(self, x, y, width, height, text, pin_type, grid_size, num_pins=1):
@@ -260,6 +261,9 @@ class Pin:
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
         self.update_points()
+
+    def connect_wire(self, start_point, end_point):
+        self.connections[start_point] = end_point
 
     def to_dict(self):
         connections_dict = {str(k): v for k, v in self.connections.items()}

@@ -8,6 +8,7 @@ from context_menu import PinContextMenu
 from drawing_area import DrawingArea
 from datetime import datetime
 from pins import Pin  # Import the Pin class
+from wire import Wire
 import json
 
 class BlocksWindow(Gtk.Window):
@@ -101,6 +102,10 @@ class BlocksWindow(Gtk.Window):
         self.blocks = []
         self.pins = []  # List to store pins
         self.grid_size = 20
+
+        self.wires = []
+        self.dragging_wire = False
+        self.wire_start_point = None
 
         # Create context menu
         self.context_menu = ContextMenu(self)
@@ -199,6 +204,19 @@ class BlocksWindow(Gtk.Window):
         for pin in self.pins:
             pin.draw(cr)
 
+        # Draw wires
+        for wire in self.wires:
+            wire.draw(cr)
+
+        # Draw temporary wire while dragging
+        if self.dragging_wire:
+            cr.set_source_rgb(0, 0, 0)  # Black color for wires
+            cr.set_line_width(2)
+            cr.move_to(self.wire_start_point[0], self.wire_start_point[1])
+            cr.line_to(self.mouse_x, self.wire_start_point[1])
+            cr.line_to(self.mouse_x, self.mouse_y)
+            cr.stroke()
+
         # for CTRL+z or CTRL+r not loosing drawing area focus
         self.drawing_area.grab_focus()
 
@@ -223,6 +241,17 @@ class BlocksWindow(Gtk.Window):
                         self.selected_pin = pin
                         pin.start_drag(event.x, event.y)
                         break
+
+                for block in self.blocks:
+                    if block.contains_pin(event.x, event.y):
+                       self.wire_start_point = block.contains_pin(event.x, event.y)
+                       self.dragging_wire = True
+                       break
+                for pin in self.pins:
+                    if pin.contains_pin(event.x, event.y):
+                       self.wire_start_point = pin.contains_pin(event.x, event.y)
+                       self.dragging_wire = True
+                       break
             elif event.button == 3:  # Right click
                 for block in self.blocks:
                     if block.contains_point(event.x, event.y):
@@ -267,6 +296,33 @@ class BlocksWindow(Gtk.Window):
             block.end_drag()
         for pin in self.pins:
             pin.end_drag()
+        if self.dragging_wire:
+            end_point = None
+            for block in self.blocks:
+                if block.contains_pin(event.x, event.y):
+                    end_point = block.contains_pin(event.x, event.y)
+                    break
+            for pin in self.pins:
+                if pin.contains_pin(event.x, event.y):
+                    end_point = pin.contains_pin(event.x, event.y)
+                    break
+            if end_point and end_point != self.wire_start_point:
+                # Check for duplicate wire connections
+                duplicate_wire = any(
+                    wire.start_point == self.wire_start_point and wire.end_point == end_point or
+                    wire.start_point == end_point and wire.end_point == self.wire_start_point
+                    for wire in self.wires
+                )
+                if not duplicate_wire:
+                    new_wire = Wire(self.wire_start_point, end_point, self.grid_size)
+                    print(f"New wire created: start_point={self.wire_start_point}, end_point={end_point}")
+                    self.wires.append(new_wire)
+                    self.update_json()
+                else:
+                    print("Duplicate wire connection detected and ignored.")
+            else:
+                print("Invalid wire connection: both ends must be on valid connection points.")
+            self.dragging_wire = False
         self.drawing_area.queue_draw()
         self.update_json()
         self.push_undo()
@@ -279,6 +335,8 @@ class BlocksWindow(Gtk.Window):
             block.drag(event.x, event.y, width, height)
         for pin in self.pins:
             pin.drag(event.x, event.y, width, height)
+        if self.dragging_wire:
+            self.drawing_area.queue_draw()
         self.drawing_area.queue_draw()
         self.update_json()
         self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
@@ -562,7 +620,8 @@ class BlocksWindow(Gtk.Window):
     def blocks_to_json(self):
         blocks_dict = [block.to_dict() for block in self.blocks]
         pins_dict = [pin.to_dict() for pin in self.pins]
-        return json.dumps(blocks_dict + pins_dict, indent=4)
+        wires_dict = [wire.to_dict() for wire in self.wires]
+        return json.dumps(blocks_dict + pins_dict + wires_dict, indent=4)
 
     def update_json(self):
         with open("blocks.json", "w") as file:
@@ -581,6 +640,7 @@ class BlocksWindow(Gtk.Window):
            data = json.loads(self.undo_stack.pop())
            self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
            self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
+           self.wires = [Wire.from_dict(wire_dict) for wire_dict in data if wire_dict.get("start_point")]
            self.drawing_area.queue_draw()
            self.update_json()
            self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
@@ -592,6 +652,7 @@ class BlocksWindow(Gtk.Window):
            data = json.loads(self.redo_stack.pop())
            self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
            self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
+           self.wires = [Wire.from_dict(wire_dict) for wire_dict in data if wire_dict.get("start_point")]
            self.drawing_area.queue_draw()
            self.update_json()
            self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
