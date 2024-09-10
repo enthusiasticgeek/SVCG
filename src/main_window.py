@@ -5,6 +5,7 @@ from gi.repository import Gtk, Gdk
 from blocks import Block
 from context_menu import ContextMenu
 from context_menu import PinContextMenu
+from context_menu import WireContextMenu
 from drawing_area import DrawingArea
 from datetime import datetime
 from pins import Pin  # Import the Pin class
@@ -110,9 +111,11 @@ class BlocksWindow(Gtk.Window):
         # Create context menu
         self.context_menu = ContextMenu(self)
         self.pin_context_menu = PinContextMenu(self)
+        self.wire_context_menu = WireContextMenu(self)
 
         self.selected_block = None
         self.selected_pin = None  # Variable to store the selected pin
+        self.selected_wire = None  # Variable to store the selected wire
 
         # Initialize undo/redo stacks
         self.undo_stack = []
@@ -231,6 +234,7 @@ class BlocksWindow(Gtk.Window):
             if event.button == 1:  # Left click
                 self.selected_block = None
                 self.selected_pin = None
+                self.selected_wire = None
                 for block in self.blocks:
                     if block.contains_point(event.x, event.y):
                         self.selected_block = block
@@ -241,7 +245,11 @@ class BlocksWindow(Gtk.Window):
                         self.selected_pin = pin
                         pin.start_drag(event.x, event.y)
                         break
-
+                for wire in self.wires:
+                    if wire.contains_point(event.x, event.y):
+                        self.selected_wire = wire
+                        break
+                #######################
                 for block in self.blocks:
                     if block.contains_pin(event.x, event.y):
                        self.wire_start_point = block.contains_pin(event.x, event.y)
@@ -270,6 +278,12 @@ class BlocksWindow(Gtk.Window):
                         else:
                             self.context_menu.popup(event)
                         break
+                for wire in self.wires:
+                    if wire.contains_point(event.x, event.y):
+                       self.selected_wire = wire
+                       #self.wire_context_menu.popup(event)
+                       self.wire_context_menu.popup(None, None, None, None, event.button, event.time)
+                       break
             self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus:
 
     def on_key_press(self, widget, event):

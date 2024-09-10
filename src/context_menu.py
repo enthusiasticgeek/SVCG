@@ -93,3 +93,32 @@ class PinContextMenu:
     def on_disconnect(self, widget):
         self.parent_window.on_disconnect_pin(widget)
 
+
+class WireContextMenu(Gtk.Menu):
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+
+        delete_item = Gtk.MenuItem(label="Delete")
+        delete_item.connect("activate", self.on_delete_wire)
+        self.append(delete_item)
+
+        # Add more menu items as needed
+        # example_item = Gtk.MenuItem(label="Example Action")
+        # example_item.connect("activate", self.on_example_action)
+        # self.append(example_item)
+
+        self.show_all()
+
+    def on_delete_wire(self, widget):
+        if self.parent.selected_wire:
+            self.parent.wires.remove(self.parent.selected_wire)
+            self.parent.selected_wire = None
+            self.parent.drawing_area.queue_draw()
+            self.parent.update_json()
+            self.parent.push_undo()
+
+    # Add more action handlers as needed
+    # def on_example_action(self, widget):
+    #     print("Example action triggered")
+
