@@ -7,8 +7,9 @@ class Wire:
         self.start_point = start_point
         self.end_point = end_point
         self.grid_size = grid_size
+        self.path = self.calculate_path()
 
-    def draw(self, cr):
+    def draw_orig(self, cr):
         #print(f"Drawing wire: start_point={self.start_point}, end_point={self.end_point}")
         cr.set_source_rgb(0, 0, 0)  # Black color for wires
         cr.set_line_width(2)
@@ -17,6 +18,32 @@ class Wire:
         cr.line_to(self.end_point[0], self.end_point[1])
         cr.stroke()
 
+
+    def calculate_path(self):
+        # Simple Manhattan routing algorithm
+        x1, y1 = self.start_point
+        x2, y2 = self.end_point
+        print(f"{x1},{y1},{x2},{y2}")
+        path = []
+
+        # Horizontal segment
+        if x1 != x2:
+            path.append((x1, y1, x2, y1))
+
+        # Vertical segment
+        if y1 != y2:
+            path.append((x2, y1, x2, y2))
+
+        return path
+
+    def draw(self, cr):
+        cr.set_source_rgb(0, 0, 0)  # Black color for wires
+        cr.set_line_width(2)
+        for segment in self.path:
+            x1, y1, x2, y2 = segment
+            cr.move_to(x1, y1)
+            cr.line_to(x2, y2)
+        cr.stroke()
 
     def contains_point(self, x, y, tolerance=5):
         def point_on_line(px, py, x1, y1, x2, y2, tolerance):

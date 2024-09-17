@@ -337,6 +337,7 @@ class BlocksWindow(Gtk.Window):
             else:
                 print("Invalid wire connection: both ends must be on valid connection points.")
             self.dragging_wire = False
+        self.update_wires()
         self.drawing_area.queue_draw()
         self.update_json()
         self.push_undo()
@@ -630,6 +631,14 @@ class BlocksWindow(Gtk.Window):
            print("Disconnect pin")  # Placeholder for disconnect action
         elif self.selected_pin:
            print("Disconnect pin")  # Placeholder for connect action
+
+
+
+    def update_wires(self):
+        for wire in self.wires:
+            print('recalculate path')
+            wire.path = wire.calculate_path()
+        self.drawing_area.queue_draw()
 
     def blocks_to_json(self):
         blocks_dict = [block.to_dict() for block in self.blocks]

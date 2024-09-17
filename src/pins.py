@@ -257,6 +257,13 @@ class Pin:
         self.width = round(self.width / self.grid_size) * self.grid_size
         self.height = round(self.height / self.grid_size) * self.grid_size
         self.update_points()
+        self.update_wire_connections()
+
+    def update_wire_connections(self):
+        for point, wire in self.connections.items():
+            if wire is not None:
+                wire.start_point = point  # Update the start point of the wire
+                wire.path = wire.calculate_path()
 
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360

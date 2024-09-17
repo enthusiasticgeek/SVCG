@@ -113,9 +113,9 @@ class Block:
             if (point[0] - 10 <= int(x) <= point[0] + 10 and
                point[1] - 10 <= int(y) <= point[1] + 10):
                print(f'contains pin {x},{y},{point[0]},{point[1]}')
-               return True
+               return point
         print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
-        return False
+        return None
 
     def draw_default_block(self, cr):
         # Set fill color based on selection state
@@ -720,6 +720,17 @@ class Block:
         self.width = round(self.width / self.grid_size) * self.grid_size
         self.height = round(self.height / self.grid_size) * self.grid_size
         self.update_points()
+        self.update_wire_connections()
+
+    def update_wire_connections(self):
+        for point, wire in self.output_connections.items():
+            if wire is not None:
+                wire.start_point = point  # Update the start point of the wire
+                wire.path = wire.calculate_path()
+        for point, wire in self.input_connections.items():
+            if wire is not None:
+                wire.end_point = point  # Update the end point of the wire
+                wire.path = wire.calculate_path()
 
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
