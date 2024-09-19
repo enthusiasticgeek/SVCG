@@ -328,7 +328,7 @@ class BlocksWindow(Gtk.Window):
                     for wire in self.wires
                 )
                 if not duplicate_wire:
-                    new_wire = Wire(self.wire_start_point, end_point, self.grid_size)
+                    new_wire = Wire(self.wire_start_point, end_point, self.grid_size, self)
                     print(f"New wire created: start_point={self.wire_start_point}, end_point={end_point}")
                     self.wires.append(new_wire)
                     self.update_json()
@@ -663,7 +663,7 @@ class BlocksWindow(Gtk.Window):
            data = json.loads(self.undo_stack.pop())
            self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
            self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
-           self.wires = [Wire.from_dict(wire_dict) for wire_dict in data if wire_dict.get("start_point")]
+           self.wires = [Wire.from_dict(wire_dict, self) for wire_dict in data if wire_dict.get("start_point")]
            self.drawing_area.queue_draw()
            self.update_json()
            self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
@@ -675,7 +675,7 @@ class BlocksWindow(Gtk.Window):
            data = json.loads(self.redo_stack.pop())
            self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
            self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
-           self.wires = [Wire.from_dict(wire_dict) for wire_dict in data if wire_dict.get("start_point")]
+           self.wires = [Wire.from_dict(wire_dict, self) for wire_dict in data if wire_dict.get("start_point")]
            self.drawing_area.queue_draw()
            self.update_json()
            self.update_undo_redo_buttons()  # Update the sensitivity of the buttons

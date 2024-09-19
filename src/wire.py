@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 import cairo
 import math
+import numpy as np
+from astar import AStar
 
 class Wire:
-    def __init__(self, start_point, end_point, grid_size):
+    def __init__(self, start_point, end_point, grid_size, parent_window):
         self.start_point = start_point
         self.end_point = end_point
         self.grid_size = grid_size
+        self.parent_window = parent_window
         self.path = self.calculate_path()
 
     def draw_orig(self, cr):
@@ -18,25 +21,22 @@ class Wire:
         cr.line_to(self.end_point[0], self.end_point[1])
         cr.stroke()
 
-
-    def calculate_path(self):
+    ############## MANHATTAN ROUTING ###############
+    def calculate_path_manhattan(self):
         # Simple Manhattan routing algorithm
         x1, y1 = self.start_point
         x2, y2 = self.end_point
         print(f"{x1},{y1},{x2},{y2}")
         path = []
-
         # Horizontal segment
         if x1 != x2:
             path.append((x1, y1, x2, y1))
-
         # Vertical segment
         if y1 != y2:
             path.append((x2, y1, x2, y2))
-
         return path
 
-    def draw(self, cr):
+    def draw_manhattan(self, cr):
         cr.set_source_rgb(0, 0, 0)  # Black color for wires
         cr.set_line_width(2)
         for segment in self.path:
@@ -44,6 +44,26 @@ class Wire:
             cr.move_to(x1, y1)
             cr.line_to(x2, y2)
         cr.stroke()
+
+    ############## ASTAR ROUTING ###############
+    def calculate_path(self):
+        grid = self.parent_window.drawing_area.grid
+        astar = AStar(grid)
+        start_point = (int(self.start_point[0] / self.grid_size), int(self.start_point[1] / self.grid_size))
+        end_point = (int(self.end_point[0] / self.grid_size), int(self.end_point[1] / self.grid_size))
+        came_from, cost_so_far = astar.astar(start_point, end_point)
+        return astar.reconstruct_path(came_from, start_point, end_point)
+    
+
+    def draw(self, cr):
+        cr.set_source_rgb(0, 0, 0)  # Black color for wires
+        cr.set_line_width(2)
+
+        if self.path:
+            cr.move_to(self.path[0][0] * self.grid_size, self.path[0][1] * self.grid_size)
+            for x, y in self.path[1:]:
+                cr.line_to(x * self.grid_size, y * self.grid_size)
+            cr.stroke()
 
     def contains_point(self, x, y, tolerance=5):
         def point_on_line(px, py, x1, y1, x2, y2, tolerance):
@@ -71,5 +91,6 @@ class Wire:
         }
 
     @staticmethod
-    def from_dict(wire_dict):
-        return Wire(wire_dict["start_point"], wire_dict["end_point"], wire_dict["grid_size"])
+    def from_dict(wire_dict, parent_window):
+        return Wire(wire_dict["start_point"], wire_dict["end_point"], wire_dict["grid_size"], parent_window)
+
