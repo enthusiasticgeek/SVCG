@@ -52,9 +52,11 @@ class Wire:
         start_point = (int(self.start_point[0] / self.grid_size), int(self.start_point[1] / self.grid_size))
         end_point = (int(self.end_point[0] / self.grid_size), int(self.end_point[1] / self.grid_size))
         came_from, cost_so_far = astar.astar(start_point, end_point)
-        return astar.reconstruct_path(came_from, start_point, end_point)
+        path = astar.reconstruct_path(came_from, start_point, end_point)
+        if not path:
+            print(f"No path found from {start_point} to {end_point}")
+        return path
     
-
     def draw(self, cr):
         cr.set_source_rgb(0, 0, 0)  # Black color for wires
         cr.set_line_width(2)
@@ -66,6 +68,29 @@ class Wire:
             cr.stroke()
 
     def contains_point(self, x, y, tolerance=5):
+        def point_on_line(px, py, x1, y1, x2, y2, tolerance):
+            dx = x2 - x1
+            dy = y2 - y1
+            length = (dx * dx + dy * dy) ** 0.5
+            if length == 0:
+                return False
+            u = ((px - x1) * dx + (py - y1) * dy) / (length * length)
+            if u < 0 or u > 1:
+                return False
+            xx = x1 + u * dx
+            yy = y1 + u * dy
+            distance = ((px - xx) ** 2 + (py - yy) ** 2) ** 0.5
+            return distance <= tolerance
+    
+        if self.path:
+            for i in range(len(self.path) - 1):
+                x1, y1 = self.path[i]
+                x2, y2 = self.path[i + 1]
+                if point_on_line(x, y, x1 * self.grid_size, y1 * self.grid_size, x2 * self.grid_size, y2 * self.grid_size, tolerance):
+                    return True
+        return False
+    
+    def contains_point_old(self, x, y, tolerance=5):
         def point_on_line(px, py, x1, y1, x2, y2, tolerance):
             dx = x2 - x1
             dy = y2 - y1

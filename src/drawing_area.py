@@ -32,6 +32,7 @@ class DrawingArea(Gtk.DrawingArea):
             self.mark_block_on_grid(block, grid_size)
         for pin in self.parent_window.pins:
             self.mark_pin_on_grid(pin, grid_size)
+        #print(f"Grid created: {self.grid}")
 
     def mark_block_on_grid(self, block, grid_size):
         x1, y1 = int(block.x // grid_size), int(block.y // grid_size)

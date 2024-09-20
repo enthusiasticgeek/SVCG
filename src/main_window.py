@@ -632,9 +632,16 @@ class BlocksWindow(Gtk.Window):
         elif self.selected_pin:
            print("Disconnect pin")  # Placeholder for connect action
 
-
-
     def update_wires(self):
+        for wire in self.wires:
+            print('recalculate path')
+            wire.path = wire.calculate_path()
+            if not wire.path:
+                print(f"Removing wire from {wire.start_point} to {wire.end_point} due to no path found")
+                self.wires.remove(wire)
+        self.drawing_area.queue_draw()
+
+    def update_wires_old(self):
         for wire in self.wires:
             print('recalculate path')
             wire.path = wire.calculate_path()
