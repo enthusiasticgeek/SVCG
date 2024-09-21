@@ -213,7 +213,7 @@ class BlocksWindow(Gtk.Window):
 
         # Draw temporary wire while dragging
         if self.dragging_wire:
-            cr.set_source_rgb(0, 0, 0)  # Black color for wires
+            cr.set_source_rgb(1, 0, 0)  # Red color for wires
             cr.set_line_width(2)
             cr.move_to(self.wire_start_point[0], self.wire_start_point[1])
             cr.line_to(self.mouse_x, self.wire_start_point[1])
@@ -328,7 +328,8 @@ class BlocksWindow(Gtk.Window):
                     for wire in self.wires
                 )
                 if not duplicate_wire:
-                    new_wire = Wire(self.wire_start_point, end_point, self.grid_size, self)
+                    timestamp = datetime.now().isoformat(' ', 'seconds')
+                    new_wire = Wire(f"wire {timestamp}", self.wire_start_point, end_point, self.grid_size, self)
                     print(f"New wire created: start_point={self.wire_start_point}, end_point={end_point}")
                     self.wires.append(new_wire)
                     self.update_json()

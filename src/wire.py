@@ -5,11 +5,23 @@ import numpy as np
 from astar import AStar
 
 class Wire:
-    def __init__(self, start_point, end_point, grid_size, parent_window):
+    def __init__(self, text, start_point, end_point, grid_size, parent_window):
+        self.text = text
         self.start_point = start_point
         self.end_point = end_point
         self.grid_size = grid_size
         self.parent_window = parent_window
+        self.path = self.calculate_path()
+
+
+    def update_start_point(self, new_start_point):
+        self.start_point = new_start_point
+        print(f"updated start point {self.start_point[0]} {self.start_point[1]}")
+        self.path = self.calculate_path()
+
+    def update_end_point(self, new_end_point):
+        self.end_point = new_end_point
+        print(f"updated start point {self.end_point[0]} {self.end_point[1]}")
         self.path = self.calculate_path()
 
     def draw_orig(self, cr):
@@ -55,10 +67,12 @@ class Wire:
         path = astar.reconstruct_path(came_from, start_point, end_point)
         if not path:
             print(f"No path found from {start_point} to {end_point}")
+        else:
+            print(f"Path found from {start_point} to {end_point}")
         return path
     
     def draw(self, cr):
-        cr.set_source_rgb(0, 0, 0)  # Black color for wires
+        cr.set_source_rgb(0, 0, 1)  # Blue color for wires
         cr.set_line_width(2)
 
         if self.path:
@@ -66,6 +80,15 @@ class Wire:
             for x, y in self.path[1:]:
                 cr.line_to(x * self.grid_size, y * self.grid_size)
             cr.stroke()
+
+           
+            fill_color = (0, 0, 1)
+            cr.set_source_rgb(*fill_color)
+            cr.set_font_size(8)  # Reduced font size
+            cr.move_to(self.path[0][0] * self.grid_size + 20, self.path[0][1] * self.grid_size + 20)
+            cr.show_text(self.text)
+
+
 
     def contains_point(self, x, y, tolerance=5):
         def point_on_line(px, py, x1, y1, x2, y2, tolerance):
@@ -110,6 +133,7 @@ class Wire:
 
     def to_dict(self):
         return {
+            "name": self.text,
             "start_point": self.start_point,
             "end_point": self.end_point,
             "grid_size": self.grid_size
@@ -117,5 +141,5 @@ class Wire:
 
     @staticmethod
     def from_dict(wire_dict, parent_window):
-        return Wire(wire_dict["start_point"], wire_dict["end_point"], wire_dict["grid_size"], parent_window)
+        return Wire(wire_dict["name"], wire_dict["start_point"], wire_dict["end_point"], wire_dict["grid_size"], parent_window)
 

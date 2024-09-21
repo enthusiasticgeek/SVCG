@@ -721,16 +721,15 @@ class Block:
         self.height = round(self.height / self.grid_size) * self.grid_size
         self.update_points()
         self.update_wire_connections()
+        print(f"Block {self.text} end drag at ({self.x}, {self.y})")
 
     def update_wire_connections(self):
         for point, wire in self.output_connections.items():
             if wire is not None:
-                wire.start_point = point  # Update the start point of the wire
-                wire.path = wire.calculate_path()
+               wire.update_start_point(point)
         for point, wire in self.input_connections.items():
             if wire is not None:
-                wire.end_point = point  # Update the end point of the wire
-                wire.path = wire.calculate_path()
+               wire.update_end_point(point)
 
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360

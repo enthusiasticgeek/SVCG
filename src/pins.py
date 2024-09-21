@@ -258,13 +258,16 @@ class Pin:
         self.height = round(self.height / self.grid_size) * self.grid_size
         self.update_points()
         self.update_wire_connections()
+        print(f"Pin {self.text} end drag at ({self.x}, {self.y})")
 
     def update_wire_connections(self):
         for point, wire in self.connections.items():
             if wire is not None:
-                wire.start_point = point  # Update the start point of the wire
-                wire.path = wire.calculate_path()
-
+                if wire.start_point == point:
+                    wire.update_start_point(point)
+                elif wire.end_point == point:
+                    wire.update_end_point(point)
+    
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
         self.update_points()

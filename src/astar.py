@@ -38,7 +38,7 @@ class AStar:
                         priority = new_cost + self.heuristic(goal, next_cell)
                         heapq.heappush(frontier, (priority, next_cell))
                         came_from[next_cell] = current
-                        print(f"Exploring {next_cell} from {current} with cost {new_cost}")
+                        #print(f"Exploring {next_cell} from {current} with cost {new_cost}")
 
             if time.time() - start_time > self.timeout:
                 print(f"Timeout reached after {self.timeout} seconds")
