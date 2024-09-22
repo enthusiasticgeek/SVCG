@@ -11,27 +11,17 @@ class Wire:
         self.end_point = end_point
         self.grid_size = grid_size
         self.parent_window = parent_window
-        self.path = self.calculate_path()
-
+        self.path = self.calculate_path_astar()
 
     def update_start_point(self, new_start_point):
         self.start_point = new_start_point
         print(f"updated start point {self.start_point[0]} {self.start_point[1]}")
-        self.path = self.calculate_path()
+        self.path = self.calculate_path_astar()
 
     def update_end_point(self, new_end_point):
         self.end_point = new_end_point
         print(f"updated start point {self.end_point[0]} {self.end_point[1]}")
-        self.path = self.calculate_path()
-
-    def draw_orig(self, cr):
-        #print(f"Drawing wire: start_point={self.start_point}, end_point={self.end_point}")
-        cr.set_source_rgb(0, 0, 0)  # Black color for wires
-        cr.set_line_width(2)
-        cr.move_to(self.start_point[0], self.start_point[1])
-        cr.line_to(self.end_point[0], self.start_point[1])
-        cr.line_to(self.end_point[0], self.end_point[1])
-        cr.stroke()
+        self.path = self.calculate_path_astar()
 
     ############## MANHATTAN ROUTING ###############
     def calculate_path_manhattan(self):
@@ -58,7 +48,7 @@ class Wire:
         cr.stroke()
 
     ############## ASTAR ROUTING ###############
-    def calculate_path(self):
+    def calculate_path_astar(self):
         grid = self.parent_window.drawing_area.grid
         astar = AStar(grid)
         start_point = (int(self.start_point[0] / self.grid_size), int(self.start_point[1] / self.grid_size))
@@ -88,8 +78,6 @@ class Wire:
             cr.move_to(self.path[0][0] * self.grid_size + 20, self.path[0][1] * self.grid_size + 20)
             cr.show_text(self.text)
 
-
-
     def contains_point(self, x, y, tolerance=5):
         def point_on_line(px, py, x1, y1, x2, y2, tolerance):
             dx = x2 - x1
@@ -113,24 +101,6 @@ class Wire:
                     return True
         return False
     
-    def contains_point_old(self, x, y, tolerance=5):
-        def point_on_line(px, py, x1, y1, x2, y2, tolerance):
-            dx = x2 - x1
-            dy = y2 - y1
-            length = (dx * dx + dy * dy) ** 0.5
-            if length == 0:
-                return False
-            u = ((px - x1) * dx + (py - y1) * dy) / (length * length)
-            if u < 0 or u > 1:
-                return False
-            xx = x1 + u * dx
-            yy = y1 + u * dy
-            distance = ((px - xx) ** 2 + (py - yy) ** 2) ** 0.5
-            return distance <= tolerance
-
-        return (point_on_line(x, y, self.start_point[0], self.start_point[1], self.end_point[0], self.start_point[1], tolerance) or
-                point_on_line(x, y, self.end_point[0], self.start_point[1], self.end_point[0], self.end_point[1], tolerance))
-
     def to_dict(self):
         return {
             "name": self.text,

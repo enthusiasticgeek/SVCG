@@ -205,11 +205,6 @@ class Pin:
         cr.arc(self.width / 2, self.height/self.num_pins, 4, 0, 2 * math.pi)
         cr.fill()
 
-    def contains_point_old(self, x, y):
-        return (self.x <= x <= self.x + self.width and
-                self.y <= y <= self.y + self.height)
-
-
     def contains_point(self, x, y):
         if "bus" in self.pin_type.lower():
             # For buses, consider the entire area covered by the connection points
