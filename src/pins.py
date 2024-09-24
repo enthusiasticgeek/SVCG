@@ -5,7 +5,7 @@ from datetime import datetime
 from wire import Wire
 
 class Pin:
-    def __init__(self, x, y, width, height, text, pin_type, grid_size, num_pins=1):
+    def __init__(self, x, y, width, height, text, pin_type, grid_size, num_pins=1, parent_window=None):
         self.x = x
         self.y = y
         self.width = width
@@ -24,6 +24,7 @@ class Pin:
         self.selected = False  # Attribute to track selection state
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
         self.connections = {}  # Dictionary to track connections
+        self.parent_window = parent_window  # Add the parent_window attribute
         self.update_points()
 
     def update_points(self):
@@ -42,6 +43,11 @@ class Pin:
         #print(f"Updated connection points for pin {self.text}: {self.connection_points}")
     
         self.connections = {point: None for point in self.connection_points}
+
+        # Print all points in input and output connections
+        print(f"Connection Points: {self.connection_points}")
+        print(f"Connections: {self.connections}")
+
     
     def rotate_point(self, x, y):
         # Rotate the point around the center of the pin
@@ -255,23 +261,35 @@ class Pin:
         self.update_wire_connections()
         print(f"Pin {self.text} end drag at ({self.x}, {self.y})")
 
-    def update_wire_connections(self):
+    def update_wire_connections_old(self):
         for point, wire in self.connections.items():
             if wire is not None:
                 if wire.start_point == point:
                     wire.update_start_point(point)
                 elif wire.end_point == point:
                     wire.update_end_point(point)
+
+    def update_wire_connections(self):
+        for point, wire in self.connections.items():
+            if wire is not None:
+                if wire.start_point == point:
+                    wire.start_pin = self
+                elif wire.end_point == point:
+                    wire.end_pin = self
+                wire.update_connections()
     
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
         self.update_points()
 
     def connect_wire(self, start_point, end_point):
+        print(f"Connecting wire from {start_point} to {end_point}")
         self.connections[start_point] = end_point
+        print(f"Updated connections: {self.connections}")
 
     def to_dict(self):
-        connections_dict = {str(k): v for k, v in self.connections.items()}
+        #connections_dict = {str(k): v for k, v in self.connections.items()}
+        connections_dict = {str(k): (v.to_dict() if v is not None else None) for k, v in self.connections.items()}
         return {
             "name": self.text,
             "pin_type": self.pin_type,
@@ -290,7 +308,7 @@ class Pin:
         }
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data, parent_window):
         pin = cls(
             data.get("x", 0),
             data.get("y", 0),
@@ -299,11 +317,13 @@ class Pin:
             data.get("name", ""),
             data.get("pin_type", ""),
             data.get("grid_size", 20),
-            data.get("num_pins", 1)
+            data.get("num_pins", 1),
+            parent_window
         )
         pin.border_color = tuple(data.get("border_color", (0, 0, 0)))
         pin.fill_color = tuple(data.get("fill_color", (0.8, 0.8, 0.8)))
         pin.text_color = tuple(data.get("text_color", (0, 0, 0)))
         pin.rotation = data.get("rotation", 0)
-        pin.connections = {eval(k): v for k, v in data.get("connections", {}).items()}
+        #pin.connections = {eval(k): v for k, v in data.get("connections", {}).items()}
+        pin.connections = {eval(k): (Wire.from_dict(v, pin.parent_window) if v is not None else None) for k, v in data.get("connections", {}).items()}
         return pin

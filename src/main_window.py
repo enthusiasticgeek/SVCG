@@ -308,6 +308,131 @@ class BlocksWindow(Gtk.Window):
     def on_button_release(self, widget, event):
         for block in self.blocks:
             block.end_drag()
+            block.update_wire_connections()
+        for pin in self.pins:
+            pin.end_drag()
+            pin.update_wire_connections()
+    
+        if self.dragging_wire:
+            end_point = None
+            start_block = None
+            end_block = None
+            start_pin = None
+            end_pin = None
+    
+            # Find the end point
+            for block in self.blocks:
+                if block.contains_pin(event.x, event.y):
+                    end_point = block.contains_pin(event.x, event.y)
+                    end_block = block
+                    break
+            for pin in self.pins:
+                if pin.contains_pin(event.x, event.y):
+                    end_point = pin.contains_pin(event.x, event.y)
+                    end_pin = pin
+                    break
+    
+            if end_point and end_point != self.wire_start_point:
+                duplicate_wire = any(
+                    wire.start_point == self.wire_start_point and wire.end_point == end_point or
+                    wire.start_point == end_point and wire.end_point == self.wire_start_point
+                    for wire in self.wires
+                )
+                if not duplicate_wire:
+                    timestamp = datetime.now().isoformat(' ', 'seconds')
+                    new_wire = Wire(f"wire {timestamp}", self.wire_start_point, end_point, self.grid_size, self)
+                    self.wires.append(new_wire)
+    
+                    # Find the start block or pin
+                    for block in self.blocks:
+                        if block.contains_pin(self.wire_start_point[0], self.wire_start_point[1]):
+                            start_block = block
+                            break
+                    for pin in self.pins:
+                        if pin.contains_pin(self.wire_start_point[0], self.wire_start_point[1]):
+                            start_pin = pin
+                            break
+    
+                    # Connect the wire to the blocks or pins
+                    if start_block:
+                        start_block.connect_wire(self.wire_start_point, new_wire)
+                    if end_block:
+                        end_block.connect_wire(end_point, new_wire)
+                    if start_pin:
+                        start_pin.connect_wire(self.wire_start_point, new_wire)
+                    if end_pin:
+                        end_pin.connect_wire(end_point, new_wire)
+    
+                    self.update_json()
+                else:
+                    print("Duplicate wire connection detected and ignored.")
+            else:
+                print("Invalid wire connection: both ends must be on valid connection points.")
+    
+            self.dragging_wire = False
+    
+        self.update_wires()
+        self.drawing_area.queue_draw()
+        self.update_json()
+        self.push_undo()
+        self.drawing_area.grab_focus()
+    
+    def on_button_release1(self, widget, event):
+        for block in self.blocks:
+            block.end_drag()
+            block.update_wire_connections()
+        for pin in self.pins:
+            pin.end_drag()
+            pin.update_wire_connections()
+        if self.dragging_wire:
+            end_point = None
+            for block in self.blocks:
+                if block.contains_pin(event.x, event.y):
+                    end_point = block.contains_pin(event.x, event.y)
+                    break
+            for pin in self.pins:
+                if pin.contains_pin(event.x, event.y):
+                    end_point = pin.contains_pin(event.x, event.y)
+                    break
+            if end_point and end_point != self.wire_start_point:
+                duplicate_wire = any(
+                    wire.start_point == self.wire_start_point and wire.end_point == end_point or
+                    wire.start_point == end_point and wire.end_point == self.wire_start_point
+                    for wire in self.wires
+                )
+                if not duplicate_wire:
+                    timestamp = datetime.now().isoformat(' ', 'seconds')
+                    new_wire = Wire(f"wire {timestamp}", self.wire_start_point, end_point, self.grid_size, self)
+                    self.wires.append(new_wire)
+
+                    # Connect the wire to the blocks or pins
+                    for block in self.blocks:
+                        if block.contains_pin(self.wire_start_point[0], self.wire_start_point[1]):
+                            block.connect_wire(self.wire_start_point, new_wire)
+                        if block.contains_pin(end_point[0], end_point[1]):
+                            block.connect_wire(end_point, new_wire)
+                    for pin in self.pins:
+                        if pin.contains_pin(self.wire_start_point[0], self.wire_start_point[1]):
+                            pin.connect_wire(self.wire_start_point, new_wire)
+                        if pin.contains_pin(end_point[0], end_point[1]):
+                            pin.connect_wire(end_point, new_wire)
+
+                    self.update_json()
+                else:
+                    print("Duplicate wire connection detected and ignored.")
+            else:
+                print("Invalid wire connection: both ends must be on valid connection points.")
+            self.dragging_wire = False
+        self.update_wires()
+        self.drawing_area.queue_draw()
+        self.update_json()
+        self.push_undo()
+        self.drawing_area.grab_focus()
+    
+
+    def on_button_release_old(self, widget, event):
+        for block in self.blocks:
+            block.end_drag()
         for pin in self.pins:
             pin.end_drag()
         if self.dragging_wire:
@@ -646,6 +771,9 @@ class BlocksWindow(Gtk.Window):
         blocks_dict = [block.to_dict() for block in self.blocks]
         pins_dict = [pin.to_dict() for pin in self.pins]
         wires_dict = [wire.to_dict() for wire in self.wires]
+        #print(blocks_dict)
+        #print(pins_dict)
+        #print(wires_dict)
         return json.dumps(blocks_dict + pins_dict + wires_dict, indent=4)
 
     def update_json(self):
@@ -663,8 +791,8 @@ class BlocksWindow(Gtk.Window):
            print("undo")
            self.redo_stack.append(self.blocks_to_json())
            data = json.loads(self.undo_stack.pop())
-           self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
-           self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
+           self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]
+           self.pins = [Pin.from_dict(pin_dict, self) for pin_dict in data if pin_dict.get("pin_type")]
            self.wires = [Wire.from_dict(wire_dict, self) for wire_dict in data if wire_dict.get("start_point")]
            self.drawing_area.queue_draw()
            self.update_json()
@@ -675,8 +803,8 @@ class BlocksWindow(Gtk.Window):
            print("redo")
            self.undo_stack.append(self.blocks_to_json())
            data = json.loads(self.redo_stack.pop())
-           self.blocks = [Block.from_dict(block_dict) for block_dict in data if block_dict.get("block_type")]
-           self.pins = [Pin.from_dict(pin_dict) for pin_dict in data if pin_dict.get("pin_type")]
+           self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]
+           self.pins = [Pin.from_dict(pin_dict, self) for pin_dict in data if pin_dict.get("pin_type")]
            self.wires = [Wire.from_dict(wire_dict, self) for wire_dict in data if wire_dict.get("start_point")]
            self.drawing_area.queue_draw()
            self.update_json()

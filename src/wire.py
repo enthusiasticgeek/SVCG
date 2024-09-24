@@ -12,6 +12,10 @@ class Wire:
         self.grid_size = grid_size
         self.parent_window = parent_window
         self.path = self.calculate_path_astar()
+        self.start_block = None
+        self.end_block = None
+        self.start_pin = None
+        self.end_pin = None
 
     def update_start_point(self, new_start_point):
         self.start_point = new_start_point
@@ -21,6 +25,17 @@ class Wire:
     def update_end_point(self, new_end_point):
         self.end_point = new_end_point
         print(f"updated start point {self.end_point[0]} {self.end_point[1]}")
+        self.path = self.calculate_path_astar()
+
+    def update_connections(self):
+        if self.start_block:
+            self.start_point = self.start_block.contains_pin(self.start_point[0], self.start_point[1])
+        if self.end_block:
+            self.end_point = self.end_block.contains_pin(self.end_point[0], self.end_point[1])
+        if self.start_pin:
+            self.start_point = self.start_pin.contains_pin(self.start_point[0], self.start_point[1])
+        if self.end_pin:
+            self.end_point = self.end_pin.contains_pin(self.end_point[0], self.end_point[1])
         self.path = self.calculate_path_astar()
 
     ############## MANHATTAN ROUTING ###############
