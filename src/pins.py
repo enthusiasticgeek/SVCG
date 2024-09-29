@@ -42,11 +42,11 @@ class Pin:
         # Print the connection points for debugging
         #print(f"Updated connection points for pin {self.text}: {self.connection_points}")
     
-        self.connections = {point: None for point in self.connection_points}
+        #self.connections = {point: None for point in self.connection_points}
 
         # Print all points in input and output connections
-        print(f"Connection Points: {self.connection_points}")
-        print(f"Connections: {self.connections}")
+        #print(f"Connection Points: {self.connection_points}")
+        #print(f"Connections: {self.connections}")
 
     
     def rotate_point(self, x, y):
@@ -261,22 +261,16 @@ class Pin:
         self.update_wire_connections()
         print(f"Pin {self.text} end drag at ({self.x}, {self.y})")
 
-    def update_wire_connections_old(self):
-        for point, wire in self.connections.items():
-            if wire is not None:
-                if wire.start_point == point:
-                    wire.update_start_point(point)
-                elif wire.end_point == point:
-                    wire.update_end_point(point)
-
     def update_wire_connections(self):
         for point, wire in self.connections.items():
             if wire is not None:
                 if wire.start_point == point:
                     wire.start_pin = self
+                    wire.update_start_point(point)
                 elif wire.end_point == point:
                     wire.end_pin = self
-                wire.update_connections()
+                    wire.update_end_point(point)
+    
     
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
@@ -284,8 +278,14 @@ class Pin:
 
     def connect_wire(self, start_point, end_point):
         print(f"Connecting wire from {start_point} to {end_point}")
-        self.connections[start_point] = end_point
-        print(f"Updated connections: {self.connections}")
+        if start_point in self.connection_points:
+            self.connections[start_point] = end_point
+        if end_point in self.connection_points:
+            self.connections[end_point] = start_point
+        #print(f"Updated connections: {self.connections}")
+        updated_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.connections.items()}
+        print(f"Updated connections: {updated_connections}")
+    
 
     def to_dict(self):
         #connections_dict = {str(k): v for k, v in self.connections.items()}

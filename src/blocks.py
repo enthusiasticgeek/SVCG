@@ -44,14 +44,14 @@ class Block:
             self.input_names = ["IN1", "IN2"]
             self.output_names = ["OUT1"]
         # Initialize connections for new points
-        self.input_connections = {point: None for point in self.input_points}
-        self.output_connections = {point: None for point in self.output_points}
+        #self.input_connections = {point: None for point in self.input_points}
+        #self.output_connections = {point: None for point in self.output_points}
 
         # Print all points in input and output connections
-        print(f"Input Points: {self.input_points}")
-        print(f"Output Points: {self.output_points}")
-        print(f"Input Connections: {self.input_connections}")
-        print(f"Output Connections: {self.output_connections}")
+        #print(f"Input Points: {self.input_points}")
+        #print(f"Output Points: {self.output_points}")
+        #print(f"Input Connections: {self.input_connections}")
+        #print(f"Output Connections: {self.output_connections}")
     
     def rotate_point(self, x, y):
         # Rotate the point around the center of the block
@@ -730,24 +730,15 @@ class Block:
         self.update_wire_connections()
         print(f"Block {self.text} end drag at ({self.x}, {self.y})")
 
-    def update_wire_connections_old(self):
-        for point, wire in self.output_connections.items():
-            if wire is not None:
-               wire.update_start_point(point)
-        for point, wire in self.input_connections.items():
-            if wire is not None:
-               wire.update_end_point(point)
-
-
     def update_wire_connections(self):
         for point, wire in self.output_connections.items():
             if wire is not None:
                 wire.start_block = self
-                wire.update_connections()
+                wire.update_start_point(point)
         for point, wire in self.input_connections.items():
             if wire is not None:
                 wire.end_block = self
-                wire.update_connections()
+                wire.update_end_point(point)
 
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
@@ -755,11 +746,19 @@ class Block:
 
     def connect_wire(self, start_point, end_point):
         print(f"Connecting wire from {start_point} to {end_point}")
-        if start_point in self.output_points:
-           self.output_connections[start_point] = end_point
         if start_point in self.input_points:
-           self.input_connections[start_point] = end_point
-        print(f"Updated connections: {self.output_connections}, {self.input_connections}")
+            self.input_connections[start_point] = end_point
+        if start_point in self.output_points:
+            self.output_connections[start_point] = end_point
+        if end_point in self.input_points:
+            self.input_connections[end_point] = start_point
+        if end_point in self.output_points:
+            self.output_connections[end_point] = start_point
+        #print(f"Updated connections: {self.input_connections}, {self.output_connections}")
+        updated_output_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.output_connections.items()}
+        updated_input_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.input_connections.items()}
+        print(f"Updated output connections: {updated_output_connections}")
+        print(f"Updated input connections: {updated_input_connections}")
 
     def to_dict(self):
         #input_connections_dict = {str(k): v for k, v in self.input_connections.items()}

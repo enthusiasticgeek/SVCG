@@ -376,7 +376,7 @@ class BlocksWindow(Gtk.Window):
         self.update_json()
         self.push_undo()
         self.drawing_area.grab_focus()
-    
+   
     def on_button_release1(self, widget, event):
         for block in self.blocks:
             block.end_drag()
@@ -428,46 +428,6 @@ class BlocksWindow(Gtk.Window):
         self.update_json()
         self.push_undo()
         self.drawing_area.grab_focus()
-    
-
-    def on_button_release_old(self, widget, event):
-        for block in self.blocks:
-            block.end_drag()
-        for pin in self.pins:
-            pin.end_drag()
-        if self.dragging_wire:
-            end_point = None
-            for block in self.blocks:
-                if block.contains_pin(event.x, event.y):
-                    end_point = block.contains_pin(event.x, event.y)
-                    break
-            for pin in self.pins:
-                if pin.contains_pin(event.x, event.y):
-                    end_point = pin.contains_pin(event.x, event.y)
-                    break
-            if end_point and end_point != self.wire_start_point:
-                # Check for duplicate wire connections
-                duplicate_wire = any(
-                    wire.start_point == self.wire_start_point and wire.end_point == end_point or
-                    wire.start_point == end_point and wire.end_point == self.wire_start_point
-                    for wire in self.wires
-                )
-                if not duplicate_wire:
-                    timestamp = datetime.now().isoformat(' ', 'seconds')
-                    new_wire = Wire(f"wire {timestamp}", self.wire_start_point, end_point, self.grid_size, self)
-                    print(f"New wire created: start_point={self.wire_start_point}, end_point={end_point}")
-                    self.wires.append(new_wire)
-                    self.update_json()
-                else:
-                    print("Duplicate wire connection detected and ignored.")
-            else:
-                print("Invalid wire connection: both ends must be on valid connection points.")
-            self.dragging_wire = False
-        self.update_wires()
-        self.drawing_area.queue_draw()
-        self.update_json()
-        self.push_undo()
-        self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
 
     def on_motion_notify(self, widget, event):
         self.mouse_x, self.mouse_y = event.x, event.y
