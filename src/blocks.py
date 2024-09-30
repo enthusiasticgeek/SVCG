@@ -121,7 +121,7 @@ class Block:
                point[1] - 10 <= int(y) <= point[1] + 10):
                print(f'contains pin {x},{y},{point[0]},{point[1]}')
                return point
-        print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
+        #print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
         return None
 
     def draw_default_block(self, cr):

@@ -233,7 +233,7 @@ class Pin:
                point[1] - 10 <= int(y) <= point[1] + 10):
                print(f'contains pin {x},{y},{point[0]},{point[1]}')
                return point  # Return the connection point
-        print(f'**DOES NOT contain pin {x},{y}**')
+        #print(f'**DOES NOT contain pin {x},{y}**')
         return None
 
     def start_drag(self, x, y):
@@ -267,9 +267,11 @@ class Pin:
                 if wire.start_point == point:
                     wire.start_pin = self
                     wire.update_start_point(point)
-                elif wire.end_point == point:
+                if wire.end_point == point:
                     wire.end_pin = self
                     wire.update_end_point(point)
+        updated_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.connections.items()}
+        print(f"current connections: {updated_connections}")
     
     
     def rotate(self, angle):

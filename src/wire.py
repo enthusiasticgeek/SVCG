@@ -73,7 +73,8 @@ class Wire:
         if not path:
             print(f"No path found from {start_point} to {end_point}")
         else:
-            print(f"Path found from {start_point} to {end_point}")
+            #print(f"Path found from {start_point} to {end_point}")
+            pass
         return path
     
     def draw(self, cr):
