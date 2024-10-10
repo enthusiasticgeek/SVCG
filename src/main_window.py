@@ -11,6 +11,7 @@ from datetime import datetime
 from pins import Pin  # Import the Pin class
 from wire import Wire
 import json
+import random
 
 class BlocksWindow(Gtk.Window):
     def __init__(self):
@@ -129,8 +130,8 @@ class BlocksWindow(Gtk.Window):
     def on_button_clicked(self, widget, block_type):
         self.push_undo()
         # Ensure the initial position and size are multiples of the grid size
-        initial_x = round(40 / self.grid_size) * self.grid_size
-        initial_y = round(40 / self.grid_size) * self.grid_size
+        initial_x = round(random.randint(40, 240) / self.grid_size) * self.grid_size
+        initial_y = round(random.randint(40, 240) / self.grid_size) * self.grid_size
         initial_width = round(40 / self.grid_size) * self.grid_size  # Half of the current width
         initial_height = round(40 / self.grid_size) * self.grid_size
         timestamp = datetime.now().isoformat(' ', 'seconds')
@@ -143,8 +144,8 @@ class BlocksWindow(Gtk.Window):
     def on_pin_button_clicked(self, widget, pin_type):
         self.push_undo()
         # Ensure the initial position and size are multiples of the grid size
-        initial_x = round(40 / self.grid_size) * self.grid_size
-        initial_y = round(40 / self.grid_size) * self.grid_size
+        initial_x = round(random.randint(40, 240) / self.grid_size) * self.grid_size
+        initial_y = round(random.randint(40, 240) / self.grid_size) * self.grid_size
         initial_width = round(40 / self.grid_size) * self.grid_size  # Half of the current width
         initial_height = round(40 / self.grid_size) * self.grid_size
         timestamp = datetime.now().isoformat(' ', 'seconds')
