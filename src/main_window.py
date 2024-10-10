@@ -30,6 +30,11 @@ class BlocksWindow(Gtk.Window):
         self.left_pane = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.box.pack_start(self.left_pane, False, False, 0)
 
+        # Add a label to display mouse coordinates
+        self.mouse_label = Gtk.Label()
+        self.mouse_label.set_markup(f"<span color='green'>Cursor: (0,0)</span>")
+        self.left_pane.pack_start(self.mouse_label, False, False, 0)
+
         # Create an expander_pins for the pins menu
         self.expander_pins = Gtk.Expander(label="IO Pins/Buses")
         self.left_pane.pack_start(self.expander_pins, False, False, 0)
@@ -403,6 +408,8 @@ class BlocksWindow(Gtk.Window):
         self.update_json()
         self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
         #self.push_undo()
+        # Update the label with the current mouse coordinates
+        self.mouse_label.set_markup(f"<span color='green'>Cursor: ({int(self.mouse_x)}, {int(self.mouse_y)})</span>")
 
     def on_change_border_color(self, widget):
         if self.selected_block:
