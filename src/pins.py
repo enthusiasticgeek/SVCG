@@ -32,7 +32,7 @@ class Pin:
         if "bus" in self.pin_type.lower():
             # For buses, create multiple connection points based on num_pins
             self.connection_points = [
-                self.rotate_point(self.x + (i * self.width) + 20, self.y + self.height / self.num_pins)
+                self.rotate_point(self.x + (i * self.width) + 20, self.y + self.height)
                 for i in range(self.num_pins)
             ]
         else:
@@ -119,7 +119,7 @@ class Pin:
             #cr.fill()
 
             cr.set_source_rgb(*self.border_color)
-            cr.rectangle(0, 0, self.width, self.height/self.num_pins)
+            cr.rectangle(0, 0, self.width, self.height)
             cr.stroke()
 
             cr.set_source_rgb(*self.text_color)
@@ -131,24 +131,24 @@ class Pin:
             for i in range(self.num_pins):
                 # Draw the pin shape
                 cr.set_source_rgb(*self.fill_color)
-                cr.rectangle(i * pin_width, 0, pin_width, self.height/self.num_pins)
+                cr.rectangle(i * pin_width, 0, pin_width, self.height)
                 cr.fill()
 
                 cr.set_source_rgb(*self.border_color)
-                cr.rectangle(i * pin_width, 0, pin_width, self.height/self.num_pins)
+                cr.rectangle(i * pin_width, 0, pin_width, self.height)
                 cr.stroke()
 
                 cr.set_source_rgb(*self.text_color)
                 cr.set_font_size(8)  # Reduced font size
-                cr.move_to(i*self.width + 20, self.height/self.num_pins - 20)
+                cr.move_to(i*self.width + 20, self.height - 20)
                 cr.show_text(str(self.num_pins - i - 1))
 
                 if "input_bus" in self.pin_type.lower():
 
                    cr.set_source_rgb(*self.border_color)
-                   cr.move_to(i*self.width + 20 , self.height/self.num_pins)
-                   cr.line_to(i*self.width + 20 - 10, self.height/self.num_pins - 10)
-                   cr.line_to(i*self.width + 20 + 10, self.height/self.num_pins - 10)
+                   cr.move_to(i*self.width + 20 , self.height)
+                   cr.line_to(i*self.width + 20 - 10, self.height - 10)
+                   cr.line_to(i*self.width + 20 + 10, self.height - 10)
                    cr.close_path()
                    cr.fill()
           
@@ -172,15 +172,15 @@ class Pin:
                    cr.fill()
 
                    cr.set_source_rgb(*self.border_color)
-                   cr.move_to(i*self.width + 20 , self.height/self.num_pins)
-                   cr.line_to(i*self.width + 20 - 10, self.height/self.num_pins - 10)
-                   cr.line_to(i*self.width + 20 + 10, self.height/self.num_pins - 10)
+                   cr.move_to(i*self.width + 20 , self.height)
+                   cr.line_to(i*self.width + 20 - 10, self.height - 10)
+                   cr.line_to(i*self.width + 20 + 10, self.height - 10)
                    cr.close_path()
                    cr.fill()
           
                 # show green connection pin
                 cr.set_source_rgb(0, 0.6, 0)  # Green color for points
-                cr.arc(i*self.width+20, self.height/self.num_pins, 4, 0, 2 * math.pi)
+                cr.arc(i*self.width+20, self.height, 4, 0, 2 * math.pi)
                 cr.fill()
 
     def draw_output_arrow(self, cr):
@@ -194,7 +194,7 @@ class Pin:
 
         # show green connection pin
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
-        cr.arc(self.width / 2, self.height/self.num_pins, 4, 0, 2 * math.pi)
+        cr.arc(self.width / 2, self.height, 4, 0, 2 * math.pi)
         cr.fill()
 
     def draw_input_arrow(self, cr):
@@ -208,7 +208,7 @@ class Pin:
 
         # show green connection pin
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
-        cr.arc(self.width / 2, self.height/self.num_pins, 4, 0, 2 * math.pi)
+        cr.arc(self.width / 2, self.height, 4, 0, 2 * math.pi)
         cr.fill()
 
     def contains_point(self, x, y):

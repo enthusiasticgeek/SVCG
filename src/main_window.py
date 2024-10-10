@@ -129,10 +129,10 @@ class BlocksWindow(Gtk.Window):
     def on_button_clicked(self, widget, block_type):
         self.push_undo()
         # Ensure the initial position and size are multiples of the grid size
-        initial_x = round(50 / self.grid_size) * self.grid_size
-        initial_y = round(50 / self.grid_size) * self.grid_size
-        initial_width = round(50 / self.grid_size) * self.grid_size  # Half of the current width
-        initial_height = round(50 / self.grid_size) * self.grid_size
+        initial_x = round(40 / self.grid_size) * self.grid_size
+        initial_y = round(40 / self.grid_size) * self.grid_size
+        initial_width = round(40 / self.grid_size) * self.grid_size  # Half of the current width
+        initial_height = round(40 / self.grid_size) * self.grid_size
         timestamp = datetime.now().isoformat(' ', 'seconds')
         new_block = Block(initial_x, initial_y, initial_width, initial_height, f"{block_type} {timestamp}", block_type, self.grid_size)
         self.blocks.append(new_block)
@@ -143,10 +143,10 @@ class BlocksWindow(Gtk.Window):
     def on_pin_button_clicked(self, widget, pin_type):
         self.push_undo()
         # Ensure the initial position and size are multiples of the grid size
-        initial_x = round(50 / self.grid_size) * self.grid_size
-        initial_y = round(50 / self.grid_size) * self.grid_size
-        initial_width = round(50 / self.grid_size) * self.grid_size  # Half of the current width
-        initial_height = round(50 / self.grid_size) * self.grid_size
+        initial_x = round(40 / self.grid_size) * self.grid_size
+        initial_y = round(40 / self.grid_size) * self.grid_size
+        initial_width = round(40 / self.grid_size) * self.grid_size  # Half of the current width
+        initial_height = round(40 / self.grid_size) * self.grid_size
         timestamp = datetime.now().isoformat(' ', 'seconds')
     
         if "bus" in pin_type:
@@ -164,7 +164,8 @@ class BlocksWindow(Gtk.Window):
             if response == Gtk.ResponseType.OK:
                 num_pins = int(entry.get_text())
                 # Adjust the height based on the number of pins
-                initial_height = round((50 * num_pins) / self.grid_size) * self.grid_size
+                #initial_height = round((40 * num_pins) / self.grid_size) * self.grid_size
+                initial_height = round((40 * 1) / self.grid_size) * self.grid_size
                 new_pin = Pin(initial_x, initial_y, initial_width, initial_height, f"{pin_type} {timestamp}", pin_type, self.grid_size, num_pins)
                 self.pins.append(new_pin)
                 self.drawing_area.queue_draw()
