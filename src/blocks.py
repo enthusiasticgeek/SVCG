@@ -48,8 +48,8 @@ class Block:
         #self.output_connections = {point: None for point in self.output_points}
 
         # Print all points in input and output connections
-        #print(f"Input Points: {self.input_points}")
-        #print(f"Output Points: {self.output_points}")
+        print(f"Input Points: {self.input_points}")
+        print(f"Output Points: {self.output_points}")
         #print(f"Input Connections: {self.input_connections}")
         #print(f"Output Connections: {self.output_connections}")
     
@@ -119,7 +119,7 @@ class Block:
         for point in self.input_points + self.output_points:
             if (point[0] - 10 <= int(x) <= point[0] + 10 and
                point[1] - 10 <= int(y) <= point[1] + 10):
-               print(f'contains pin {x},{y},{point[0]},{point[1]}')
+               #print(f'=================== block contains pin {x},{y},{point[0]},{point[1]} =================')
                return point
         #print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
         return None
@@ -730,6 +730,66 @@ class Block:
         self.update_wire_connections()
         print(f"Block {self.text} end drag at ({self.x}, {self.y})")
 
+    def update_start_block_coordinates(connections, text, new_x, new_y):
+        for point, wire_details in connections.items():
+            if wire_details['start_block']['text'] == text:
+                wire_details['start_block']['x'] = new_x
+                wire_details['start_block']['y'] = new_y
+    
+    def update_end_block_coordinates(connections, text, new_x, new_y):
+        for point, wire_details in connections.items():
+            if wire_details['end_block']['text'] == text:
+                wire_details['end_block']['x'] = new_x
+                wire_details['end_block']['y'] = new_y
+
+    def extract_wire_details(self,wire):
+        return {
+            'text': wire.text,
+            'start_point': wire.start_point,
+            'end_point': wire.end_point,
+            'grid_size': wire.grid_size,
+            'parent_window': wire.parent_window,
+            'path': wire.path,
+            'start_block': {
+                'x': wire.start_block.x if wire.start_block else None,
+                'y': wire.start_block.y if wire.start_block else None,
+                'width': wire.start_block.width if wire.start_block else None,
+                'height': wire.start_block.height if wire.start_block else None,
+                'text': wire.start_block.text if wire.start_block else None,
+                'block_type': wire.start_block.block_type if wire.start_block else None,
+                # Add other relevant attributes as needed
+            },
+            'end_block': {
+                'x': wire.end_block.x if wire.end_block else None,
+                'y': wire.end_block.y if wire.end_block else None,
+                'width': wire.end_block.width if wire.end_block else None,
+                'height': wire.end_block.height if wire.end_block else None,
+                'text': wire.end_block.text if wire.end_block else None,
+                'block_type': wire.end_block.block_type if wire.end_block else None,
+                # Add other relevant attributes as needed
+            },
+            'start_pin': {
+                'x': wire.start_pin.x if wire.start_pin else None,
+                'y': wire.start_pin.y if wire.start_pin else None,
+                'width': wire.start_pin.width if wire.start_pin else None,
+                'height': wire.start_pin.height if wire.start_pin else None,
+                'text': wire.start_pin.text if wire.start_pin else None,
+                'pin_type': wire.start_pin.pin_type if wire.start_pin else None,
+                # Add other relevant attributes as needed
+            },
+            'end_pin': {
+                'x': wire.end_pin.x if wire.end_pin else None,
+                'y': wire.end_pin.y if wire.end_pin else None,
+                'width': wire.end_pin.width if wire.end_pin else None,
+                'height': wire.end_pin.height if wire.end_pin else None,
+                'text': wire.end_pin.text if wire.end_pin else None,
+                'pin_type': wire.end_pin.pin_type if wire.end_pin else None,
+                # Add other relevant attributes as needed
+            }
+        }
+
+
+
     def update_wire_connections(self):
         for point, wire in self.output_connections.items():
             if wire is not None:
@@ -757,8 +817,8 @@ class Block:
         #print(f"Updated connections: {self.input_connections}, {self.output_connections}")
         updated_output_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.output_connections.items()}
         updated_input_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.input_connections.items()}
-        print(f"Updated output connections: {updated_output_connections}")
-        print(f"Updated input connections: {updated_input_connections}")
+        #print(f"Updated output connections: {updated_output_connections}")
+        #print(f"Updated input connections: {updated_input_connections}")
 
     def to_dict(self):
         #input_connections_dict = {str(k): v for k, v in self.input_connections.items()}

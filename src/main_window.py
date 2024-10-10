@@ -235,20 +235,8 @@ class BlocksWindow(Gtk.Window):
                 self.selected_block = None
                 self.selected_pin = None
                 self.selected_wire = None
-                for block in self.blocks:
-                    if block.contains_point(event.x, event.y):
-                        self.selected_block = block
-                        block.start_drag(event.x, event.y)
-                        break
-                for pin in self.pins:
-                    if pin.contains_point(event.x, event.y):
-                        self.selected_pin = pin
-                        pin.start_drag(event.x, event.y)
-                        break
-                for wire in self.wires:
-                    if wire.contains_point(event.x, event.y):
-                        self.selected_wire = wire
-                        break
+                #######################
+                # dragging wire only
                 #######################
                 for block in self.blocks:
                     if block.contains_pin(event.x, event.y):
@@ -260,6 +248,25 @@ class BlocksWindow(Gtk.Window):
                        self.wire_start_point = pin.contains_pin(event.x, event.y)
                        self.dragging_wire = True
                        break
+                #######################
+                # not dragging wire?
+                # then move the block
+                #######################
+                if not self.dragging_wire:
+                        for block in self.blocks:
+                            if block.contains_point(event.x, event.y):
+                                self.selected_block = block
+                                block.start_drag(event.x, event.y)
+                                break
+                        for pin in self.pins:
+                            if pin.contains_point(event.x, event.y):
+                                self.selected_pin = pin
+                                pin.start_drag(event.x, event.y)
+                                break
+                        for wire in self.wires:
+                            if wire.contains_point(event.x, event.y):
+                                self.selected_wire = wire
+                                break
             elif event.button == 3:  # Right click
                 for block in self.blocks:
                     if block.contains_point(event.x, event.y):
@@ -303,7 +310,7 @@ class BlocksWindow(Gtk.Window):
             self.on_delete_block(widget)
         elif key == "p" and event.state & Gdk.ModifierType.CONTROL_MASK:
             self.on_rotate_90(widget)
-        print(f"Key pressed: {key}")  # Debug print statement
+        #print(f"Key pressed: {key}")  # Debug print statement
 
     def on_button_release(self, widget, event):
         for block in self.blocks:
@@ -381,10 +388,13 @@ class BlocksWindow(Gtk.Window):
     def on_motion_notify(self, widget, event):
         self.mouse_x, self.mouse_y = event.x, event.y
         width, height = self.drawing_area.get_allocated_width(), self.drawing_area.get_allocated_height()
+        #print(f"motion notify: {self.mouse_x} {self.mouse_y}, {width}, {height}")
         for block in self.blocks:
             block.drag(event.x, event.y, width, height)
+            #print(f"motion notify: {event.x} {event.y}, {width}, {height}")
         for pin in self.pins:
             pin.drag(event.x, event.y, width, height)
+            #print(f"motion notify: {event.x} {event.y}, {width}, {height}")
         if self.dragging_wire:
             self.drawing_area.queue_draw()
         self.drawing_area.queue_draw()
@@ -537,7 +547,7 @@ class BlocksWindow(Gtk.Window):
             self.push_undo()
 
     def on_copy_block(self, widget):
-        print('copy block')
+        #print('copy block')
         if self.selected_block:
             self.clipboard_block = self.selected_block
             self.clipboard_pin = None  # Clear the pin clipboard
@@ -670,7 +680,7 @@ class BlocksWindow(Gtk.Window):
     def update_wires(self):
         for wire in self.wires:
             #print('recalculate path')
-            wire.path = wire.calculate_path_astar()
+            wire.path = wire.calculate_path()
             if not wire.path:
                 #print(f"Removing wire from {wire.start_point} to {wire.end_point} due to no path found")
                 self.wires.remove(wire)
@@ -697,7 +707,7 @@ class BlocksWindow(Gtk.Window):
 
     def undo(self):
         if self.undo_stack:
-           print("undo")
+           #print("undo")
            self.redo_stack.append(self.blocks_to_json())
            data = json.loads(self.undo_stack.pop())
            self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]
@@ -709,7 +719,7 @@ class BlocksWindow(Gtk.Window):
 
     def redo(self):
         if self.redo_stack:
-           print("redo")
+           #print("redo")
            self.undo_stack.append(self.blocks_to_json())
            data = json.loads(self.redo_stack.pop())
            self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]

@@ -11,7 +11,7 @@ class Wire:
         self.end_point = end_point
         self.grid_size = grid_size
         self.parent_window = parent_window
-        self.path = self.calculate_path_astar()
+        self.path = self.calculate_path()
         self.start_block = None
         self.end_block = None
         self.start_pin = None
@@ -19,13 +19,13 @@ class Wire:
 
     def update_start_point(self, new_start_point):
         self.start_point = new_start_point
-        print(f"updated start point {self.start_point[0]} {self.start_point[1]}")
-        self.path = self.calculate_path_astar()
+        #print(f"updated start point for wire {self.text} to {self.start_point[0]} {self.start_point[1]}")
+        self.path = self.calculate_path()
 
     def update_end_point(self, new_end_point):
         self.end_point = new_end_point
-        print(f"updated start point {self.end_point[0]} {self.end_point[1]}")
-        self.path = self.calculate_path_astar()
+        #print(f"updated start point for wire {self.text} to {self.end_point[0]} {self.end_point[1]}")
+        self.path = self.calculate_path()
 
     def update_connections(self):
         if self.start_block:
@@ -36,22 +36,36 @@ class Wire:
             self.start_point = self.start_pin.contains_pin(self.start_point[0], self.start_point[1])
         if self.end_pin:
             self.end_point = self.end_pin.contains_pin(self.end_point[0], self.end_point[1])
+        self.path = self.calculate_path()
+
+
+    def calculate_path(self):
+        # choose method
+        # method 1   
+        #self.path = self.calculate_path_manhattan()
+        # method 2   
         self.path = self.calculate_path_astar()
+        return self.path
 
     ############## MANHATTAN ROUTING ###############
     def calculate_path_manhattan(self):
         # Simple Manhattan routing algorithm
         x1, y1 = self.start_point
         x2, y2 = self.end_point
-        print(f"{x1},{y1},{x2},{y2}")
+    
+        # Convert float coordinates to integers
+        x1, y1 = int(x1), int(y1)
+        x2, y2 = int(x2), int(y2)
+    
         path = []
         # Horizontal segment
         if x1 != x2:
-            path.append((x1, y1, x2, y1))
+            path.extend([(x, y1) for x in range(x1, x2 + 1)])
         # Vertical segment
         if y1 != y2:
-            path.append((x2, y1, x2, y2))
+            path.extend([(x2, y) for y in range(y1, y2 + 1)])
         return path
+    
 
     def draw_manhattan(self, cr):
         cr.set_source_rgb(0, 0, 0)  # Black color for wires
