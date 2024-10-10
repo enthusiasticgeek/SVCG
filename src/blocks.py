@@ -791,7 +791,7 @@ class Block:
 
 
 
-    def update_wire_connections(self):
+    def update_wire_connections_old(self):
         for point, wire in self.output_connections.items():
             if wire is not None:
                 wire.start_block = self
@@ -800,6 +800,33 @@ class Block:
             if wire is not None:
                 wire.end_block = self
                 wire.update_end_point(point)
+
+
+    def update_wire_connections(self):
+        for point, wire in self.output_connections.items():
+            if wire is not None:
+                if wire.start_point == point:
+                    wire.start_block = self
+                    wire.update_start_point(point)
+                if wire.end_point == point:
+                    wire.end_block = self
+                    wire.update_end_point(point)
+    
+        for point, wire in self.input_connections.items():
+            if wire is not None:
+                if wire.start_point == point:
+                    wire.start_block = self
+                    wire.update_start_point(point)
+                if wire.end_point == point:
+                    wire.end_block = self
+                    wire.update_end_point(point)
+    
+        updated_connections = {k: self.extract_wire_details(v) for k, v in self.output_connections.items() if v is not None}
+        updated_connections.update({k: self.extract_wire_details(v) for k, v in self.input_connections.items() if v is not None})
+    
+        #print(f"current connections: {updated_connections}")
+        # Return the updated connections if needed
+        return updated_connections
 
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360

@@ -336,20 +336,6 @@ class Pin:
         #print(f"current connections: {updated_connections}")
         # Return the updated connections if needed
         return updated_connections
- 
-
-    def update_wire_connections1(self):
-        for point, wire in self.connections.items():
-            if wire is not None:
-                if wire.start_point == point:
-                    wire.start_pin = self
-                    wire.update_start_point(point)
-                if wire.end_point == point:
-                    wire.end_pin = self
-                    wire.update_end_point(point)
-        updated_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.connections.items()}
-        #print(f"current connections: {updated_connections}")
-    
     
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
