@@ -34,13 +34,13 @@ class Block:
 
     def update_points(self):
         if self.block_type == "NOT":
-            self.input_points = [self.rotate_point(self.x + 20, self.y)]
-            self.output_points = [self.rotate_point(self.x + 20, self.y + self.height)]
+            self.input_points = [self.rotate_point(self.x + self.width/2, self.y)]
+            self.output_points = [self.rotate_point(self.x + self.width/2, self.y + self.height)]
             self.input_names = ["IN1"]
             self.output_names = ["OUT1"]
         elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
-            self.input_points = [self.rotate_point(self.x, self.y), self.rotate_point(self.x + 40, self.y)]
-            self.output_points = [self.rotate_point(self.x + 20, self.y + self.height)]
+            self.input_points = [self.rotate_point(self.x, self.y), self.rotate_point(self.x + self.width, self.y)]
+            self.output_points = [self.rotate_point(self.x + self.width/2, self.y + self.height)]
             self.input_names = ["IN1", "IN2"]
             self.output_names = ["OUT1"]
         # Initialize connections for new points
@@ -113,16 +113,6 @@ class Block:
             cr.stroke()
 
         cr.restore()
-
-    def contains_pin(self, x, y):
-        self.update_points()
-        for point in self.input_points + self.output_points:
-            if (point[0] - 10 <= int(x) <= point[0] + 10 and
-               point[1] - 10 <= int(y) <= point[1] + 10):
-               #print(f'=================== block contains pin {x},{y},{point[0]},{point[1]} =================')
-               return point
-        #print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
-        return None
 
     def draw_default_block(self, cr):
         # Set fill color based on selection state
@@ -240,8 +230,8 @@ class Block:
         #cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -0),(40,-0)]
-        self.output_points = [(20, self.height+0)]
+        self.input_points = [(0, 0),(self.width,0)]
+        self.output_points = [(self.width/2, self.height)]
 
     def draw_and_block(self, cr):
         # Set fill color based on selection state
@@ -299,8 +289,8 @@ class Block:
         cr.fill()
 
         # Add input and output points
-        self.input_points = [(0, -0),(40,-0)]
-        self.output_points = [(20, self.height+0)]
+        self.input_points = [(0, 0),(self.width,0)]
+        self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -382,8 +372,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -0),(40,-0)]
-        self.output_points = [(20, self.height+0)]
+        self.input_points = [(0, 0),(self.width,0)]
+        self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -470,8 +460,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -0),(40,-0)]
-        self.output_points = [(20, self.height+0)]
+        self.input_points = [(0, 0),(self.width,0)]
+        self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -566,8 +556,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -0),(40,-0)]
-        self.output_points = [(20, self.height+0)]
+        self.input_points = [(0,0),(self.width,0)]
+        self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -667,8 +657,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, -0),(40,-0)]
-        self.output_points = [(20, self.height+0)]
+        self.input_points = [(0,0),(self.width,0)]
+        self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -704,6 +694,17 @@ class Block:
     def contains_point(self, x, y):
         return (self.x <= x <= self.x + self.width and
                 self.y <= y <= self.y + self.height)
+
+    def contains_pin(self, x, y):
+        self.update_points()
+        for point in self.input_points + self.output_points:
+            if (point[0] - 10 <= int(x) <= point[0] + 10 and
+               point[1] - 10 <= int(y) <= point[1] + 10):
+               #print(f'=================== block contains pin {x},{y},{point[0]},{point[1]} =================')
+               return point
+        #print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
+        return None
+
 
     def start_drag(self, x, y):
         self.dragging = True

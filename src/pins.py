@@ -32,7 +32,7 @@ class Pin:
         if "bus" in self.pin_type.lower():
             # For buses, create multiple connection points based on num_pins
             self.connection_points = [
-                self.rotate_point(self.x + (i * self.width) + 20, self.y + self.height)
+                self.rotate_point(self.x + (i * self.width) + self.width/2, self.y + self.height)
                 for i in range(self.num_pins)
             ]
         else:
