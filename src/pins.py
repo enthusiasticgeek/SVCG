@@ -32,12 +32,12 @@ class Pin:
         if "bus" in self.pin_type.lower():
             # For buses, create multiple connection points based on num_pins
             self.connection_points = [
-                self.rotate_point(self.x + (i * self.width) + self.width/2, self.y + self.height)
+                self.rotate_point(int(self.x + (i * self.width) + self.width/2), int(self.y + self.height))
                 for i in range(self.num_pins)
             ]
         else:
             # For single pins, create a single connection point
-            self.connection_points = [self.rotate_point(self.x + self.width / 2, self.y + self.height)]
+            self.connection_points = [self.rotate_point(int(self.x + self.width / 2), int(self.y + self.height))]
 
         # Print the connection points for debugging
         #print(f"Updated connection points for pin {self.text}: {self.connection_points}")
@@ -240,7 +240,7 @@ class Pin:
         self.dragging = True
         self.offset_x = x - self.x
         self.offset_y = y - self.y
-        print(f"start_drag {self.offset_x} and {self.offset_y}")
+        #print(f"start_drag {self.offset_x} and {self.offset_y}")
 
     def drag(self, x, y, max_x, max_y):
         if self.dragging:

@@ -45,9 +45,11 @@ class AStar:
                 return {}, {}
 
         if goal in came_from:
-            print(f"Path found from {start} to {goal}")
+            #print(f"Path found from {start} to {goal}")
+            pass
         else:
-            print(f"No path found from {start} to {goal}")
+            #print(f"No path found from {start} to {goal}")
+            pass
 
         return came_from, cost_so_far
 

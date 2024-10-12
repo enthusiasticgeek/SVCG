@@ -39,8 +39,8 @@ class Block:
             self.input_names = ["IN1"]
             self.output_names = ["OUT1"]
         elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
-            self.input_points = [self.rotate_point(self.x, self.y), self.rotate_point(self.x + self.width, self.y)]
-            self.output_points = [self.rotate_point(self.x + self.width/2, self.y + self.height)]
+            self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width), int(self.y))]
+            self.output_points = [self.rotate_point(int(self.x + self.width/2), int(self.y + self.height))]
             self.input_names = ["IN1", "IN2"]
             self.output_names = ["OUT1"]
         # Initialize connections for new points
@@ -169,8 +169,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(20, -0)]
-        self.output_points = [(20, self.height+0)]
+        self.input_points = [(self.width/2, 0)]
+        self.output_points = [(self.width/2, self.height)]
 
     def draw_not_block(self, cr):
         # Set fill color based on selection state
@@ -710,6 +710,7 @@ class Block:
         self.dragging = True
         self.offset_x = x - self.x
         self.offset_y = y - self.y
+        #print(f"start_drag {self.offset_x} and {self.offset_y}")
 
     def drag(self, x, y, max_x, max_y):
         if self.dragging:
@@ -729,7 +730,7 @@ class Block:
         self.height = round(self.height / self.grid_size) * self.grid_size
         self.update_points()
         self.update_wire_connections()
-        print(f"Block {self.text} end drag at ({self.x}, {self.y})")
+        #print(f"Block {self.text} end drag at ({self.x}, {self.y})")
 
     def update_start_block_coordinates(connections, text, new_x, new_y):
         for point, wire_details in connections.items():

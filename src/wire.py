@@ -29,13 +29,13 @@ class Wire:
 
     def update_connections(self):
         if self.start_block:
-            self.start_point = self.start_block.contains_pin(self.start_point[0], self.start_point[1])
+            self.start_point = self.start_block.contains_pin(int(self.start_point[0]), int(self.start_point[1]))
         if self.end_block:
-            self.end_point = self.end_block.contains_pin(self.end_point[0], self.end_point[1])
+            self.end_point = self.end_block.contains_pin(int(self.end_point[0]), int(self.end_point[1]))
         if self.start_pin:
-            self.start_point = self.start_pin.contains_pin(self.start_point[0], self.start_point[1])
+            self.start_point = self.start_pin.contains_pin(int(self.start_point[0]), int(self.start_point[1]))
         if self.end_pin:
-            self.end_point = self.end_pin.contains_pin(self.end_point[0], self.end_point[1])
+            self.end_point = self.end_pin.contains_pin(int(self.end_point[0]), int(self.end_point[1]))
         self.path = self.calculate_path()
 
 
@@ -85,9 +85,9 @@ class Wire:
         came_from, cost_so_far = astar.astar(start_point, end_point)
         path = astar.reconstruct_path(came_from, start_point, end_point)
         if not path:
-            print(f"No path found from {start_point} to {end_point}")
+            print(f"No Astar path found from {start_point} to {end_point}")
         else:
-            #print(f"Path found from {start_point} to {end_point}")
+            print(f"Astar Path found from {start_point} to {end_point}")
             pass
         return path
     
@@ -108,7 +108,7 @@ class Wire:
             cr.move_to(self.path[0][0] * self.grid_size + 20, self.path[0][1] * self.grid_size + 20)
             cr.show_text(self.text)
 
-    def contains_point(self, x, y, tolerance=5):
+    def contains_point(self, x, y, tolerance=10):
         def point_on_line(px, py, x1, y1, x2, y2, tolerance):
             dx = x2 - x1
             dy = y2 - y1

@@ -102,7 +102,7 @@ class BlocksWindow(Gtk.Window):
         self.scrolled_window = Gtk.ScrolledWindow()
         self.scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.drawing_area = DrawingArea(self)
-        self.drawing_area.set_size_request(10000, 10000)  # Set a large size to trigger scroll bars
+        self.drawing_area.set_size_request(5000, 5000)  # Set a large size to trigger scroll bars
         self.scrolled_window.add(self.drawing_area)
         self.box.pack_start(self.scrolled_window, True, True, 0)
 
@@ -246,13 +246,13 @@ class BlocksWindow(Gtk.Window):
                 # dragging wire only
                 #######################
                 for block in self.blocks:
-                    if block.contains_pin(event.x, event.y):
-                       self.wire_start_point = block.contains_pin(event.x, event.y)
+                    if block.contains_pin(int(event.x), int(event.y)):
+                       self.wire_start_point = block.contains_pin(int(event.x), int(event.y))
                        self.dragging_wire = True
                        break
                 for pin in self.pins:
-                    if pin.contains_pin(event.x, event.y):
-                       self.wire_start_point = pin.contains_pin(event.x, event.y)
+                    if pin.contains_pin(int(event.x), int(event.y)):
+                       self.wire_start_point = pin.contains_pin(int(event.x), int(event.y))
                        self.dragging_wire = True
                        break
                 #######################
@@ -261,39 +261,39 @@ class BlocksWindow(Gtk.Window):
                 #######################
                 if not self.dragging_wire:
                         for block in self.blocks:
-                            if block.contains_point(event.x, event.y):
+                            if block.contains_point(int(event.x), int(event.y)):
                                 self.selected_block = block
-                                block.start_drag(event.x, event.y)
+                                block.start_drag(int(event.x), int(event.y))
                                 break
                         for pin in self.pins:
-                            if pin.contains_point(event.x, event.y):
+                            if pin.contains_point(int(event.x), int(event.y)):
                                 self.selected_pin = pin
-                                pin.start_drag(event.x, event.y)
+                                pin.start_drag(int(event.x), int(event.y))
                                 break
                         for wire in self.wires:
-                            if wire.contains_point(event.x, event.y):
+                            if wire.contains_point(int(event.x), int(event.y)):
                                 self.selected_wire = wire
                                 break
             elif event.button == 3:  # Right click
                 for block in self.blocks:
-                    if block.contains_point(event.x, event.y):
+                    if block.contains_point(int(event.x), int(event.y)):
                         self.selected_block = block
-                        if block.contains_pin(event.x, event.y):
+                        if block.contains_pin(int(event.x), int(event.y)):
                             self.pin_context_menu.popup(event)
                         else:
                             self.context_menu.popup(event)
                         break
                 for pin in self.pins:
-                    if pin.contains_point(event.x, event.y):
+                    if pin.contains_point(int(event.x), int(event.y)):
                         self.selected_pin = pin
-                        connection_point = pin.contains_pin(event.x, event.y)
+                        connection_point = pin.contains_pin(int(event.x), int(event.y))
                         if connection_point:
                             self.pin_context_menu.popup(event)
                         else:
                             self.context_menu.popup(event)
                         break
                 for wire in self.wires:
-                    if wire.contains_point(event.x, event.y):
+                    if wire.contains_point(int(event.x), int(event.y)):
                        self.selected_wire = wire
                        #self.wire_context_menu.popup(event)
                        self.wire_context_menu.popup(None, None, None, None, event.button, event.time)
@@ -336,13 +336,13 @@ class BlocksWindow(Gtk.Window):
     
             # Find the end point
             for block in self.blocks:
-                if block.contains_pin(event.x, event.y):
-                    end_point = block.contains_pin(event.x, event.y)
+                if block.contains_pin(int(event.x), int(event.y)):
+                    end_point = block.contains_pin(int(event.x), int(event.y))
                     end_block = block
                     break
             for pin in self.pins:
-                if pin.contains_pin(event.x, event.y):
-                    end_point = pin.contains_pin(event.x, event.y)
+                if pin.contains_pin(int(event.x), int(event.y)):
+                    end_point = pin.contains_pin(int(event.x), int(event.y))
                     end_pin = pin
                     break
     
@@ -359,11 +359,11 @@ class BlocksWindow(Gtk.Window):
     
                     # Find the start block or pin
                     for block in self.blocks:
-                        if block.contains_pin(self.wire_start_point[0], self.wire_start_point[1]):
+                        if block.contains_pin(int(self.wire_start_point[0]), int(self.wire_start_point[1])):
                             start_block = block
                             break
                     for pin in self.pins:
-                        if pin.contains_pin(self.wire_start_point[0], self.wire_start_point[1]):
+                        if pin.contains_pin(int(self.wire_start_point[0]), int(self.wire_start_point[1])):
                             start_pin = pin
                             break
     
