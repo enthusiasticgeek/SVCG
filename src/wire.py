@@ -2,11 +2,14 @@
 import cairo
 import math
 import numpy as np
+import random
 from astar import AStar
 
 class Wire:
-    def __init__(self, text, start_point, end_point, grid_size, parent_window):
+    def __init__(self, text, start_point, end_point, wire_type, grid_size, parent_window):
         self.text = text
+        self.text_pos_x = round(random.randint(20,40))
+        self.text_pos_y = round(random.randint(20,40))
         self.start_point = start_point
         self.end_point = end_point
         self.grid_size = grid_size
@@ -16,6 +19,7 @@ class Wire:
         self.end_block = None
         self.start_pin = None
         self.end_pin = None
+        self.wire_type = wire_type
 
     def update_start_point(self, new_start_point):
         self.start_point = new_start_point
@@ -85,9 +89,10 @@ class Wire:
         came_from, cost_so_far = astar.astar(start_point, end_point)
         path = astar.reconstruct_path(came_from, start_point, end_point)
         if not path:
-            print(f"No Astar path found from {start_point} to {end_point}")
+            #print(f"No Astar path found from {start_point} to {end_point}")
+            pass
         else:
-            print(f"Astar Path found from {start_point} to {end_point}")
+            #print(f"Astar Path found from {start_point} to {end_point}")
             pass
         return path
     
@@ -105,7 +110,7 @@ class Wire:
             fill_color = (0, 0, 1)
             cr.set_source_rgb(*fill_color)
             cr.set_font_size(8)  # Reduced font size
-            cr.move_to(self.path[0][0] * self.grid_size + 20, self.path[0][1] * self.grid_size + 20)
+            cr.move_to(self.path[0][0] * self.grid_size + self.text_pos_x, self.path[0][1] * self.grid_size + self.text_pos_y)
             cr.show_text(self.text)
 
     def contains_point(self, x, y, tolerance=10):
@@ -136,10 +141,11 @@ class Wire:
             "name": self.text,
             "start_point": self.start_point,
             "end_point": self.end_point,
+            "wire_type": self.wire_type,
             "grid_size": self.grid_size
         }
 
     @staticmethod
     def from_dict(wire_dict, parent_window):
-        return Wire(wire_dict["name"], wire_dict["start_point"], wire_dict["end_point"], wire_dict["grid_size"], parent_window)
+        return Wire(wire_dict["name"], wire_dict["start_point"], wire_dict["end_point"], wire_dict["wire_type"], wire_dict["grid_size"], parent_window)
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import cairo
 import math
+import pprint
 from datetime import datetime
 from wire import Wire
 
@@ -24,9 +25,8 @@ class Block:
         self.input_points = []
         self.output_points = []
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
-        self.input_connections = {}  # Dictionary to track input connections
-        self.output_connections = {}  # Dictionary to track output connections
-        self.selected = False  # Attribute to track selection state
+        self.input_connections = []  # List of dictionaries to track input connections
+        self.output_connections = []  # List of dictionaries to track output connections
         self.input_names = []
         self.output_names = []
         self.parent_window = parent_window  # Add the parent_window attribute
@@ -48,11 +48,11 @@ class Block:
         #self.output_connections = {point: None for point in self.output_points}
 
         # Print all points in input and output connections
-        print(f"Input Points: {self.input_points}")
-        print(f"Output Points: {self.output_points}")
+        #print(f"Input Points: {self.input_points}")
+        #print(f"Output Points: {self.output_points}")
         #print(f"Input Connections: {self.input_connections}")
         #print(f"Output Connections: {self.output_connections}")
-    
+
     def rotate_point(self, x, y):
         # Rotate the point around the center of the block
         cx, cy = self.x + self.width / 2, self.y + self.height / 2
@@ -705,7 +705,6 @@ class Block:
         #print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
         return None
 
-
     def start_drag(self, x, y):
         self.dragging = True
         self.offset_x = x - self.x
@@ -729,22 +728,28 @@ class Block:
         self.width = round(self.width / self.grid_size) * self.grid_size
         self.height = round(self.height / self.grid_size) * self.grid_size
         self.update_points()
-        self.update_wire_connections()
+        #self.update_wire_connections()
+        ## Update start and end block coordinates in wire connections
+        #self.update_start_block_coordinates(self.output_connections, self.text, self.x, self.y)
+        #self.update_end_block_coordinates(self.input_connections, self.text, self.x, self.y)
+
         #print(f"Block {self.text} end drag at ({self.x}, {self.y})")
 
-    def update_start_block_coordinates(connections, text, new_x, new_y):
-        for point, wire_details in connections.items():
-            if wire_details['start_block']['text'] == text:
-                wire_details['start_block']['x'] = new_x
-                wire_details['start_block']['y'] = new_y
-    
-    def update_end_block_coordinates(connections, text, new_x, new_y):
-        for point, wire_details in connections.items():
-            if wire_details['end_block']['text'] == text:
-                wire_details['end_block']['x'] = new_x
-                wire_details['end_block']['y'] = new_y
+    def update_start_block_coordinates(self, connections, text, new_x, new_y):
+        for connection in connections:
+            if connection['wire'] and connection['wire'].start_block and connection['wire'].start_block.text == text:
+                print("here1")
+                connection['wire'].start_block.x = new_x
+                connection['wire'].start_block.y = new_y
 
-    def extract_wire_details(self,wire):
+    def update_end_block_coordinates(self, connections, text, new_x, new_y):
+        for connection in connections:
+            if connection['wire'] and connection['wire'].end_block and connection['wire'].end_block.text == text:
+                print("here2")
+                connection['wire'].end_block.x = new_x
+                connection['wire'].end_block.y = new_y
+
+    def extract_wire_details(self, wire):
         return {
             'text': wire.text,
             'start_point': wire.start_point,
@@ -790,41 +795,29 @@ class Block:
             }
         }
 
-
-
-    def update_wire_connections_old(self):
-        for point, wire in self.output_connections.items():
-            if wire is not None:
-                wire.start_block = self
-                wire.update_start_point(point)
-        for point, wire in self.input_connections.items():
-            if wire is not None:
-                wire.end_block = self
-                wire.update_end_point(point)
-
-
     def update_wire_connections(self):
-        for point, wire in self.output_connections.items():
-            if wire is not None:
-                if wire.start_point == point:
-                    wire.start_block = self
-                    wire.update_start_point(point)
-                if wire.end_point == point:
-                    wire.end_block = self
-                    wire.update_end_point(point)
-    
-        for point, wire in self.input_connections.items():
-            if wire is not None:
-                if wire.start_point == point:
-                    wire.start_block = self
-                    wire.update_start_point(point)
-                if wire.end_point == point:
-                    wire.end_block = self
-                    wire.update_end_point(point)
-    
-        updated_connections = {k: self.extract_wire_details(v) for k, v in self.output_connections.items() if v is not None}
-        updated_connections.update({k: self.extract_wire_details(v) for k, v in self.input_connections.items() if v is not None})
-    
+        print("update wire connections block")
+        for connection in self.output_connections:
+            if connection['wire'] is not None:
+                if connection['wire'].start_point == connection['point']:
+                    connection['wire'].start_block = self
+                    connection['wire'].update_start_point(connection['point'])
+                if connection['wire'].end_point == connection['point']:
+                    connection['wire'].end_block = self
+                    connection['wire'].update_end_point(connection['point'])
+
+        for connection in self.input_connections:
+            if connection['wire'] is not None:
+                if connection['wire'].start_point == connection['point']:
+                    connection['wire'].start_block = self
+                    connection['wire'].update_start_point(connection['point'])
+                if connection['wire'].end_point == connection['point']:
+                    connection['wire'].end_block = self
+                    connection['wire'].update_end_point(connection['point'])
+
+        updated_connections = {k: self.extract_wire_details(v['wire']) for k, v in enumerate(self.output_connections) if v['wire'] is not None}
+        updated_connections.update({k: self.extract_wire_details(v['wire']) for k, v in enumerate(self.input_connections) if v['wire'] is not None})
+
         #print(f"current connections: {updated_connections}")
         # Return the updated connections if needed
         return updated_connections
@@ -835,25 +828,26 @@ class Block:
 
     def connect_wire(self, start_point, end_point):
         print(f"Connecting wire from {start_point} to {end_point}")
+        print("Blocks ============")
         if start_point in self.input_points:
-            self.input_connections[start_point] = end_point
+            self.input_connections.append({'point': start_point, 'wire': end_point})
         if start_point in self.output_points:
-            self.output_connections[start_point] = end_point
+            self.output_connections.append({'point': start_point, 'wire': end_point})
         if end_point in self.input_points:
-            self.input_connections[end_point] = start_point
+            self.input_connections.append({'point': end_point, 'wire': start_point})
         if end_point in self.output_points:
-            self.output_connections[end_point] = start_point
+            self.output_connections.append({'point': end_point, 'wire': start_point})
         #print(f"Updated connections: {self.input_connections}, {self.output_connections}")
-        updated_output_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.output_connections.items()}
-        updated_input_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.input_connections.items()}
-        #print(f"Updated output connections: {updated_output_connections}")
-        #print(f"Updated input connections: {updated_input_connections}")
+        updated_output_connections = {k: (v['wire'].text, v['wire'].start_point, v['wire'].end_point, v['wire'].grid_size) for k, v in enumerate(self.output_connections)}
+        updated_input_connections = {k: (v['wire'].text, v['wire'].start_point, v['wire'].end_point, v['wire'].grid_size) for k, v in enumerate(self.input_connections)}
+        print(f"Updated output connections: {updated_output_connections}")
+        print(f"Updated input connections: {updated_input_connections}")
 
     def to_dict(self):
         #input_connections_dict = {str(k): v for k, v in self.input_connections.items()}
         #output_connections_dict = {str(k): v for k, v in self.output_connections.items()}
-        input_connections_dict = {str(k): (v.to_dict() if v is not None else None) for k, v in self.input_connections.items()}
-        output_connections_dict = {str(k): (v.to_dict() if v is not None else None) for k, v in self.output_connections.items()}
+        input_connections_dict = {str(k): (v['wire'].to_dict() if v['wire'] is not None else None) for k, v in enumerate(self.input_connections)}
+        output_connections_dict = {str(k): (v['wire'].to_dict() if v['wire'] is not None else None) for k, v in enumerate(self.output_connections)}
         return {
         "name": self.text,
         "block_type": self.block_type,
@@ -893,8 +887,8 @@ class Block:
         block.rotation = data["rotation"]
         #block.input_connections = {eval(k): v for k, v in data["input_connections"].items()}
         #block.output_connections = {eval(k): v for k, v in data["output_connections"].items()}
-        block.input_connections = {eval(k): (Wire.from_dict(v, block.parent_window) if v is not None else None) for k, v in data["input_connections"].items()}
-        block.output_connections = {eval(k): (Wire.from_dict(v, block.parent_window) if v is not None else None) for k, v in data["output_connections"].items()}
+        block.input_connections = [{'point': eval(k), 'wire': (Wire.from_dict(v, block.parent_window) if v is not None else None)} for k, v in data["input_connections"].items()]
+        block.output_connections = [{'point': eval(k), 'wire': (Wire.from_dict(v, block.parent_window) if v is not None else None)} for k, v in data["output_connections"].items()]
         block.input_names = data["input_names"]
         block.output_names = data["output_names"]
         return block

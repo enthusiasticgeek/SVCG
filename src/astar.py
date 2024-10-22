@@ -58,7 +58,7 @@ class AStar:
         path = [current]
         while current != start:
             if current not in came_from:
-                print(f"No path found from {start} to {goal}")
+                #print(f"No path found from {start} to {goal}")
                 return []
             current = came_from[current]
             path.append(current)

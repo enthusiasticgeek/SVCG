@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import cairo
 import math
+import pprint
 from datetime import datetime
 from wire import Wire
 
@@ -23,7 +24,7 @@ class Pin:
         self.rotation = 0  # Initial rotation angle in degrees
         self.selected = False  # Attribute to track selection state
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
-        self.connections = {}  # Dictionary to track connections
+        self.connections = []  # List of dictionaries to track connections
         self.parent_window = parent_window  # Add the parent_window attribute
         self.update_points()
 
@@ -41,14 +42,13 @@ class Pin:
 
         # Print the connection points for debugging
         #print(f"Updated connection points for pin {self.text}: {self.connection_points}")
-    
+
         #self.connections = {point: None for point in self.connection_points}
 
         # Print all points in input and output connections
         #print(f"Connection Points: {self.connection_points}")
         #print(f"Connections: {self.connections}")
 
-    
     def rotate_point(self, x, y):
         # Rotate the point around the center of the pin
         cx, cy = self.x + self.width / 2, self.y + self.height / 2
@@ -151,7 +151,7 @@ class Pin:
                    cr.line_to(i*self.width + 20 + 10, self.height - 10)
                    cr.close_path()
                    cr.fill()
-          
+
                 if "output_bus" in self.pin_type.lower():
 
                    cr.set_source_rgb(*self.border_color)
@@ -160,7 +160,6 @@ class Pin:
                    cr.line_to(i*self.width + 20 + 10, 10)
                    cr.close_path()
                    cr.fill()
-
 
                 if "input_output_bus" in self.pin_type.lower():
 
@@ -177,7 +176,7 @@ class Pin:
                    cr.line_to(i*self.width + 20 + 10, self.height - 10)
                    cr.close_path()
                    cr.fill()
-          
+
                 # show green connection pin
                 cr.set_source_rgb(0, 0.6, 0)  # Green color for points
                 cr.arc(i*self.width+20, self.height, 4, 0, 2 * math.pi)
@@ -224,7 +223,6 @@ class Pin:
             # For single pins, use the original bounds check
             return (self.x <= x <= self.x + self.width and
                     self.y <= y <= self.y + self.height)
-    
 
     def contains_pin(self, x, y):
         self.update_points()
@@ -233,7 +231,7 @@ class Pin:
                point[1] - 10 <= int(y) <= point[1] + 10):
                #print(f'=================== contains pin {x},{y},{point[0]},{point[1]} =================')
                return point  # Return the connection point
-        print(f'**DOES NOT contain pin {x},{y}**')
+        #print(f'**DOES NOT contain pin {x},{y}**')
         return None
 
     def start_drag(self, x, y):
@@ -248,10 +246,10 @@ class Pin:
             new_y = y - self.offset_y
             if new_x >= 0 and new_x + self.width*self.num_pins <= max_x:
                 self.x = new_x
-                print(f"drag {self.x}")
+                #print(f"drag {self.x}")
             if new_y >= 0 and new_y + self.height <= max_y:
                 self.y = new_y
-                print(f"drag {self.y}")
+                #print(f"drag {self.y}")
             self.update_points()
 
     def end_drag(self):
@@ -261,22 +259,28 @@ class Pin:
         self.width = round(self.width / self.grid_size) * self.grid_size
         self.height = round(self.height / self.grid_size) * self.grid_size
         self.update_points()
-        self.update_wire_connections()
+        #self.update_wire_connections()
+        ## Update start and end block coordinates in wire connections
+        #self.update_start_pin_coordinates(self.connections, self.text, self.x, self.y)
+        #self.update_end_pin_coordinates(self.connections, self.text, self.x, self.y)
+
         #print(f"Pin {self.text} end drag at ({self.x}, {self.y})")
 
-    def update_start_pin_coordinates(connections, text, new_x, new_y):
-        for point, wire_details in connections.items():
-            if wire_details['start_pin']['text'] == text:
-                wire_details['start_pin']['x'] = new_x
-                wire_details['start_pin']['y'] = new_y
-    
-    def update_end_pin_coordinates(connections, text, new_x, new_y):
-        for point, wire_details in connections.items():
-            if wire_details['end_pin']['text'] == text:
-                wire_details['end_pin']['x'] = new_x
-                wire_details['end_pin']['y'] = new_y
+    def update_start_pin_coordinates(self, connections, text, new_x, new_y):
+        for connection in connections:
+            if connection['wire'] and connection['wire'].start_pin and connection['wire'].start_pin.text == text:
+                print("here1")
+                connection['wire'].start_pin.x = new_x
+                connection['wire'].start_pin.y = new_y
 
-    def extract_wire_details(self,wire):
+    def update_end_pin_coordinates(self, connections, text, new_x, new_y):
+        for connection in connections:
+            if connection['wire'] and connection['wire'].end_pin and connection['wire'].end_pin.text == text:
+                print("here2")
+                connection['wire'].end_pin.x = new_x
+                connection['wire'].end_pin.y = new_y
+
+    def extract_wire_details(self, wire):
         return {
             'text': wire.text,
             'start_point': wire.start_point,
@@ -321,40 +325,40 @@ class Pin:
                 # Add other relevant attributes as needed
             }
         }
-    
+
     def update_wire_connections(self):
-        for point, wire in self.connections.items():
-            if wire is not None:
-                if wire.start_point == point:
-                    wire.start_pin = self
-                    wire.update_start_point(point)
-                if wire.end_point == point:
-                    wire.end_pin = self
-                    wire.update_end_point(point)
-    
-        updated_connections = {k: self.extract_wire_details(v) for k, v in self.connections.items() if v is not None}
-        #print(f"current connections: {updated_connections}")
+        for connection in self.connections:
+            if connection['wire'] is not None:
+                if connection['wire'].start_point == connection['point']:
+                    connection['wire'].start_pin = self
+                    connection['wire'].update_start_point(connection['point'])
+                if connection['wire'].end_point == connection['point']:
+                    connection['wire'].end_pin = self
+                    connection['wire'].update_end_point(connection['point'])
+
+        updated_connections = {k: self.extract_wire_details(v['wire']) for k, v in enumerate(self.connections) if v['wire'] is not None}
+        pprint.pprint(f"current connections: {updated_connections}")
         # Return the updated connections if needed
         return updated_connections
-    
+
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
         self.update_points()
 
     def connect_wire(self, start_point, end_point):
         print(f"Connecting wire from {start_point} to {end_point}")
+        print("Pins ============")
         if start_point in self.connection_points:
-            self.connections[start_point] = end_point
+            self.connections.append({'point': start_point, 'wire': end_point})
         if end_point in self.connection_points:
-            self.connections[end_point] = start_point
+            self.connections.append({'point': end_point, 'wire': start_point})
         #print(f"Updated connections: {self.connections}")
-        updated_connections = {k: (v.text, v.start_point, v.end_point, v.grid_size) for k, v in self.connections.items()}
+        updated_connections = {k: (v['wire'].to_dict() if v['wire'] is not None else None) for k, v in enumerate(self.connections)}
         #print(f"Updated connections: {updated_connections}")
-    
 
     def to_dict(self):
         #connections_dict = {str(k): v for k, v in self.connections.items()}
-        connections_dict = {str(k): (v.to_dict() if v is not None else None) for k, v in self.connections.items()}
+        connections_dict = {str(k): (v['wire'].to_dict() if v['wire'] is not None else None) for k, v in enumerate(self.connections)}
         return {
             "name": self.text,
             "pin_type": self.pin_type,
@@ -390,5 +394,6 @@ class Pin:
         pin.text_color = tuple(data.get("text_color", (0, 0, 0)))
         pin.rotation = data.get("rotation", 0)
         #pin.connections = {eval(k): v for k, v in data.get("connections", {}).items()}
-        pin.connections = {eval(k): (Wire.from_dict(v, pin.parent_window) if v is not None else None) for k, v in data.get("connections", {}).items()}
+        pin.connections = [{'point': eval(k), 'wire': (Wire.from_dict(v, pin.parent_window) if v is not None else None)} for k, v in data.get("connections", {}).items()]
         return pin
+

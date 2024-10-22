@@ -87,11 +87,11 @@ class BlocksWindow(Gtk.Window):
         self.expander_ops.add(self.ops_box)
 
         # Add undo/redo buttons
-        self.undo_button = Gtk.Button(label="Undo")
+        self.undo_button = Gtk.Button(label="Undo [CTRL+z]")
         self.undo_button.connect("clicked", self.on_undo)
         self.ops_box.pack_start(self.undo_button, False, False, 0)
 
-        self.redo_button = Gtk.Button(label="Redo")
+        self.redo_button = Gtk.Button(label="Redo [CTRL+r]")
         self.redo_button.connect("clicked", self.on_redo)
         self.ops_box.pack_start(self.redo_button, False, False, 0)
 
@@ -354,7 +354,7 @@ class BlocksWindow(Gtk.Window):
                 )
                 if not duplicate_wire:
                     timestamp = datetime.now().isoformat(' ', 'seconds')
-                    new_wire = Wire(f"wire {timestamp}", self.wire_start_point, end_point, self.grid_size, self)
+                    new_wire = Wire(f"wire {timestamp}", self.wire_start_point, end_point, "wire", self.grid_size, self)
                     self.wires.append(new_wire)
     
                     # Find the start block or pin
