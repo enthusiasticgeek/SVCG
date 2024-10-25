@@ -27,6 +27,13 @@ class Pin:
         self.connections = []  # List of dictionaries to track connections
         self.parent_window = parent_window  # Add the parent_window attribute
         self.update_points()
+        self.x_orig = x
+        self.y_orig = y
+        self.x_new = x
+        self.y_new = y
+
+    def set_selected(self, selected):
+        self.selected = selected
 
     def update_points(self):
         # Define points for pins (similar to blocks)
@@ -238,6 +245,8 @@ class Pin:
         self.dragging = True
         self.offset_x = x - self.x
         self.offset_y = y - self.y
+        self.x_orig = self.offset_x
+        self.y_orig = self.offset_y
         #print(f"start_drag {self.offset_x} and {self.offset_y}")
 
     def drag(self, x, y, max_x, max_y):
@@ -261,17 +270,24 @@ class Pin:
         self.update_points()
         #self.update_wire_connections()
         ## Update start and end block coordinates in wire connections
-        #self.update_start_pin_coordinates(self.connections, self.text, self.x, self.y)
+        self.update_start_pin_coordinates(self.connections, self.text, self.x, self.y)
         #self.update_end_pin_coordinates(self.connections, self.text, self.x, self.y)
 
         #print(f"Pin {self.text} end drag at ({self.x}, {self.y})")
+        self.x_orig = self.x_new
+        self.y_orig = self.y_new
+        self.x_new = self.x
+        self.y_new = self.y
+        print(f"Pin {self.text} end drag at ({self.x_new}, {self.y_new}) from ({self.x_orig}, {self.y_orig})")
 
     def update_start_pin_coordinates(self, connections, text, new_x, new_y):
         for connection in connections:
+            pprint.pprint(f"{connection}")
             if connection['wire'] and connection['wire'].start_pin and connection['wire'].start_pin.text == text:
                 print("here1")
                 connection['wire'].start_pin.x = new_x
                 connection['wire'].start_pin.y = new_y
+                pprint.pprint(f"===={connection}")
 
     def update_end_pin_coordinates(self, connections, text, new_x, new_y):
         for connection in connections:
@@ -337,7 +353,7 @@ class Pin:
                     connection['wire'].update_end_point(connection['point'])
 
         updated_connections = {k: self.extract_wire_details(v['wire']) for k, v in enumerate(self.connections) if v['wire'] is not None}
-        pprint.pprint(f"current connections: {updated_connections}")
+        #pprint.pprint(f"current connections: {updated_connections}")
         # Return the updated connections if needed
         return updated_connections
 

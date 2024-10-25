@@ -263,11 +263,13 @@ class BlocksWindow(Gtk.Window):
                         for block in self.blocks:
                             if block.contains_point(int(event.x), int(event.y)):
                                 self.selected_block = block
+                                block.set_selected(True)
                                 block.start_drag(int(event.x), int(event.y))
                                 break
                         for pin in self.pins:
                             if pin.contains_point(int(event.x), int(event.y)):
                                 self.selected_pin = pin
+                                pin.set_selected(True)
                                 pin.start_drag(int(event.x), int(event.y))
                                 break
                         for wire in self.wires:
@@ -278,6 +280,7 @@ class BlocksWindow(Gtk.Window):
                 for block in self.blocks:
                     if block.contains_point(int(event.x), int(event.y)):
                         self.selected_block = block
+                        block.set_selected(True)
                         if block.contains_pin(int(event.x), int(event.y)):
                             self.pin_context_menu.popup(event)
                         else:
@@ -286,6 +289,7 @@ class BlocksWindow(Gtk.Window):
                 for pin in self.pins:
                     if pin.contains_point(int(event.x), int(event.y)):
                         self.selected_pin = pin
+                        pin.set_selected(True)
                         connection_point = pin.contains_pin(int(event.x), int(event.y))
                         if connection_point:
                             self.pin_context_menu.popup(event)
@@ -322,9 +326,11 @@ class BlocksWindow(Gtk.Window):
     def on_button_release(self, widget, event):
         for block in self.blocks:
             block.end_drag()
+            block.set_selected(False)
             block.update_wire_connections()
         for pin in self.pins:
             pin.end_drag()
+            pin.set_selected(False)
             pin.update_wire_connections()
     
         if self.dragging_wire:
