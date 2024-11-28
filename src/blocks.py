@@ -25,8 +25,8 @@ class Block:
         self.input_points = []
         self.output_points = []
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
-        self.input_connections = []  # List of dictionaries to track input connections
-        self.output_connections = []  # List of dictionaries to track output connections
+        #self.input_connections = []  # List of dictionaries to track input connections
+        #self.output_connections = []  # List of dictionaries to track output connections
         self.input_names = []
         self.output_names = []
         self.parent_window = parent_window  # Add the parent_window attribute
@@ -43,8 +43,8 @@ class Block:
 
     def update_points(self):
         if self.block_type == "NOT":
-            self.input_points = [self.rotate_point(self.x + self.width/2, self.y)]
-            self.output_points = [self.rotate_point(self.x + self.width/2, self.y + self.height)]
+            self.input_points = [self.rotate_point(int(self.x + self.width/2), int(self.y))]
+            self.output_points = [self.rotate_point(int(self.x + self.width/2), int(self.y + self.height))]
             self.input_names = ["IN1"]
             self.output_names = ["OUT1"]
         elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
@@ -93,6 +93,9 @@ class Block:
         else:
             self.draw_default_block(cr)
         cr.stroke()
+        cr.restore()
+
+        
 
         # Draw input and output points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
@@ -101,7 +104,7 @@ class Block:
             #cr.stroke()
             cr.fill()
 
-        # Draw input and output points
+        # Draw names text for input points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
         for point in self.input_points:
           for name in self.input_names:
@@ -111,7 +114,7 @@ class Block:
             cr.show_text(name)
             cr.stroke()
 
-        # Draw input and output points
+        # Draw names text for output points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
         for point in self.output_points:
           for name in self.output_names:
@@ -178,8 +181,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(self.width/2, 0)]
-        self.output_points = [(self.width/2, self.height)]
+        #self.input_points = [(self.width/2, 0)]
+        #self.output_points = [(self.width/2, self.height)]
 
     def draw_not_block(self, cr):
         # Set fill color based on selection state
@@ -239,8 +242,8 @@ class Block:
         #cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, 0),(self.width,0)]
-        self.output_points = [(self.width/2, self.height)]
+        #self.input_points = [(0, 0),(self.width,0)]
+        #self.output_points = [(self.width/2, self.height)]
 
     def draw_and_block(self, cr):
         # Set fill color based on selection state
@@ -298,8 +301,8 @@ class Block:
         cr.fill()
 
         # Add input and output points
-        self.input_points = [(0, 0),(self.width,0)]
-        self.output_points = [(self.width/2, self.height)]
+        #self.input_points = [(0, 0),(self.width,0)]
+        #self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -381,8 +384,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, 0),(self.width,0)]
-        self.output_points = [(self.width/2, self.height)]
+        #self.input_points = [(0, 0),(self.width,0)]
+        #self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -469,8 +472,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0, 0),(self.width,0)]
-        self.output_points = [(self.width/2, self.height)]
+        #self.input_points = [(0, 0),(self.width,0)]
+        #self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -565,8 +568,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0,0),(self.width,0)]
-        self.output_points = [(self.width/2, self.height)]
+        #self.input_points = [(0,0),(self.width,0)]
+        #self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -666,8 +669,8 @@ class Block:
         cr.stroke()
 
         # Add input and output points
-        self.input_points = [(0,0),(self.width,0)]
-        self.output_points = [(self.width/2, self.height)]
+        #self.input_points = [(0,0),(self.width,0)]
+        #self.output_points = [(self.width/2, self.height)]
 
         # Draw the text
         #cr.set_source_rgb(*self.text_color)
@@ -739,6 +742,8 @@ class Block:
         self.width = round(self.width / self.grid_size) * self.grid_size
         self.height = round(self.height / self.grid_size) * self.grid_size
         self.update_points()
+        # Update wire connections
+        #self.parent_window.update_wires()
         #self.update_wire_connections()
         ## Update start and end block coordinates in wire connections
         #self.update_start_block_coordinates(self.output_connections, self.text, self.x, self.y)
@@ -750,6 +755,7 @@ class Block:
         print(f"Block {self.text} end drag at ({self.x_new}, {self.y_new}) from ({self.x_orig}, {self.y_orig})")
 
 
+    """
     def update_start_block_coordinates(self, connections, text, new_x, new_y):
         for connection in connections:
             if connection['wire'] and connection['wire'].start_block and connection['wire'].start_block.text == text:
@@ -764,6 +770,7 @@ class Block:
                 connection['wire'].end_block.x = new_x
                 connection['wire'].end_block.y = new_y
 
+    """
     def extract_wire_details(self, wire):
         return {
             'text': wire.text,
@@ -810,37 +817,12 @@ class Block:
             }
         }
 
-    def update_wire_connections(self):
-        print("update wire connections block")
-        for connection in self.output_connections:
-            if connection['wire'] is not None:
-                if connection['wire'].start_point == connection['point']:
-                    connection['wire'].start_block = self
-                    connection['wire'].update_start_point(connection['point'])
-                if connection['wire'].end_point == connection['point']:
-                    connection['wire'].end_block = self
-                    connection['wire'].update_end_point(connection['point'])
-
-        for connection in self.input_connections:
-            if connection['wire'] is not None:
-                if connection['wire'].start_point == connection['point']:
-                    connection['wire'].start_block = self
-                    connection['wire'].update_start_point(connection['point'])
-                if connection['wire'].end_point == connection['point']:
-                    connection['wire'].end_block = self
-                    connection['wire'].update_end_point(connection['point'])
-
-        updated_connections = {k: self.extract_wire_details(v['wire']) for k, v in enumerate(self.output_connections) if v['wire'] is not None}
-        updated_connections.update({k: self.extract_wire_details(v['wire']) for k, v in enumerate(self.input_connections) if v['wire'] is not None})
-
-        #print(f"current connections: {updated_connections}")
-        # Return the updated connections if needed
-        return updated_connections
 
     def rotate(self, angle):
         self.rotation = (self.rotation + angle) % 360
         self.update_points()
 
+    """
     def connect_wire(self, start_point, end_point):
         print(f"Connecting wire from {start_point} to {end_point}")
         print("Blocks ============")
@@ -858,53 +840,48 @@ class Block:
         print(f"Updated output connections: {updated_output_connections}")
         print(f"Updated input connections: {updated_input_connections}")
 
-    def to_dict(self):
-        #input_connections_dict = {str(k): v for k, v in self.input_connections.items()}
-        #output_connections_dict = {str(k): v for k, v in self.output_connections.items()}
-        input_connections_dict = {str(k): (v['wire'].to_dict() if v['wire'] is not None else None) for k, v in enumerate(self.input_connections)}
-        output_connections_dict = {str(k): (v['wire'].to_dict() if v['wire'] is not None else None) for k, v in enumerate(self.output_connections)}
-        return {
-        "name": self.text,
-        "block_type": self.block_type,
-        "x": self.x,
-        "y": self.y,
-        "width": self.width,
-        "height": self.height,
-        "rotation": self.rotation,
-        "input_points": self.input_points,
-        "output_points": self.output_points,
-        "border_color": self.border_color,
-        "fill_color": self.fill_color,
-        "text_color": self.text_color,
-        "timestamp": self.timestamp,
-        "input_connections": input_connections_dict,  # Include connections in the JSON
-        "output_connections": output_connections_dict,  # Include connections in the JSON
-        "input_names": self.input_names,
-        "output_names": self.output_names,
-        "grid_size": self.grid_size  # Include grid_size in the JSON
-        }
+    """
 
+    def to_dict(self):
+        return {
+            "name": self.text,
+            "block_type": self.block_type,
+            "x": self.x,
+            "y": self.y,
+            "width": self.width,
+            "height": self.height,
+            "rotation": self.rotation,
+            "input_points": self.input_points,
+            "output_points": self.output_points,
+            "border_color": self.border_color,
+            "fill_color": self.fill_color,
+            "text_color": self.text_color,
+            "timestamp": self.timestamp,
+            "input_names": self.input_names,
+            "output_names": self.output_names,
+            "grid_size": self.grid_size  # Include grid_size in the JSON
+        }
+    
+    
     @classmethod
     def from_dict(cls, data, parent_window):
         block = cls(
-        data["x"],
-        data["y"],
-        data["width"],
-        data["height"],
-        data["name"],
-        data["block_type"],
-        data["grid_size"],
-        parent_window  # Pass the parent_window attribute
+            data["x"],
+            data["y"],
+            data["width"],
+            data["height"],
+            data["name"],
+            data["block_type"],
+            data["grid_size"],
+            parent_window  # Pass the parent_window attribute
         )
         block.border_color = tuple(data["border_color"])
         block.fill_color = tuple(data["fill_color"])
         block.text_color = tuple(data["text_color"])
         block.rotation = data["rotation"]
-        #block.input_connections = {eval(k): v for k, v in data["input_connections"].items()}
-        #block.output_connections = {eval(k): v for k, v in data["output_connections"].items()}
-        block.input_connections = [{'point': eval(k), 'wire': (Wire.from_dict(v, block.parent_window) if v is not None else None)} for k, v in data["input_connections"].items()]
-        block.output_connections = [{'point': eval(k), 'wire': (Wire.from_dict(v, block.parent_window) if v is not None else None)} for k, v in data["output_connections"].items()]
+        block.input_points = data["input_points"]
+        block.output_points = data["output_points"]
         block.input_names = data["input_names"]
         block.output_names = data["output_names"]
         return block
-
+    
