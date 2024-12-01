@@ -250,10 +250,12 @@ class BlocksWindow(Gtk.Window):
                     if block.contains_pin(int(event.x), int(event.y)):
                        self.wire_start_point = block.contains_pin(int(event.x), int(event.y))
                        self.dragging_wire = True
+                       print(f"WIRE START POINT = {self.wire_start_point}")
                        break
                 for pin in self.pins:
                     if pin.contains_pin(int(event.x), int(event.y)):
                        self.wire_start_point = pin.contains_pin(int(event.x), int(event.y))
+                       print(f"WIRE START POINT = {self.wire_start_point}")
                        self.dragging_wire = True
                        break
                 #######################
@@ -326,83 +328,7 @@ class BlocksWindow(Gtk.Window):
             self.on_rotate_90(widget)
         #print(f"Key pressed: {key}")  # Debug print statement
 
-    """
-    def on_button_release_old(self, widget, event):
-        for block in self.blocks:
-            block.end_drag()
-            block.set_selected(False)
-            block.update_points()
-        for pin in self.pins:
-            pin.end_drag()
-            pin.set_selected(False)
-            pin.update_points()
-    
-        if self.dragging_wire:
-            end_point = None
-            start_block = None
-            end_block = None
-            start_pin = None
-            end_pin = None
-    
-            # Find the end point
-            for block in self.blocks:
-                if block.contains_pin(int(event.x), int(event.y)):
-                    end_point = block.contains_pin(int(event.x), int(event.y))
-                    end_block = block
-                    print(f"RELEASE end_block : {end_block}")
-                    break
-            for pin in self.pins:
-                if pin.contains_pin(int(event.x), int(event.y)):
-                    end_point = pin.contains_pin(int(event.x), int(event.y))
-                    end_pin = pin
-                    print(f"RELEASE end_pin : {end_pin}")
-                    break
-    
-            if end_point and end_point != self.wire_start_point:
-                duplicate_wire = any(
-                    wire.start_point == self.wire_start_point and wire.end_point == end_point or
-                    wire.start_point == end_point and wire.end_point == self.wire_start_point
-                    for wire in self.wires
-                )
-                if not duplicate_wire:
-                    timestamp = datetime.now().isoformat(' ', 'seconds')
-                    new_wire = Wire(f"wire {timestamp}", self.wire_start_point, end_point, "wire", self.grid_size, self)
-    
-                    # Find the start block or pin
-                    for block in self.blocks:
-                        if block.contains_pin(int(self.wire_start_point[0]), int(self.wire_start_point[1])):
-                            start_block = block
-                            new_wire.start_block = start_block
-                            print(f"RELEASE start_block : {start_block}")
-                            break
-                    for pin in self.pins:
-                        if pin.contains_pin(int(self.wire_start_point[0]), int(self.wire_start_point[1])):
-                            start_pin = pin
-                            new_wire.start_pin = start_pin
-                            print(f"RELEASE start_pin : {start_pin}")
-                            break
-    
-                    # Set the end block or pin
-                    new_wire.end_block = end_block
-                    new_wire.end_pin = end_pin
-    
-                    self.wires.append(new_wire)
-                    self.update_json()
-                else:
-                    print("Duplicate wire connection detected and ignored.")
-            else:
-                print("Invalid wire connection: both ends must be on valid connection points.")
-    
-            self.dragging_wire = False
-    
-        self.update_wires()
-        self.drawing_area.queue_draw()
-        self.update_json()
-        self.push_undo()
-        self.drawing_area.grab_focus()
-        #self.print_wires()
-    """
-  
+ 
     def on_button_release(self, widget, event):
         for block in self.blocks:
             block.end_drag()
@@ -412,26 +338,59 @@ class BlocksWindow(Gtk.Window):
             pin.end_drag()
             pin.set_selected(False)
             pin.update_points()
-
+    
         if not self.dragging_wire:
             # Find the end point
             for block in self.blocks:
                 if block.contains_point(int(event.x), int(event.y)):
                     print(f"block {block.block_type.lower()} drag complete")
                     block_dict = block.to_dict()
-                    print(f"block ({block_dict['x']},{block_dict['y']}) with {block_dict['input_names']}:{block_dict['input_points']} and {block_dict['output_names']}:{block_dict['output_points']} drag complete")
+                    print(f"block ID: {block_dict['id']} {block_dict['input_wires']} {block_dict['output_wires']} ({block_dict['x']},{block_dict['y']}) with {block_dict['input_names']}:{block_dict['input_points']} and {block_dict['output_names']}:{block_dict['output_points']} drag complete")
+                    for wire in self.wires:
+                        if wire.id in block_dict['input_wires']:
+                            index = block_dict['input_wires'].index(wire.id)
+                            print(f"found {wire.id} at input_wires index {index}")
+                        if wire.id in block_dict['output_wires']:
+                            index = block_dict['output_wires'].index(wire.id)
+                            print(f"found {wire.id} at output_wires index {index}")
+    
                     break
             for pin in self.pins:
                 if pin.contains_point(int(event.x), int(event.y)):
                     print(f"pin {pin.pin_type.lower()} drag complete")
                     pin_dict = pin.to_dict()
-                    print(f"pin ({pin_dict['x']},{pin_dict['y']}) with {pin_dict['connection_points']} drag complete")
+                    print(f"pin ID: {pin_dict['id']} {pin_dict['wires']} ({pin_dict['x']},{pin_dict['y']}) with {pin_dict['connection_points']} drag complete")
+                    for wire in self.wires:
+                        if wire.id in pin_dict['wires']:
+                            index = pin_dict['wires'].index(wire.id)
+                            print(f"found {wire.id} at wires index {index}")
+    
                     break
             self.update_json()
             #self.print_wires()
- 
     
-        if self.dragging_wire:
+            """
+            # Update wire connections after drag
+            for wire in self.wires:
+                if wire.start_block:
+                    new_start_point = wire.start_block.contains_pin(int(wire.start_point[0]), int(wire.start_point[1]))
+                    if new_start_point:
+                        wire.start_point = new_start_point
+                if wire.end_block:
+                    new_end_point = wire.end_block.contains_pin(int(wire.end_point[0]), int(wire.end_point[1]))
+                    if new_end_point:
+                        wire.end_point = new_end_point
+                if wire.start_pin:
+                    new_start_point = wire.start_pin.contains_pin(int(wire.start_point[0]), int(wire.start_point[1]))
+                    if new_start_point:
+                        wire.start_point = new_start_point
+                if wire.end_pin:
+                    new_end_point = wire.end_pin.contains_pin(int(wire.end_point[0]), int(wire.end_point[1]))
+                    if new_end_point:
+                        wire.end_point = new_end_point
+            """
+    
+        elif self.dragging_wire:
             print("wire dragged")
             end_point = None
             start_block = None
@@ -445,18 +404,27 @@ class BlocksWindow(Gtk.Window):
                     end_point = block.contains_pin(int(event.x), int(event.y))
                     end_block = block
                     print(f"RELEASE end_block : {end_block}")
+                    print(f"WIRE END POINT = {end_point}")
                     break
             for pin in self.pins:
                 if pin.contains_pin(int(event.x), int(event.y)):
                     end_point = pin.contains_pin(int(event.x), int(event.y))
                     end_pin = pin
                     print(f"RELEASE end_pin : {end_pin}")
+                    print(f"WIRE END POINT = {end_point}")
                     break
     
+            print(f"SELF WIRE START POINT {self.wire_start_point}")
             if end_point and end_point != self.wire_start_point:
+    
+                print("HERE!")
+                for wire in self.wires:
+                    print(f"WIRE START POINT {wire.start_point}, WIRE END POINT {wire.end_point}, SELF WIRE START POINT {self.wire_start_point}, END POINT {end_point}")
+    
+                # Check for duplicate wire
                 duplicate_wire = any(
-                    wire.start_point == self.wire_start_point and wire.end_point == end_point or
-                    wire.start_point == end_point and wire.end_point == self.wire_start_point
+                    (wire.start_point == self.wire_start_point and wire.end_point == end_point) or
+                    (wire.start_point == end_point and wire.end_point == self.wire_start_point)
                     for wire in self.wires
                 )
                 if not duplicate_wire:
@@ -483,6 +451,43 @@ class BlocksWindow(Gtk.Window):
     
                     self.wires.append(new_wire)
                     self.update_json()
+    
+                    # Update the wires list in the connected blocks and pins
+                    if start_block:
+                        index = self.find_closest_point(start_block.input_points + start_block.output_points, self.wire_start_point)
+                        if index is not None:
+                            if self.wire_start_point in start_block.input_points:
+                                if start_block.input_wires[start_block.input_points.index(self.wire_start_point)] is None:
+                                    start_block.input_wires[start_block.input_points.index(self.wire_start_point)] = []
+                                start_block.input_wires[start_block.input_points.index(self.wire_start_point)].append(new_wire.id)
+                            else:
+                                if start_block.output_wires[start_block.output_points.index(self.wire_start_point)] is None:
+                                    start_block.output_wires[start_block.output_points.index(self.wire_start_point)] = []
+                                start_block.output_wires[start_block.output_points.index(self.wire_start_point)].append(new_wire.id)
+                    if end_block:
+                        index = self.find_closest_point(end_block.input_points + end_block.output_points, end_point)
+                        if index is not None:
+                            if end_point in end_block.input_points:
+                                if end_block.input_wires[end_block.input_points.index(end_point)] is None:
+                                    end_block.input_wires[end_block.input_points.index(end_point)] = []
+                                end_block.input_wires[end_block.input_points.index(end_point)].append(new_wire.id)
+                            else:
+                                if end_block.output_wires[end_block.output_points.index(end_point)] is None:
+                                    end_block.output_wires[end_block.output_points.index(end_point)] = []
+                                end_block.output_wires[end_block.output_points.index(end_point)].append(new_wire.id)
+                    if start_pin:
+                        index = self.find_closest_point(start_pin.connection_points, self.wire_start_point)
+                        if index is not None:
+                            if start_pin.wires[index] is None:
+                                start_pin.wires[index] = []
+                            start_pin.wires[index].append(new_wire.id)
+                    if end_pin:
+                        index = self.find_closest_point(end_pin.connection_points, end_point)
+                        if index is not None:
+                            if end_pin.wires[index] is None:
+                                end_pin.wires[index] = []
+                            end_pin.wires[index].append(new_wire.id)
+    
                 else:
                     print("Duplicate wire connection detected and ignored.")
             else:
@@ -516,6 +521,12 @@ class BlocksWindow(Gtk.Window):
         #self.push_undo()
         # Update the label with the current mouse coordinates
         self.mouse_label.set_markup(f"<span color='green'>Cursor: ({int(self.mouse_x)}, {int(self.mouse_y)})</span>")
+
+    def find_closest_point(self, points, target, tolerance=10):
+        for i, point in enumerate(points):
+            if abs(point[0] - target[0]) <= tolerance and abs(point[1] - target[1]) <= tolerance:
+                return i
+        return None   
 
     def on_change_border_color(self, widget):
         if self.selected_block:
@@ -708,17 +719,39 @@ class BlocksWindow(Gtk.Window):
             self.drawing_area.queue_draw()
             self.update_json()
             self.push_undo()
+
+
+    def delete_block_wire_connections(self):
+            # Remove any wires connected to the block
+            wires_to_remove = []
+            for wire in self.wires:
+                if wire.start_block == self.selected_block or wire.end_block == self.selected_block:
+                    wires_to_remove.append(wire)
+            for wire in wires_to_remove:
+                self.delete_wire(wire)
+
+
+    def delete_pin_wire_connections(self):
+            # Remove any wires connected to the pin
+            wires_to_remove = []
+            for wire in self.wires:
+                if wire.start_pin == self.selected_pin or wire.end_pin == self.selected_pin:
+                    wires_to_remove.append(wire)
+            for wire in wires_to_remove:
+                self.delete_wire(wire)
  
     def on_delete_block(self, widget):
         if self.selected_block:
             self.push_undo()
             self.blocks.remove(self.selected_block)
+            self.delete_block_wire_connections()
             self.selected_block = None
             self.drawing_area.queue_draw()
             self.update_json()
             #self.push_undo()
         elif self.selected_pin:
             self.push_undo()
+            self.delete_pin_wire_connections()
             self.pins.remove(self.selected_pin)
             self.selected_pin = None
             self.drawing_area.queue_draw()
@@ -728,6 +761,7 @@ class BlocksWindow(Gtk.Window):
     def on_cut_block(self, widget):
         if self.selected_block:
             self.push_undo()
+            self.delete_block_wire_connections()
             self.clipboard_block = self.selected_block
             self.clipboard_pin = None  # Clear the pin clipboard
             self.blocks.remove(self.selected_block)
@@ -736,6 +770,7 @@ class BlocksWindow(Gtk.Window):
             self.update_json()
         elif self.selected_pin:
             self.push_undo()
+            self.delete_pin_wire_connections()
             self.clipboard_pin = self.selected_pin
             self.clipboard_block = None  # Clear the block clipboard
             self.pins.remove(self.selected_pin)
@@ -803,10 +838,48 @@ class BlocksWindow(Gtk.Window):
             wire.path = wire.calculate_path()
             if not wire.path:
                 #print(f"Removing wire from {wire.start_point} to {wire.end_point} due to no path found")
-                self.wires.remove(wire)
+                #self.wires.remove(wire)
+                self.delete_wire(wire)
         self.drawing_area.queue_draw()
 
-    def blocks_to_json(self):
+
+
+    def delete_wire(self, wire):
+        # Remove the wire from the wires list
+        self.wires.remove(wire)
+    
+        # Update the wires list in the connected blocks and pins
+        if wire.start_block:
+            index = self.find_closest_point(wire.start_block.input_points, wire.start_point)
+            if index is not None:
+                if wire.start_block.input_wires[index] is None:
+                    wire.start_block.input_wires[index] = []
+                wire.start_block.input_wires[index].remove(wire.id)
+        if wire.end_block:
+            index = self.find_closest_point(wire.end_block.output_points, wire.end_point)
+            if index is not None:
+                if wire.end_block.output_wires[index] is None:
+                    wire.end_block.output_wires[index] = []
+                wire.end_block.output_wires[index].remove(wire.id)
+        if wire.start_pin:
+            index = self.find_closest_point(wire.start_pin.connection_points, wire.start_point)
+            if index is not None:
+                if wire.start_pin.wires[index] is None:
+                    wire.start_pin.wires[index] = []
+                wire.start_pin.wires[index].remove(wire.id)
+        if wire.end_pin:
+            index = self.find_closest_point(wire.end_pin.connection_points, wire.end_point)
+            if index is not None:
+                if wire.end_pin.wires[index] is None:
+                    wire.end_pin.wires[index] = []
+                wire.end_pin.wires[index].remove(wire.id)
+    
+        # Update the JSON file
+        self.update_json()
+        self.push_undo()
+        self.drawing_area.queue_draw()
+
+    def elements_to_json(self):
         blocks_dict = [block.to_dict() for block in self.blocks]
         pins_dict = [pin.to_dict() for pin in self.pins]
         wires_dict = [wire.to_dict() for wire in self.wires]
@@ -814,17 +887,17 @@ class BlocksWindow(Gtk.Window):
 
     def update_json(self):
         with open("blocks.json", "w") as file:
-            file.write(self.blocks_to_json())
+            file.write(self.elements_to_json())
 
     def push_undo(self):
         #print("push undo")
-        self.undo_stack.append(self.blocks_to_json())
+        self.undo_stack.append(self.elements_to_json())
         self.redo_stack = []
         self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
 
     def undo(self):
         if self.undo_stack:
-            self.redo_stack.append(self.blocks_to_json())
+            self.redo_stack.append(self.elements_to_json())
             data = json.loads(self.undo_stack.pop())
             self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]
             self.pins = [Pin.from_dict(pin_dict, self) for pin_dict in data if pin_dict.get("pin_type")]
@@ -835,7 +908,7 @@ class BlocksWindow(Gtk.Window):
     
     def redo(self):
         if self.redo_stack:
-            self.undo_stack.append(self.blocks_to_json())
+            self.undo_stack.append(self.elements_to_json())
             data = json.loads(self.redo_stack.pop())
             self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]
             self.pins = [Pin.from_dict(pin_dict, self) for pin_dict in data if pin_dict.get("pin_type")]
@@ -858,6 +931,7 @@ class BlocksWindow(Gtk.Window):
     def print_wires(self):
         print("[main_window] Wires:")
         for wire in self.wires:
+            print(f"Wire ID: {wire.id}")
             print(f"Wire Text: {wire.text}")
             print(f"Start Point: {wire.start_point}")
             print(f"End Point: {wire.end_point}")
@@ -868,6 +942,7 @@ class BlocksWindow(Gtk.Window):
             # Print start block details
             if wire.start_block:
                 print("Start Block:")
+                print(f"  ID: {wire.start_block.id}")
                 print(f"  Text: {wire.start_block.text}")
                 print(f"  Block Type: {wire.start_block.block_type}")
                 print(f"  X: {wire.start_block.x} <----------")
@@ -888,6 +963,7 @@ class BlocksWindow(Gtk.Window):
             # Print end block details
             if wire.end_block:
                 print("End Block:")
+                print(f"  ID: {wire.end_block.id}")
                 print(f"  Text: {wire.end_block.text}")
                 print(f"  Block Type: {wire.end_block.block_type}")
                 print(f"  X: {wire.end_block.x} <----------")
@@ -908,6 +984,7 @@ class BlocksWindow(Gtk.Window):
             # Print start pin details
             if wire.start_pin:
                 print("Start Pin:")
+                print(f"  ID: {wire.start_pin.id}")
                 print(f"  Text: {wire.start_pin.text}")
                 print(f"  Pin Type: {wire.start_pin.pin_type}")
                 print(f"  X: {wire.start_pin.x} <-----------")
@@ -926,6 +1003,7 @@ class BlocksWindow(Gtk.Window):
             # Print end pin details
             if wire.end_pin:
                 print("End Pin:")
+                print(f"  ID: {wire.end_pin.id}")
                 print(f"  Text: {wire.end_pin.text}")
                 print(f"  Pin Type: {wire.end_pin.pin_type}")
                 print(f"  X: {wire.end_pin.x} <----------")
@@ -943,6 +1021,7 @@ class BlocksWindow(Gtk.Window):
     
             print("---------------------------")
     
+   
 
 
 if __name__ == "__main__":

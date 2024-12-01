@@ -2,11 +2,13 @@
 import cairo
 import math
 import pprint
+import uuid
 from datetime import datetime
 from wire import Wire
 
 class Block:
     def __init__(self, x, y, width, height, text, block_type, grid_size, parent_window=None):
+        self.id = f"block_{str(uuid.uuid4().int)[:10]}"  # Generate a unique 10-digit ID
         self.x = x
         self.y = y
         self.width = width
@@ -29,14 +31,25 @@ class Block:
         #self.output_connections = []  # List of dictionaries to track output connections
         self.input_names = []
         self.output_names = []
+        #self.input_wires = []  # List to store wire IDs for input points
+        #self.output_wires = []  # List to store wire IDs for output points
+        self.input_wires = [[] for _ in self.input_points]  # List to store wire IDs for input points
+        self.output_wires = [[] for _ in self.output_points]  # List to store wire IDs for output points
         self.parent_window = parent_window  # Add the parent_window attribute
         self.update_points()
         self.x_orig = x
         self.y_orig = y
         self.x_new = x
         self.y_new = y
+        self.init_wires()
 
- 
+    def init_wires(self):
+        if self.block_type == "NOT":
+            self.input_wires = [None]  # Initialize wires list for input points
+            self.output_wires = [None]  # Initialize wires list for output points
+        elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
+            self.input_wires = [None, None]  # Initialize wires list for input points
+            self.output_wires = [None]  # Initialize wires list for output points
 
     def set_selected(self, selected):
         self.selected = selected
@@ -97,6 +110,7 @@ class Block:
 
         
 
+        cr.save()
         # Draw input and output points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
         for point in self.input_points + self.output_points:
@@ -704,14 +718,14 @@ class Block:
         cr.show_text(text)
 
     def contains_point(self, x, y):
-        return (self.x <= x <= self.x + self.width and
-                self.y <= y <= self.y + self.height)
+        return (self.x <= int(x) <= self.x + self.width and
+                self.y <= int(y) <= self.y + self.height)
 
-    def contains_pin(self, x, y):
+    def contains_pin(self, x, y, tolerance = 10):
         self.update_points()
         for point in self.input_points + self.output_points:
-            if (point[0] - 10 <= int(x) <= point[0] + 10 and
-               point[1] - 10 <= int(y) <= point[1] + 10):
+            if (point[0] - tolerance <= int(x) <= point[0] + tolerance and
+               point[1] - tolerance <= int(y) <= point[1] + tolerance):
                #print(f'=================== block contains pin {x},{y},{point[0]},{point[1]} =================')
                return point
         #print(f'**DOES NOT contains pin {x},{y},{point[0]},{point[1]}**')
@@ -844,6 +858,7 @@ class Block:
 
     def to_dict(self):
         return {
+            "id": self.id,  # Include the ID in the JSON
             "name": self.text,
             "block_type": self.block_type,
             "x": self.x,
@@ -853,6 +868,8 @@ class Block:
             "rotation": self.rotation,
             "input_points": self.input_points,
             "output_points": self.output_points,
+            "input_wires": self.input_wires,  # Include input wires in the JSON
+            "output_wires": self.output_wires,  # Include output wires in the JSON
             "border_color": self.border_color,
             "fill_color": self.fill_color,
             "text_color": self.text_color,
@@ -875,6 +892,7 @@ class Block:
             data["grid_size"],
             parent_window  # Pass the parent_window attribute
         )
+        block.id = data.get("id", f"block_{str(uuid.uuid4().int)[:10]}")  # Ensure the ID is set
         block.border_color = tuple(data["border_color"])
         block.fill_color = tuple(data["fill_color"])
         block.text_color = tuple(data["text_color"])
@@ -883,5 +901,9 @@ class Block:
         block.output_points = data["output_points"]
         block.input_names = data["input_names"]
         block.output_names = data["output_names"]
+        #block.input_wires = data.get("input_wires", [None] * len(block.input_points))  # Set the input wires list
+        #block.output_wires = data.get("output_wires", [None] * len(block.output_points))  # Set the output wires list
+        block.input_wires = data.get("input_wires", [[] for _ in block.input_points])  # Set the input wires list
+        block.output_wires = data.get("output_wires", [[] for _ in block.output_points])  # Set the output wires list
         return block
     

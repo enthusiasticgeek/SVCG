@@ -22,6 +22,10 @@ class AStar:
         start_time = time.time()
 
         while frontier:
+            if time.time() - start_time > self.timeout:
+                print(f"Timeout reached after {self.timeout} seconds")
+                return {}, {}
+
             _, current = heapq.heappop(frontier)
 
             if current == goal:
@@ -29,44 +33,32 @@ class AStar:
 
             for dx, dy in self.directions:
                 next_cell = (current[0] + dx, current[1] + dy)
-                if (0 <= next_cell[0] < self.width and
-                        0 <= next_cell[1] < self.height and
-                        self.grid[next_cell[1], next_cell[0]] == 0):
+                if (0 <= next_cell[0] < self.height and
+                    0 <= next_cell[1] < self.width and
+                    self.grid[next_cell[0], next_cell[1]] == 0):
                     new_cost = cost_so_far[current] + 1
                     if next_cell not in cost_so_far or new_cost < cost_so_far[next_cell]:
                         cost_so_far[next_cell] = new_cost
                         priority = new_cost + self.heuristic(goal, next_cell)
                         heapq.heappush(frontier, (priority, next_cell))
                         came_from[next_cell] = current
-                        #print(f"Exploring {next_cell} from {current} with cost {new_cost}")
-
-            if time.time() - start_time > self.timeout:
-                print(f"Timeout reached after {self.timeout} seconds")
-                return {}, {}
-
-        if goal in came_from:
-            #print(f"Path found from {start} to {goal}")
-            pass
-        else:
-            #print(f"No path found from {start} to {goal}")
-            pass
 
         return came_from, cost_so_far
 
     def reconstruct_path(self, came_from, start, goal):
+        if goal not in came_from:
+            print(f"No path found from {start} to {goal}")
+            return []
+
         current = goal
         path = [current]
         while current != start:
-            if current not in came_from:
-                #print(f"No path found from {start} to {goal}")
-                return []
             current = came_from[current]
             path.append(current)
         path.reverse()
         return path
 
 # Example usage
-"""
 if __name__ == "__main__":
     grid = np.array([
         [0, 0, 0, 0, 0],
@@ -82,4 +74,4 @@ if __name__ == "__main__":
     came_from, cost_so_far = astar.astar(start, goal)
     path = astar.reconstruct_path(came_from, start, goal)
     print("Path:", path)
-"""
+""

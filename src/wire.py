@@ -3,10 +3,12 @@ import cairo
 import math
 import numpy as np
 import random
+import uuid
 from astar import AStar
 
 class Wire:
     def __init__(self, text, start_point, end_point, wire_type, grid_size, parent_window, start_block=None, end_block=None, start_pin=None, end_pin=None):
+        self.id = f"wire_{str(uuid.uuid4().int)[:10]}"  # Generate a unique 10-digit ID
         self.text = text
         self.text_pos_x = round(random.randint(20,40))
         self.text_pos_y = round(random.randint(20,40))
@@ -160,6 +162,7 @@ class Wire:
     
     def to_dict(self):
         return {
+            "id": self.id,  # Include the ID in the JSON
             "name": self.text,
             "start_point": self.start_point,
             "end_point": self.end_point,
@@ -169,5 +172,13 @@ class Wire:
 
     @staticmethod
     def from_dict(wire_dict, parent_window):
-        return Wire(wire_dict["name"], wire_dict["start_point"], wire_dict["end_point"], wire_dict["wire_type"], wire_dict["grid_size"], parent_window)
-
+        wire = Wire(
+            wire_dict["name"],
+            wire_dict["start_point"],
+            wire_dict["end_point"],
+            wire_dict["wire_type"],
+            wire_dict["grid_size"],
+            parent_window
+        )
+        wire.id = wire_dict.get("id", f"wire_{str(uuid.uuid4().int)[:10]}")  # Ensure the ID is set
+        return wire

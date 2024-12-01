@@ -112,11 +112,14 @@ class WireContextMenu(Gtk.Menu):
 
     def on_delete_wire(self, widget):
         if self.parent.selected_wire:
-            self.parent.wires.remove(self.parent.selected_wire)
+            self.parent.delete_wire(self.parent.selected_wire)
             self.parent.selected_wire = None
-            self.parent.drawing_area.queue_draw()
-            self.parent.update_json()
-            self.parent.push_undo()
+            #self.parent.delete_wire(self.parent.selected_wire)
+            #self.parent.wires.remove(self.parent.selected_wire)
+            #self.parent.selected_wire = None
+            #self.parent.drawing_area.queue_draw()
+            #self.parent.update_json()
+            #self.parent.push_undo()
 
     # Add more action handlers as needed
     # def on_example_action(self, widget):

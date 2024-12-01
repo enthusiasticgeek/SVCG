@@ -2,11 +2,13 @@
 import cairo
 import math
 import pprint
+import uuid
 from datetime import datetime
 from wire import Wire
 
 class Pin:
     def __init__(self, x, y, width, height, text, pin_type, grid_size, num_pins=1, parent_window=None):
+        self.id = f"pin_{str(uuid.uuid4().int)[:10]}"  # Generate a unique 10-digit ID
         self.x = x
         self.y = y
         self.width = width
@@ -25,6 +27,8 @@ class Pin:
         self.selected = False  # Attribute to track selection state
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
         self.connection_points = []  # List of dictionaries to track connections
+        #self.wires = [None] * num_pins  # List to store wire IDs for each connection point
+        self.wires = [[] for _ in range(num_pins)]  # List to store wire IDs for each connection point
         self.parent_window = parent_window  # Add the parent_window attribute
         self.update_points()
         self.x_orig = x
@@ -217,25 +221,25 @@ class Pin:
         cr.arc(self.width / 2, self.height, 4, 0, 2 * math.pi)
         cr.fill()
 
-    def contains_point(self, x, y):
+    def contains_point(self, x, y, tolerance = 10):
         if "bus" in self.pin_type.lower():
             # For buses, consider the entire area covered by the connection points
             for point in self.connection_points:
-                if (point[0] - 10 <= x <= point[0] + 10 and
-                    point[1] - 10 <= y <= point[1] + 10):
+                if (point[0] - tolerance <= int(x) <= point[0] + tolerance and
+                    point[1] - tolerance <= int(y) <= point[1] + tolerance):
                     return True
-            return (self.x <= x <= self.x + self.width*self.num_pins and
-                    self.y <= y <= self.y + self.height)
+            return (self.x <= int(x) <= self.x + self.width*self.num_pins and
+                    self.y <= int(y) <= self.y + self.height)
         else:
             # For single pins, use the original bounds check
-            return (self.x <= x <= self.x + self.width and
-                    self.y <= y <= self.y + self.height)
+            return (self.x <= int(x) <= self.x + self.width and
+                    self.y <= int(y) <= self.y + self.height)
 
-    def contains_pin(self, x, y):
+    def contains_pin(self, x, y, tolerance = 10):
         self.update_points()
         for point in self.connection_points:
-            if (point[0] - 10 <= int(x) <= point[0] + 10 and
-               point[1] - 10 <= int(y) <= point[1] + 10):
+            if (point[0] - tolerance <= int(x) <= point[0] + tolerance and
+               point[1] - tolerance <= int(y) <= point[1] + tolerance):
                print(f'=================== contains pin {x},{y},{point[0]},{point[1]} =================')
                return point  # Return the connection point
         print(f'**DOES NOT contain pin {x},{y}**')
@@ -369,6 +373,7 @@ class Pin:
 
     def to_dict(self):
         return {
+            "id": self.id,  # Include the ID in the JSON
             "name": self.text,
             "pin_type": self.pin_type,
             "x": self.x,
@@ -381,6 +386,7 @@ class Pin:
             "text_color": self.text_color,
             "timestamp": self.timestamp,
             "connection_points": self.connection_points,  # Include connection points in the JSON
+            "wires": self.wires,  # Include wires in the JSON
             "grid_size": self.grid_size,  # Include grid_size in the JSON
             "num_pins": self.num_pins  # Include number of pins for buses
         }
@@ -399,10 +405,13 @@ class Pin:
             data.get("num_pins", 1),
             parent_window
         )
+        pin.id = data.get("id", f"pin_{str(uuid.uuid4().int)[:10]}")  # Ensure the ID is set
         pin.border_color = tuple(data.get("border_color", (0, 0, 0)))
         pin.fill_color = tuple(data.get("fill_color", (0.8, 0.8, 0.8)))
         pin.text_color = tuple(data.get("text_color", (0, 0, 0)))
         pin.rotation = data.get("rotation", 0)
         pin.connection_points = data.get("connection_points", [])
+        #pin.wires = data.get("wires", [None] * pin.num_pins)  # Set the wires list
+        pin.wires = data.get("wires", [[] for _ in range(pin.num_pins)])  # Set the wires list
         return pin
     
