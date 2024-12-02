@@ -26,6 +26,8 @@ class Block:
         self.selected = False  # Attribute to track selection state
         self.input_points = []
         self.output_points = []
+        self.prev_input_points = []
+        self.prev_output_points = []
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
         #self.input_connections = []  # List of dictionaries to track input connections
         #self.output_connections = []  # List of dictionaries to track output connections
@@ -42,6 +44,15 @@ class Block:
         self.x_new = x
         self.y_new = y
         self.init_wires()
+
+    def prev_connections(self):
+        return self.prev_input_points + self.prev_output_points
+
+    def prev_input_connections(self):
+        return self.prev_input_points
+
+    def prev_output_connections(self):
+        return self.prev_output_points
 
     def init_wires(self):
         if self.block_type == "NOT":
@@ -738,6 +749,8 @@ class Block:
         self.x_orig = self.offset_x
         self.y_orig = self.offset_y
         #print(f"start_drag {self.offset_x} and {self.offset_y}")
+        self.prev_output_points = self.output_points.copy()
+        self.prev_input_points = self.input_points.copy()
 
     def drag(self, x, y, max_x, max_y):
         if self.dragging:

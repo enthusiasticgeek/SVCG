@@ -4,8 +4,8 @@ import numpy as np
 import time
 
 class AStar:
-    # Default timeout is 1 seconds (ensure AStar finds route in 3 seconds max)
-    def __init__(self, grid, timeout=1):
+    # Default timeout is 600 seconds (ensure AStar finds route in 600 seconds max)
+    def __init__(self, grid, timeout=600):
         self.grid = grid
         self.height, self.width = grid.shape
         self.directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]

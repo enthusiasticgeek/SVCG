@@ -27,6 +27,7 @@ class Pin:
         self.selected = False  # Attribute to track selection state
         self.timestamp = datetime.now().isoformat(' ', 'seconds')
         self.connection_points = []  # List of dictionaries to track connections
+        self.prev_connection_points = []  # List of dictionaries to track connections
         #self.wires = [None] * num_pins  # List to store wire IDs for each connection point
         self.wires = [[] for _ in range(num_pins)]  # List to store wire IDs for each connection point
         self.parent_window = parent_window  # Add the parent_window attribute
@@ -59,6 +60,9 @@ class Pin:
         # Print all points in input and output connections
         #print(f"Connection Points: {self.connection_points}")
         #print(f"Connections: {self.connections}")
+
+    def prev_connections(self):
+        return self.prev_connection_points
 
     def rotate_point(self, x, y):
         # Rotate the point around the center of the pin
@@ -252,6 +256,7 @@ class Pin:
         self.x_orig = self.offset_x
         self.y_orig = self.offset_y
         #print(f"start_drag {self.offset_x} and {self.offset_y}")
+        self.prev_connection_points = self.connection_points.copy()
 
     def drag(self, x, y, max_x, max_y):
         if self.dragging:

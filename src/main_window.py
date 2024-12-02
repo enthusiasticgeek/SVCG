@@ -339,20 +339,34 @@ class BlocksWindow(Gtk.Window):
             pin.set_selected(False)
             pin.update_points()
     
+        # dragging pins/block complete
         if not self.dragging_wire:
-            # Find the end point
             for block in self.blocks:
                 if block.contains_point(int(event.x), int(event.y)):
                     print(f"block {block.block_type.lower()} drag complete")
                     block_dict = block.to_dict()
                     print(f"block ID: {block_dict['id']} {block_dict['input_wires']} {block_dict['output_wires']} ({block_dict['x']},{block_dict['y']}) with {block_dict['input_names']}:{block_dict['input_points']} and {block_dict['output_names']}:{block_dict['output_points']} drag complete")
                     for widx, wire in enumerate(self.wires):
+                        #print(f"WIRE START POINT {wire.start_point}")
+                        #print(f"WIRE END POINT {wire.end_point}")
                         for idx, input_wires in enumerate(block_dict['input_wires']):
                             if input_wires is not None and wire.id in input_wires:
                                 print(f"found {wire.id} at input_wires index {idx} and pos {widx}")
+                                if wire.start_point in block.prev_input_connections():
+                                   print("***BLOCK INPUT START POINT***")
+                                   wire.update_start_point(block_dict['input_points'][idx])
+                                elif wire.end_point in block.prev_input_connections():
+                                   print("***BLOCK INPUT END POINT***")
+                                   wire.update_end_point(block_dict['input_points'][idx])
                         for idx, output_wires in enumerate(block_dict['output_wires']):
                             if output_wires is not None and wire.id in output_wires:
                                 print(f"found {wire.id} at output_wires index {idx} and pos {widx}")
+                                if wire.start_point in block.prev_output_connections():
+                                   print("***BLOCK OUTPUT START POINT***")
+                                   wire.update_start_point(block_dict['output_points'][idx])
+                                elif wire.end_point in block.prev_output_connections():
+                                   print("***BLOCK OUTPUT END POINT***")
+                                   wire.update_end_point(block_dict['output_points'][idx])
                     break
             for pin in self.pins:
                 if pin.contains_point(int(event.x), int(event.y)):
@@ -360,17 +374,24 @@ class BlocksWindow(Gtk.Window):
                     pin_dict = pin.to_dict()
                     print(f"pin ID: {pin_dict['id']} {pin_dict['wires']} ({pin_dict['x']},{pin_dict['y']}) with {pin_dict['connection_points']} drag complete")
                     for widx, wire in enumerate(self.wires):
+                        #print(f"WIRE START POINT {wire.start_point}")
+                        #print(f"WIRE END POINT {wire.end_point}")
                         for idx, wires in enumerate(pin_dict['wires']):
                             if wires is not None and wire.id in wires:
                                 print(f"found {wire.id} at wires index {idx} and pos {widx}")
+                                if wire.start_point in pin.prev_connections():
+                                   print("***PIN START POINT***")
+                                   wire.update_start_point(pin_dict['connection_points'][idx])
+                                elif wire.end_point in pin.prev_connections():
+                                   print("***PIN END POINT***")
+                                   wire.update_end_point(pin_dict['connection_points'][idx])
                     break
- 
-
 
             self.update_json()
             self.print_wires()
     
     
+        # dragging wire complete
         elif self.dragging_wire:
             print("wire dragged")
             end_point = None
