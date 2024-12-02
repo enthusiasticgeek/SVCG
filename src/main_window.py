@@ -346,49 +346,30 @@ class BlocksWindow(Gtk.Window):
                     print(f"block {block.block_type.lower()} drag complete")
                     block_dict = block.to_dict()
                     print(f"block ID: {block_dict['id']} {block_dict['input_wires']} {block_dict['output_wires']} ({block_dict['x']},{block_dict['y']}) with {block_dict['input_names']}:{block_dict['input_points']} and {block_dict['output_names']}:{block_dict['output_points']} drag complete")
-                    for wire in self.wires:
-                        if wire.id in block_dict['input_wires']:
-                            index = block_dict['input_wires'].index(wire.id)
-                            print(f"found {wire.id} at input_wires index {index}")
-                        if wire.id in block_dict['output_wires']:
-                            index = block_dict['output_wires'].index(wire.id)
-                            print(f"found {wire.id} at output_wires index {index}")
-    
+                    for widx, wire in enumerate(self.wires):
+                        for idx, input_wires in enumerate(block_dict['input_wires']):
+                            if input_wires is not None and wire.id in input_wires:
+                                print(f"found {wire.id} at input_wires index {idx} and pos {widx}")
+                        for idx, output_wires in enumerate(block_dict['output_wires']):
+                            if output_wires is not None and wire.id in output_wires:
+                                print(f"found {wire.id} at output_wires index {idx} and pos {widx}")
                     break
             for pin in self.pins:
                 if pin.contains_point(int(event.x), int(event.y)):
                     print(f"pin {pin.pin_type.lower()} drag complete")
                     pin_dict = pin.to_dict()
                     print(f"pin ID: {pin_dict['id']} {pin_dict['wires']} ({pin_dict['x']},{pin_dict['y']}) with {pin_dict['connection_points']} drag complete")
-                    for wire in self.wires:
-                        if wire.id in pin_dict['wires']:
-                            index = pin_dict['wires'].index(wire.id)
-                            print(f"found {wire.id} at wires index {index}")
-    
+                    for widx, wire in enumerate(self.wires):
+                        for idx, wires in enumerate(pin_dict['wires']):
+                            if wires is not None and wire.id in wires:
+                                print(f"found {wire.id} at wires index {idx} and pos {widx}")
                     break
+ 
+
+
             self.update_json()
-            #self.print_wires()
+            self.print_wires()
     
-            """
-            # Update wire connections after drag
-            for wire in self.wires:
-                if wire.start_block:
-                    new_start_point = wire.start_block.contains_pin(int(wire.start_point[0]), int(wire.start_point[1]))
-                    if new_start_point:
-                        wire.start_point = new_start_point
-                if wire.end_block:
-                    new_end_point = wire.end_block.contains_pin(int(wire.end_point[0]), int(wire.end_point[1]))
-                    if new_end_point:
-                        wire.end_point = new_end_point
-                if wire.start_pin:
-                    new_start_point = wire.start_pin.contains_pin(int(wire.start_point[0]), int(wire.start_point[1]))
-                    if new_start_point:
-                        wire.start_point = new_start_point
-                if wire.end_pin:
-                    new_end_point = wire.end_pin.contains_pin(int(wire.end_point[0]), int(wire.end_point[1]))
-                    if new_end_point:
-                        wire.end_point = new_end_point
-            """
     
         elif self.dragging_wire:
             print("wire dragged")
@@ -435,19 +416,14 @@ class BlocksWindow(Gtk.Window):
                     for block in self.blocks:
                         if block.contains_pin(int(self.wire_start_point[0]), int(self.wire_start_point[1])):
                             start_block = block
-                            new_wire.start_block = start_block
-                            print(f"RELEASE start_block : {start_block}")
+                            #new_wire.start_point = self.wire_start_point
                             break
                     for pin in self.pins:
                         if pin.contains_pin(int(self.wire_start_point[0]), int(self.wire_start_point[1])):
                             start_pin = pin
-                            new_wire.start_pin = start_pin
+                            #new_wire.start_point = self.wire_start_point
                             print(f"RELEASE start_pin : {start_pin}")
                             break
-    
-                    # Set the end block or pin
-                    new_wire.end_block = end_block
-                    new_wire.end_pin = end_pin
     
                     self.wires.append(new_wire)
                     self.update_json()
@@ -833,7 +809,6 @@ class BlocksWindow(Gtk.Window):
 
     def update_wires(self):
         for wire in self.wires:
-            wire.update_connections()
             #print('recalculate path')
             wire.path = wire.calculate_path()
             if not wire.path:
@@ -847,32 +822,6 @@ class BlocksWindow(Gtk.Window):
     def delete_wire(self, wire):
         # Remove the wire from the wires list
         self.wires.remove(wire)
-    
-        # Update the wires list in the connected blocks and pins
-        if wire.start_block:
-            index = self.find_closest_point(wire.start_block.input_points, wire.start_point)
-            if index is not None:
-                if wire.start_block.input_wires[index] is None:
-                    wire.start_block.input_wires[index] = []
-                wire.start_block.input_wires[index].remove(wire.id)
-        if wire.end_block:
-            index = self.find_closest_point(wire.end_block.output_points, wire.end_point)
-            if index is not None:
-                if wire.end_block.output_wires[index] is None:
-                    wire.end_block.output_wires[index] = []
-                wire.end_block.output_wires[index].remove(wire.id)
-        if wire.start_pin:
-            index = self.find_closest_point(wire.start_pin.connection_points, wire.start_point)
-            if index is not None:
-                if wire.start_pin.wires[index] is None:
-                    wire.start_pin.wires[index] = []
-                wire.start_pin.wires[index].remove(wire.id)
-        if wire.end_pin:
-            index = self.find_closest_point(wire.end_pin.connection_points, wire.end_point)
-            if index is not None:
-                if wire.end_pin.wires[index] is None:
-                    wire.end_pin.wires[index] = []
-                wire.end_pin.wires[index].remove(wire.id)
     
         # Update the JSON file
         self.update_json()
@@ -938,87 +887,6 @@ class BlocksWindow(Gtk.Window):
             print(f"Grid Size: {wire.grid_size}")
             print(f"Path: {wire.path}")
             print(f"Wire Type: {wire.wire_type}")
-    
-            # Print start block details
-            if wire.start_block:
-                print("Start Block:")
-                print(f"  ID: {wire.start_block.id}")
-                print(f"  Text: {wire.start_block.text}")
-                print(f"  Block Type: {wire.start_block.block_type}")
-                print(f"  X: {wire.start_block.x} <----------")
-                print(f"  Y: {wire.start_block.y} <----------")
-                print(f"  Input Points: {wire.start_block.input_points} <----------")
-                print(f"  Input Names: {wire.start_block.input_names} <----------")
-                print(f"  Output Points: {wire.start_block.output_points} <----------")
-                print(f"  Output Names: {wire.start_block.output_names} <----------")
-                print(f"  Width: {wire.start_block.width}")
-                print(f"  Height: {wire.start_block.height}")
-                print(f"  Rotation: {wire.start_block.rotation}")
-                print(f"  Border Color: {wire.start_block.border_color}")
-                print(f"  Fill Color: {wire.start_block.fill_color}")
-                print(f"  Text Color: {wire.start_block.text_color}")
-                print(f"  Timestamp: {wire.start_block.timestamp}")
-                print(f"  Grid Size: {wire.start_block.grid_size}")
-    
-            # Print end block details
-            if wire.end_block:
-                print("End Block:")
-                print(f"  ID: {wire.end_block.id}")
-                print(f"  Text: {wire.end_block.text}")
-                print(f"  Block Type: {wire.end_block.block_type}")
-                print(f"  X: {wire.end_block.x} <----------")
-                print(f"  Y: {wire.end_block.y} <----------")
-                print(f"  Input Points: {wire.end_block.input_points} <----------")
-                print(f"  Input Names: {wire.end_block.input_names} <----------")
-                print(f"  Output Points: {wire.end_block.output_points} <----------")
-                print(f"  Output Names: {wire.end_block.output_names} <----------")
-                print(f"  Width: {wire.end_block.width}")
-                print(f"  Height: {wire.end_block.height}")
-                print(f"  Rotation: {wire.end_block.rotation}")
-                print(f"  Border Color: {wire.end_block.border_color}")
-                print(f"  Fill Color: {wire.end_block.fill_color}")
-                print(f"  Text Color: {wire.end_block.text_color}")
-                print(f"  Timestamp: {wire.end_block.timestamp}")
-                print(f"  Grid Size: {wire.end_block.grid_size}")
-    
-            # Print start pin details
-            if wire.start_pin:
-                print("Start Pin:")
-                print(f"  ID: {wire.start_pin.id}")
-                print(f"  Text: {wire.start_pin.text}")
-                print(f"  Pin Type: {wire.start_pin.pin_type}")
-                print(f"  X: {wire.start_pin.x} <-----------")
-                print(f"  Y: {wire.start_pin.y} <-----------")
-                print(f"  Connection Points: {wire.start_pin.connection_points} <----------")
-                print(f"  Width: {wire.start_pin.width}")
-                print(f"  Height: {wire.start_pin.height}")
-                print(f"  Rotation: {wire.start_pin.rotation}")
-                print(f"  Border Color: {wire.start_pin.border_color}")
-                print(f"  Fill Color: {wire.start_pin.fill_color}")
-                print(f"  Text Color: {wire.start_pin.text_color}")
-                print(f"  Timestamp: {wire.start_pin.timestamp}")
-                print(f"  Grid Size: {wire.start_pin.grid_size}")
-                print(f"  Num Pins: {wire.start_pin.num_pins}")
-    
-            # Print end pin details
-            if wire.end_pin:
-                print("End Pin:")
-                print(f"  ID: {wire.end_pin.id}")
-                print(f"  Text: {wire.end_pin.text}")
-                print(f"  Pin Type: {wire.end_pin.pin_type}")
-                print(f"  X: {wire.end_pin.x} <----------")
-                print(f"  Y: {wire.end_pin.y} <----------")
-                print(f"  Connection Points: {wire.end_pin.connection_points} <----------")
-                print(f"  Width: {wire.end_pin.width}")
-                print(f"  Height: {wire.end_pin.height}")
-                print(f"  Rotation: {wire.end_pin.rotation}")
-                print(f"  Border Color: {wire.end_pin.border_color}")
-                print(f"  Fill Color: {wire.end_pin.fill_color}")
-                print(f"  Text Color: {wire.end_pin.text_color}")
-                print(f"  Timestamp: {wire.end_pin.timestamp}")
-                print(f"  Grid Size: {wire.end_pin.grid_size}")
-                print(f"  Num Pins: {wire.end_pin.num_pins}")
-    
             print("---------------------------")
     
    

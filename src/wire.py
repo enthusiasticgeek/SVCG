@@ -7,7 +7,7 @@ import uuid
 from astar import AStar
 
 class Wire:
-    def __init__(self, text, start_point, end_point, wire_type, grid_size, parent_window, start_block=None, end_block=None, start_pin=None, end_pin=None):
+    def __init__(self, text, start_point, end_point, wire_type, grid_size, parent_window):
         self.id = f"wire_{str(uuid.uuid4().int)[:10]}"  # Generate a unique 10-digit ID
         self.text = text
         self.text_pos_x = round(random.randint(20,40))
@@ -16,10 +16,6 @@ class Wire:
         self.end_point = end_point
         self.grid_size = grid_size
         self.parent_window = parent_window
-        self.start_block = start_block
-        self.end_block = end_block
-        self.start_pin = start_pin
-        self.end_pin = end_pin
         self.wire_type = wire_type
         self.path = self.calculate_path()
         self.selected = False  # Attribute to track selection state
@@ -33,20 +29,6 @@ class Wire:
 
     def update_end_point(self, new_end_point):
         self.end_point = new_end_point
-        self.path = self.calculate_path()
-
-    def update_connections(self):
-        #print(f"Updating connections for wire {self.text}")
-        #print(f"Before update - Start Point: {self.start_point}, End Point: {self.end_point}")
-        if self.start_block:
-            self.start_point = self.start_block.contains_pin(int(self.start_point[0]), int(self.start_point[1]))
-        if self.end_block:
-            self.end_point = self.end_block.contains_pin(int(self.end_point[0]), int(self.end_point[1]))
-        if self.start_pin:
-            self.start_point = self.start_pin.contains_pin(int(self.start_point[0]), int(self.start_point[1]))
-        if self.end_pin:
-            self.end_point = self.end_pin.contains_pin(int(self.end_point[0]), int(self.end_point[1]))
-        #print(f"After update - Start Point: {self.start_point}, End Point: {self.end_point}")
         self.path = self.calculate_path()
 
     def calculate_path(self):
@@ -134,30 +116,6 @@ class Wire:
                 if point_on_line(x, y, x1 * self.grid_size, y1 * self.grid_size, x2 * self.grid_size, y2 * self.grid_size, tolerance):
                     return True
         return False
-
-    """
-    def to_dict1(self):
-        return {
-            "name": self.text,
-            "start_point": self.start_point,
-            "end_point": self.end_point,
-            "wire_type": self.wire_type,
-            "grid_size": self.grid_size,
-            "start_block": self.start_block.to_dict() if self.start_block else None,
-            "end_block": self.end_block.to_dict() if self.end_block else None,
-            "start_pin": self.start_pin.to_dict() if self.start_pin else None,
-            "end_pin": self.end_pin.to_dict() if self.end_pin else None,
-        }
-
-    @staticmethod
-    def from_dict1(wire_dict, Block, Pin, parent_window):
-        start_block = Block.from_dict(wire_dict["start_block"], parent_window) if wire_dict["start_block"] else None
-        end_block = Block.from_dict(wire_dict["end_block"], parent_window) if wire_dict["end_block"] else None
-        start_pin = Pin.from_dict(wire_dict["start_pin"], parent_window) if wire_dict["start_pin"] else None
-        end_pin = Pin.from_dict(wire_dict["end_pin"], parent_window) if wire_dict["end_pin"] else None
-        return Wire(wire_dict["name"], wire_dict["start_point"], wire_dict["end_point"], wire_dict["wire_type"], wire_dict["grid_size"], parent_window, start_block, end_block, start_pin, end_pin)
-    """
-
 
     
     def to_dict(self):
