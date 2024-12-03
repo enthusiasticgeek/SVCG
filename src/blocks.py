@@ -57,6 +57,12 @@ class Block:
         elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
             self.input_wires = [None, None]  # Initialize wires list for input points
             self.output_wires = [None]  # Initialize wires list for output points
+        elif self.block_type in ["JKFF", "SRFF"]:
+            self.input_wires = [None, None, None, None, None]  # Initialize wires list for input points
+            self.output_wires = [None, None]  # Initialize wires list for output points
+        elif self.block_type in ["DFF", "TFF"]:
+            self.input_wires = [None, None, None, None]  # Initialize wires list for input points
+            self.output_wires = [None, None]  # Initialize wires list for output points
 
     def set_selected(self, selected):
         self.selected = selected
@@ -72,6 +78,26 @@ class Block:
             self.output_points = [self.rotate_point(int(self.x + self.width/2), int(self.y + self.height))]
             self.input_names = ["IN1", "IN2"]
             self.output_names = ["OUT1"]
+        elif self.block_type in ["JKFF", "SRFF"]:
+            self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width/2), int(self.y)), self.rotate_point(int(self.x + self.width), int(self.y)), \
+                                 self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x + self.width), int(self.y + self.height/2))] 
+            self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height)), self.rotate_point(int(self.x + self.width), int(self.y + self.height))]
+            if self.block_type in ["JKFF"]:
+               self.input_names = ["J","CLK","K", "PRE", "CLR"]
+               self.output_names = ["Q","Q'"]
+            elif self.block_type in ["SRFF"]:
+               self.input_names = ["S","CLK","R", "PRE", "CLR"]
+               self.output_names = ["Q","Q'"]
+        elif self.block_type in ["DFF", "TFF"]:
+            self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width), int(self.y)), \
+                                 self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x + self.width), int(self.y + self.height/2))] 
+            self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height)), self.rotate_point(int(self.x + self.width), int(self.y + self.height))]
+            if self.block_type in ["DFF"]:
+               self.input_names = ["D","CLK", "PRE", "CLR"]
+               self.output_names = ["Q","Q'"]
+            elif self.block_type in ["TFF"]:
+               self.input_names = ["T","CLK", "PRE", "CLR"]
+               self.output_names = ["Q","Q'"]
         # Initialize connections for new points
         #self.input_connections = {point: None for point in self.input_points}
         #self.output_connections = {point: None for point in self.output_points}
@@ -110,13 +136,16 @@ class Block:
             self.draw_xor_block(cr)
         elif self.block_type == "XNOR":
             self.draw_xnor_block(cr)
+        elif self.block_type == "JKFF" or self.block_type == "SRFF":
+            self.draw_flipflop_block(cr)
+        elif self.block_type == "DFF" or self.block_type == "TFF":
+            self.draw_flipflop_block(cr)
         else:
             self.draw_default_block(cr)
         cr.stroke()
         cr.restore()
 
         
-
         cr.save()
         # Draw input and output points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
@@ -127,24 +156,21 @@ class Block:
 
         # Draw names text for input points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
-        for point in self.input_points:
-          for name in self.input_names:
+        for point, name in zip(self.input_points, self.input_names):
             cr.set_source_rgb(*self.text_color)
             cr.set_font_size(8)
-            cr.move_to(point[0]+5, point[1] - 10)
+            cr.move_to(point[0] + 5, point[1] - 10)
             cr.show_text(name)
             cr.stroke()
-
+        
         # Draw names text for output points
         cr.set_source_rgb(0, 0.6, 0)  # Green color for points
-        for point in self.output_points:
-          for name in self.output_names:
+        for point, name in zip(self.output_points, self.output_names):
             cr.set_source_rgb(*self.text_color)
             cr.set_font_size(8)
-            cr.move_to(point[0]+5, point[1] + 10)
+            cr.move_to(point[0] + 5, point[1] + 10)
             cr.show_text(name)
             cr.stroke()
-
         cr.restore()
 
     def draw_default_block(self, cr):
@@ -713,6 +739,23 @@ class Block:
         cr.stroke()
 
         self.draw_xnor_gate(cr, 15, 15, 0.3)
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(8)  # Reduced font size
+        cr.move_to(10, 10)
+        cr.show_text(self.text)
+
+    def draw_flipflop_block(self, cr):
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.fill()
+
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.stroke()
+
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)

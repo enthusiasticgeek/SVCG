@@ -72,7 +72,11 @@ class BlocksWindow(Gtk.Window):
             ("NAND Gate", "NAND"),
             ("NOR Gate", "NOR"),
             ("XOR Gate", "XOR"),
-            ("XNOR Gate", "XNOR")
+            ("XNOR Gate", "XNOR"),
+            ("J-K Flip Flop", "JKFF"),
+            ("S-R Flip Flop", "SRFF"),
+            ("D Flip Flop", "DFF"),
+            ("T Flip Flop", "TFF")
         ]
 
         for label, block_type in buttons:
