@@ -239,6 +239,7 @@ class BlocksWindow(Gtk.Window):
         return label
 
     def on_button_press(self, widget, event):
+            self.push_undo()  # Push the current state to the undo stack
             if event.button == 1:  # Left click
                 self.selected_block = None
                 self.selected_pin = None
@@ -307,6 +308,9 @@ class BlocksWindow(Gtk.Window):
                        #self.wire_context_menu.popup(event)
                        self.wire_context_menu.popup(None, None, None, None, event.button, event.time)
                        break
+            self.drawing_area.queue_draw()
+            self.update_json()
+            self.push_undo()
             self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus:
 
     def on_key_press(self, widget, event):
@@ -330,14 +334,15 @@ class BlocksWindow(Gtk.Window):
 
  
     def on_button_release(self, widget, event):
+        self.push_undo()
         for block in self.blocks:
             block.end_drag()
             block.set_selected(False)
-            block.update_points()
+            #block.update_points()
         for pin in self.pins:
             pin.end_drag()
             pin.set_selected(False)
-            pin.update_points()
+            #pin.update_points()
     
         # dragging pins/block complete
         if not self.dragging_wire:
@@ -367,6 +372,7 @@ class BlocksWindow(Gtk.Window):
                                 elif wire.end_point in block.prev_output_connections():
                                    print("***BLOCK OUTPUT END POINT***")
                                    wire.update_end_point(block_dict['output_points'][idx])
+                    block.update_points()
                     break
             for pin in self.pins:
                 if pin.contains_point(int(event.x), int(event.y)):
@@ -385,10 +391,11 @@ class BlocksWindow(Gtk.Window):
                                 elif wire.end_point in pin.prev_connections():
                                    print("***PIN END POINT***")
                                    wire.update_end_point(pin_dict['connection_points'][idx])
+                    pin.update_points()
                     break
 
             self.update_json()
-            self.print_wires()
+            #self.print_wires()
     
     
         # dragging wire complete

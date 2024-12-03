@@ -39,10 +39,6 @@ class Block:
         self.output_wires = [[] for _ in self.output_points]  # List to store wire IDs for output points
         self.parent_window = parent_window  # Add the parent_window attribute
         self.update_points()
-        self.x_orig = x
-        self.y_orig = y
-        self.x_new = x
-        self.y_new = y
         self.init_wires()
 
     def prev_connections(self):
@@ -746,8 +742,6 @@ class Block:
         self.dragging = True
         self.offset_x = x - self.x
         self.offset_y = y - self.y
-        self.x_orig = self.offset_x
-        self.y_orig = self.offset_y
         #print(f"start_drag {self.offset_x} and {self.offset_y}")
         self.prev_output_points = self.output_points.copy()
         self.prev_input_points = self.input_points.copy()
@@ -775,11 +769,6 @@ class Block:
         ## Update start and end block coordinates in wire connections
         #self.update_start_block_coordinates(self.output_connections, self.text, self.x, self.y)
         #self.update_end_block_coordinates(self.input_connections, self.text, self.x, self.y)
-        self.x_orig = self.x_new
-        self.y_orig = self.y_new
-        self.x_new = self.x
-        self.y_new = self.y
-        print(f"Block {self.text} end drag at ({self.x_new}, {self.y_new}) from ({self.x_orig}, {self.y_orig})")
 
 
     """

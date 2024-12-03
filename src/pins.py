@@ -32,10 +32,6 @@ class Pin:
         self.wires = [[] for _ in range(num_pins)]  # List to store wire IDs for each connection point
         self.parent_window = parent_window  # Add the parent_window attribute
         self.update_points()
-        self.x_orig = x
-        self.y_orig = y
-        self.x_new = x
-        self.y_new = y
 
     def set_selected(self, selected):
         self.selected = selected
@@ -253,8 +249,6 @@ class Pin:
         self.dragging = True
         self.offset_x = x - self.x
         self.offset_y = y - self.y
-        self.x_orig = self.offset_x
-        self.y_orig = self.offset_y
         #print(f"start_drag {self.offset_x} and {self.offset_y}")
         self.prev_connection_points = self.connection_points.copy()
 
@@ -276,7 +270,6 @@ class Pin:
         self.y = round(self.y / self.grid_size) * self.grid_size
         self.width = round(self.width / self.grid_size) * self.grid_size
         self.height = round(self.height / self.grid_size) * self.grid_size
-        self.update_points()
         # Update wire connections
         #self.parent_window.update_wires()
         #self.update_wire_connections()
@@ -285,11 +278,7 @@ class Pin:
         #self.update_end_pin_coordinates(self.connections, self.text, self.x, self.y)
 
         #print(f"Pin {self.text} end drag at ({self.x}, {self.y})")
-        self.x_orig = self.x_new
-        self.y_orig = self.y_new
-        self.x_new = self.x
-        self.y_new = self.y
-        print(f"Pin {self.text} end drag at ({self.x_new}, {self.y_new}) from ({self.x_orig}, {self.y_orig})")
+        self.update_points()
 
         #for connection in self.connections:
         #    connection['wire'].path = connection['wire'].calculate_path()  # Recalculate the path
