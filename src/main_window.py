@@ -65,31 +65,46 @@ class BlocksWindow(Gtk.Window):
         self.gate_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.expander.add(self.gate_box)
 
-        buttons = [
+        gates_buttons = [
             ("AND Gate", "AND"),
             ("OR Gate", "OR"),
             ("NOT Gate", "NOT"),
             ("NAND Gate", "NAND"),
             ("NOR Gate", "NOR"),
             ("XOR Gate", "XOR"),
-            ("XNOR Gate", "XNOR"),
+            ("XNOR Gate", "XNOR")
+        ]
+
+        for label, block_type in gates_buttons:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", self.on_button_clicked, block_type)
+            self.gate_box.pack_start(button, False, False, 0)
+
+        # Create an expander for the digital gates menu
+        self.expander = Gtk.Expander(label="Flip-Flops")
+        self.left_pane.pack_start(self.expander, False, False, 0)
+
+        self.gate_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.expander.add(self.gate_box)
+
+        flipflop_buttons = [
             ("J-K Flip Flop", "JKFF"),
             ("S-R Flip Flop", "SRFF"),
             ("D Flip Flop", "DFF"),
             ("T Flip Flop", "TFF")
         ]
 
-        for label, block_type in buttons:
+        for label, block_type in flipflop_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             self.gate_box.pack_start(button, False, False, 0)
 
         # Create an expander_ops for the operations menu
-        self.expander_ops = Gtk.Expander(label="Edit Operations")
-        self.left_pane.pack_start(self.expander_ops, False, False, 0)
+        self.expander = Gtk.Expander(label="Edit Operations")
+        self.left_pane.pack_start(self.expander, False, False, 0)
 
         self.ops_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.expander_ops.add(self.ops_box)
+        self.expander.add(self.ops_box)
 
         # Add undo/redo buttons
         self.undo_button = Gtk.Button(label="Undo [CTRL+z]")
