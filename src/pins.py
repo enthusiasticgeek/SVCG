@@ -60,6 +60,9 @@ class Pin:
     def prev_connections(self):
         return self.prev_connection_points
 
+    def connections(self):
+        return self.connection_points
+
     def rotate_point(self, x, y):
         # Rotate the point around the center of the pin
         cx, cy = self.x + self.width / 2, self.y + self.height / 2
@@ -92,6 +95,9 @@ class Pin:
             self.draw_bus(cr)
         if "input_output_bus" in self.pin_type.lower():
             self.draw_bus(cr)
+        if "CLK" or "GND" or "VDD_5V" or "VDD_3V3" or "VDD_1V8" or "VDD_1V2" in self.pin_type:
+            self.draw_vdd_clk_gnd(cr,self.pin_type)
+            self.draw_input_arrow(cr)
         self.update_points()
 
         cr.restore()
@@ -115,6 +121,30 @@ class Pin:
         cr.set_source_rgb(*self.border_color)
         cr.rectangle(0, 0, self.width, self.height)
         cr.stroke()
+
+    def draw_vdd_clk_gnd(self, cr, pin_type_text):
+        cr.set_line_width(1)
+
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(8)  # Reduced font size
+        cr.move_to(0,-5)
+        cr.show_text(self.text)
+
+        # Draw the pin shape
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.fill()
+
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.stroke()
+
+        # Draw pin type text
+        cr.move_to(self.width/2,self.height/2)
+        cr.show_text(pin_type_text)
 
     def draw_bus(self, cr):
             cr.set_line_width(1)

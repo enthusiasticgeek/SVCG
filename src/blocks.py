@@ -50,19 +50,36 @@ class Block:
     def prev_output_connections(self):
         return self.prev_output_points
 
+    def connections(self):
+        return self.input_points + self.output_points
+
+    def input_connections(self):
+        return self.input_points
+
+    def output_connections(self):
+        return self.output_points
+
     def init_wires(self):
         if self.block_type == "NOT":
-            self.input_wires = [None]  # Initialize wires list for input points
-            self.output_wires = [None]  # Initialize wires list for output points
+            self.input_wires = [[]]  # Initialize wires list for input points
+            self.output_wires = [[]]  # Initialize wires list for output points
         elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
-            self.input_wires = [None, None]  # Initialize wires list for input points
-            self.output_wires = [None]  # Initialize wires list for output points
+            self.input_wires = [[], []]  # Initialize wires list for input points
+            self.output_wires = [[]]  # Initialize wires list for output points
         elif self.block_type in ["JKFF", "SRFF"]:
-            self.input_wires = [None, None, None, None, None]  # Initialize wires list for input points
-            self.output_wires = [None, None]  # Initialize wires list for output points
+            self.input_wires = [[], [], [], [], []]  # Initialize wires list for input points
+            self.output_wires = [[], []]  # Initialize wires list for output points
         elif self.block_type in ["DFF", "TFF"]:
-            self.input_wires = [None, None, None, None]  # Initialize wires list for input points
-            self.output_wires = [None, None]  # Initialize wires list for output points
+            self.input_wires = [[], [], [], []]  # Initialize wires list for input points
+            self.output_wires = [[], []]  # Initialize wires list for output points
+        elif self.block_type in ["MUX_2X1"]:
+            self.input_wires = [[], [], []]  # Initialize wires list for input points
+            self.output_wires = [[]]  # Initialize wires list for output points
+        elif self.block_type in ["MUX_4X1"]:
+            self.input_wires = [[], [], [], [], [], []]  # Initialize wires list for input points
+            self.output_wires = [[]]  # Initialize wires list for output points
+
+
 
     def set_selected(self, selected):
         self.selected = selected
@@ -98,6 +115,19 @@ class Block:
             elif self.block_type in ["TFF"]:
                self.input_names = ["T","CLK", "PRE", "CLR"]
                self.output_names = ["Q","Q'"]
+        elif self.block_type in ["MUX_2X1"]:
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + self.width/2), int(self.y + 2*self.height))]
+            self.output_points = [self.rotate_point(int(self.x + self.width), int(self.y + self.height))]
+            self.input_names = ["I0","I1","S0"]
+            self.output_names = ["O0"]
+        elif self.block_type in ["MUX_4X1"]:
+            print("MUX_4x1")
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)), self.rotate_point(int(self.x + 1*self.width/3), int(self.y + 4*self.height)), self.rotate_point(int(self.x + 2*self.width/3), int(self.y + 4*self.height)) ]
+            self.output_points = [self.rotate_point(int(self.x + self.width), int(self.y + 2*self.height))]
+            self.input_names = ["I0","I1","I2","I3","S0","S1"]
+            self.output_names = ["O0"]
+                 
+             
         # Initialize connections for new points
         #self.input_connections = {point: None for point in self.input_points}
         #self.output_connections = {point: None for point in self.output_points}
@@ -140,6 +170,10 @@ class Block:
             self.draw_flipflop_block(cr)
         elif self.block_type == "DFF" or self.block_type == "TFF":
             self.draw_flipflop_block(cr)
+        elif self.block_type == "MUX_2X1":
+            self.draw_mux(cr, 2)
+        elif self.block_type == "MUX_4X1":
+            self.draw_mux(cr, 4)
         else:
             self.draw_default_block(cr)
         cr.stroke()
@@ -760,6 +794,25 @@ class Block:
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
         cr.show_text(self.text)
+
+    def draw_mux(self, cr, sel):
+        mux = 2**sel
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width, self.height*sel)
+        cr.fill()
+
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, self.width, self.height*sel)
+        cr.stroke()
+
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(8)  # Reduced font size
+        cr.move_to(10, 10)
+        cr.show_text(self.text)
+
 
     def draw_text(self, cr, text, x, y):
         cr.set_source_rgb(*self.text_color)

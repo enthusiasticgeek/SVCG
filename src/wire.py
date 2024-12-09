@@ -94,7 +94,7 @@ class Wire:
             cr.move_to(self.path[0][0] * self.grid_size + self.text_pos_x, self.path[0][1] * self.grid_size + self.text_pos_y)
             cr.show_text(self.text)
 
-    def contains_point(self, x, y, tolerance=10):
+    def contains_point(self, x, y, tolerance=20):
         def point_on_line(px, py, x1, y1, x2, y2, tolerance):
             dx = x2 - x1
             dy = y2 - y1
