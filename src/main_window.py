@@ -346,7 +346,6 @@ class BlocksWindow(Gtk.Window):
                         else:
                             self.context_menu.popup(event)
                         break
-                """
                 for wire in self.wires:
                     if wire.contains_point(int(event.x), int(event.y)):
                        self.selected_wire = wire
@@ -354,7 +353,7 @@ class BlocksWindow(Gtk.Window):
                        #self.wire_context_menu.popup(event)
                        self.wire_context_menu.popup(None, None, None, None, event.button, event.time)
                        break
-                """
+                
             self.drawing_area.queue_draw()
             self.update_json()
             self.push_undo()
