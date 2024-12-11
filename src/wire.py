@@ -126,6 +126,8 @@ class Wire:
             "end_point": self.end_point,
             "wire_type": self.wire_type,
             "grid_size": self.grid_size,
+            "path": self.path,
+            "text": self.text,
         }
 
     @staticmethod
@@ -138,5 +140,8 @@ class Wire:
             wire_dict["grid_size"],
             parent_window
         )
-        wire.id = wire_dict.get("id", f"wire_{str(uuid.uuid4().int)[:10]}")  # Ensure the ID is set
+        wire.id = wire_dict["id"] 
+        #wire.id = wire_dict["id"] #wire_dict.get("id", f"wire_{str(uuid.uuid4().int)[:10]}")  # Ensure the ID is set
+        wire.text = wire_dict["text"]
+        wire.path = wire_dict["path"]
         return wire

@@ -820,11 +820,11 @@ class Block:
         cr.move_to(x, y)
         cr.show_text(text)
 
-    def contains_point(self, x, y):
-        return (self.x <= int(x) <= self.x + self.width and
-                self.y <= int(y) <= self.y + self.height)
+    def contains_point(self, x, y, tolerance = 0):
+        return (self.x - tolerance <= int(x) <= self.x + self.width + tolerance and
+                self.y - tolerance <= int(y) <= self.y + self.height + tolerance)
 
-    def contains_pin(self, x, y, tolerance = 10):
+    def contains_pin(self, x, y, tolerance = 5):
         self.update_points()
         for point in self.input_points + self.output_points:
             if (point[0] - tolerance <= int(x) <= point[0] + tolerance and
@@ -1005,3 +1005,30 @@ class Block:
         block.output_wires = data.get("output_wires", [[] for _ in block.output_points])  # Set the output wires list
         return block
     
+  
+    """
+    @staticmethod
+    def from_dict(block_dict, parent):
+        block = Block(
+            block_dict["x"],
+            block_dict["y"],
+            block_dict["width"],
+            block_dict["height"],
+            block_dict["text"],
+            block_dict["block_type"],
+            parent.grid_size,
+            parent
+        )
+        block.id = block_dict["id"]
+        block.border_color = block_dict["border_color"]
+        block.fill_color = block_dict["fill_color"]
+        block.text_color = block_dict["text_color"]
+        block.rotation = block_dict["rotation"]
+        block.input_points = block_dict["input_points"]
+        block.output_points = block_dict["output_points"]
+        block.input_wires = block_dict["input_wires"]
+        block.output_wires = block_dict["output_wires"]
+        block.input_names = block_dict["input_names"]
+        block.output_names = block_dict["output_names"]
+        return block
+    """

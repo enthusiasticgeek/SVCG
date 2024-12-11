@@ -258,21 +258,25 @@ class Pin:
                 if (point[0] - tolerance <= int(x) <= point[0] + tolerance and
                     point[1] - tolerance <= int(y) <= point[1] + tolerance):
                     return True
-            return (self.x <= int(x) <= self.x + self.width*self.num_pins and
-                    self.y <= int(y) <= self.y + self.height)
+            print(f"X: {self.x - tolerance} <= {int(x)} <=  {self.x + self.width*self.num_pins + tolerance}")
+            print(f"Y: {self.y - tolerance} <= {int(y)} <=  {self.y + self.height + tolerance}")
+            return (self.x - tolerance <= int(x) <= self.x + self.width*self.num_pins + tolerance and
+                    self.y - tolerance <= int(y) <= self.y + self.height + tolerance)
         else:
             # For single pins, use the original bounds check
-            return (self.x <= int(x) <= self.x + self.width and
-                    self.y <= int(y) <= self.y + self.height)
+            print(f"X: {self.x - tolerance} <= {int(x)} <=  {self.x + self.width + tolerance}")
+            print(f"Y: {self.y - tolerance} <= {int(y)} <=  {self.y + self.height + tolerance}")
+            return (self.x - tolerance <= int(x) <= self.x + self.width + tolerance and
+                    self.y - tolerance <= int(y) <= self.y + self.height + tolerance)
 
-    def contains_pin(self, x, y, tolerance = 10):
+    def contains_pin(self, x, y, tolerance = 5):
         self.update_points()
         for point in self.connection_points:
             if (point[0] - tolerance <= int(x) <= point[0] + tolerance and
                point[1] - tolerance <= int(y) <= point[1] + tolerance):
                print(f'=================== contains pin {x},{y},{point[0]},{point[1]} =================')
                return point  # Return the connection point
-        print(f'**DOES NOT contain pin {x},{y}**')
+        #print(f'**DOES NOT contain pin {x},{y}**')
         return None
 
     def start_drag(self, x, y):
@@ -282,7 +286,7 @@ class Pin:
         #print(f"start_drag {self.offset_x} and {self.offset_y}")
         self.prev_connection_points = self.connection_points.copy()
 
-    def drag(self, x, y, max_x, max_y):
+    def drag_old(self, x, y, max_x, max_y):
         if self.dragging:
             new_x = x - self.offset_x
             new_y = y - self.offset_y
@@ -293,6 +297,15 @@ class Pin:
                 self.y = new_y
                 #print(f"drag {self.y}")
             self.update_points()
+
+    def drag(self, x, y, max_x, max_y):
+        if self.dragging:
+            new_x = max(0, min(x - self.offset_x, max_x - self.width * self.num_pins))
+            new_y = max(0, min(y - self.offset_y, max_y - self.height))
+            self.x = new_x
+            self.y = new_y
+            self.update_points()
+ 
 
     def end_drag(self):
         self.dragging = False
@@ -439,3 +452,27 @@ class Pin:
         pin.wires = data.get("wires", [[] for _ in range(pin.num_pins)])  # Set the wires list
         return pin
     
+    """
+    @staticmethod
+    def from_dict(pin_dict, parent):
+        pin = Pin(
+            pin_dict["x"],
+            pin_dict["y"],
+            pin_dict["width"],
+            pin_dict["height"],
+            pin_dict["text"],
+            pin_dict["pin_type"],
+            parent.grid_size,
+            pin_dict["num_pins"],
+            parent
+        )
+        pin.id = pin_dict["id"]
+        pin.border_color = pin_dict["border_color"]
+        pin.fill_color = pin_dict["fill_color"]
+        pin.text_color = pin_dict["text_color"]
+        pin.rotation = pin_dict["rotation"]
+        pin.connection_points = pin_dict["connection_points"]
+        pin.wires = pin_dict["wires"]
+        return pin
+
+    """
