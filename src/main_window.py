@@ -422,6 +422,7 @@ class BlocksWindow(Gtk.Window):
                 pin.set_selected(False)
                 pin.update_points()
     
+            print("================")
             # dragging pins/block complete
             if not self.dragging_wire:
                 print("dragging block/pins")
@@ -433,15 +434,17 @@ class BlocksWindow(Gtk.Window):
                         for widx, wire in enumerate(self.wires):
                             for idx, input_wires in enumerate(block_dict['input_wires']):
                                 if input_wires is not None and wire.id in input_wires:
-                                    if wire.start_point in block.prev_input_connections():
+                                    print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
+                                    if self.convert_to_tuple(wire.start_point) in block.prev_input_connections():
                                         wire.update_start_point(block_dict['input_points'][idx])
-                                    elif wire.end_point in block.prev_input_connections():
+                                    elif self.convert_to_tuple(wire.end_point) in block.prev_input_connections():
                                         wire.update_end_point(block_dict['input_points'][idx])
                             for idx, output_wires in enumerate(block_dict['output_wires']):
                                 if output_wires is not None and wire.id in output_wires:
-                                    if wire.start_point in block.prev_output_connections():
+                                    print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
+                                    if self.convert_to_tuple(wire.start_point) in block.prev_output_connections():
                                         wire.update_start_point(block_dict['output_points'][idx])
-                                    elif wire.end_point in block.prev_output_connections():
+                                    elif self.convert_to_tuple(wire.end_point) in block.prev_output_connections():
                                         wire.update_end_point(block_dict['output_points'][idx])
                         block.update_points()
                         break
@@ -453,9 +456,10 @@ class BlocksWindow(Gtk.Window):
                         for widx, wire in enumerate(self.wires):
                             for idx, wires in enumerate(pin_dict['wires']):
                                 if wires is not None and wire.id in wires:
-                                    if wire.start_point in pin.prev_connections():
+                                    print(f"{wire.start_point} {wire.end_point} and {pin.prev_connections()}")
+                                    if self.convert_to_tuple(wire.start_point) in pin.prev_connections():
                                         wire.update_start_point(pin_dict['connection_points'][idx])
-                                    elif wire.end_point in pin.prev_connections():
+                                    elif self.convert_to_tuple(wire.end_point) in pin.prev_connections():
                                         wire.update_end_point(pin_dict['connection_points'][idx])
                         pin.update_points()
                         break
@@ -1072,6 +1076,14 @@ class BlocksWindow(Gtk.Window):
         except Exception as e:
             print(f"Error in print_wires: {e}")
 
+    def convert_to_tuple(self, input_data):
+        if isinstance(input_data, list):
+            return tuple(input_data)
+        elif isinstance(input_data, tuple):
+            return input_data
+        else:
+            raise ValueError("Input must be a list or a tuple")
+    
 if __name__ == "__main__":
     win = BlocksWindow()
     win.connect("destroy", Gtk.main_quit)
