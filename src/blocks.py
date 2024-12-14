@@ -121,7 +121,7 @@ class Block:
             self.input_names = ["I0","I1","S0"]
             self.output_names = ["O0"]
         elif self.block_type in ["MUX_4X1"]:
-            print("MUX_4x1")
+            #print("MUX_4x1")
             self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)), self.rotate_point(int(self.x + 1*self.width/3), int(self.y + 4*self.height)), self.rotate_point(int(self.x + 2*self.width/3), int(self.y + 4*self.height)) ]
             self.output_points = [self.rotate_point(int(self.x + self.width), int(self.y + 2*self.height))]
             self.input_names = ["I0","I1","I2","I3","S0","S1"]
@@ -820,11 +820,11 @@ class Block:
         cr.move_to(x, y)
         cr.show_text(text)
 
-    def contains_point(self, x, y, tolerance = 0):
+    def contains_point(self, x, y, tolerance = 10):
         return (self.x - tolerance <= int(x) <= self.x + self.width + tolerance and
                 self.y - tolerance <= int(y) <= self.y + self.height + tolerance)
 
-    def contains_pin(self, x, y, tolerance = 5):
+    def contains_pin(self, x, y, tolerance = 10):
         self.update_points()
         for point in self.input_points + self.output_points:
             if (point[0] - tolerance <= int(x) <= point[0] + tolerance and

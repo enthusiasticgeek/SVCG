@@ -258,23 +258,23 @@ class Pin:
                 if (point[0] - tolerance <= int(x) <= point[0] + tolerance and
                     point[1] - tolerance <= int(y) <= point[1] + tolerance):
                     return True
-            print(f"X: {self.x - tolerance} <= {int(x)} <=  {self.x + self.width*self.num_pins + tolerance}")
-            print(f"Y: {self.y - tolerance} <= {int(y)} <=  {self.y + self.height + tolerance}")
+            #print(f"X: {self.x - tolerance} <= {int(x)} <=  {self.x + self.width*self.num_pins + tolerance}")
+            #print(f"Y: {self.y - tolerance} <= {int(y)} <=  {self.y + self.height + tolerance}")
             return (self.x - tolerance <= int(x) <= self.x + self.width*self.num_pins + tolerance and
                     self.y - tolerance <= int(y) <= self.y + self.height + tolerance)
         else:
             # For single pins, use the original bounds check
-            print(f"X: {self.x - tolerance} <= {int(x)} <=  {self.x + self.width + tolerance}")
-            print(f"Y: {self.y - tolerance} <= {int(y)} <=  {self.y + self.height + tolerance}")
+            #print(f"X: {self.x - tolerance} <= {int(x)} <=  {self.x + self.width + tolerance}")
+            #print(f"Y: {self.y - tolerance} <= {int(y)} <=  {self.y + self.height + tolerance}")
             return (self.x - tolerance <= int(x) <= self.x + self.width + tolerance and
                     self.y - tolerance <= int(y) <= self.y + self.height + tolerance)
 
-    def contains_pin(self, x, y, tolerance = 5):
+    def contains_pin(self, x, y, tolerance = 10):
         self.update_points()
         for point in self.connection_points:
             if (point[0] - tolerance <= int(x) <= point[0] + tolerance and
                point[1] - tolerance <= int(y) <= point[1] + tolerance):
-               print(f'=================== contains pin {x},{y},{point[0]},{point[1]} =================')
+               #print(f'=================== contains pin {x},{y},{point[0]},{point[1]} =================')
                return point  # Return the connection point
         #print(f'**DOES NOT contain pin {x},{y}**')
         return None

@@ -312,12 +312,12 @@ class BlocksWindow(Gtk.Window):
         if event.x < 0 or event.y < 0:
             return False
         if event.button == 1 and event.button == 2 or event.button == 1 and event.button == 3 or event.button == 2 and event.button == 3:
-            print("Multiple buttons pressed")
+            #print("Multiple buttons pressed")
             return False
         try:
             self.push_undo()  # Push the current state to the undo stack
             if event.button == 1:  # Left click
-                print("Left button pressed")
+                #print("Left button pressed")
                 self.selected_block = None
                 self.selected_pin = None
                 self.selected_wire = None
@@ -357,10 +357,10 @@ class BlocksWindow(Gtk.Window):
                             wire.set_selected(True)
                             break
             elif event.button == 2:  # middle click
-                print("Middle button pressed")
+                #print("Middle button pressed")
                 pass
             elif event.button == 3:  # Right click
-                print("Right button pressed")
+                #print("Right button pressed")
                 for block in self.blocks:
                     if block.contains_point(int(event.x), int(event.y)):
                         self.selected_block = block
@@ -401,15 +401,18 @@ class BlocksWindow(Gtk.Window):
         if event.x < 0 or event.y < 0:
             return False
         if event.button == 1 and event.button == 2 or event.button == 1 and event.button == 3 or event.button == 2 and event.button == 3:
-            print("Multiple buttons released")
+            #print("Multiple buttons released")
             return False
     
         if event.button == 1:  # left click
-            print("Left button released")
+            #print("Left button released")
+            pass
         elif event.button == 2:  # middle click
-            print("Middle button released")
+            #print("Middle button released")
+            pass
         elif event.button == 3:  # Right click
-            print("Right button released")
+            #print("Right button released")
+            pass
     
         try:
             self.push_undo()
@@ -422,26 +425,25 @@ class BlocksWindow(Gtk.Window):
                 pin.set_selected(False)
                 pin.update_points()
     
-            print("================")
             # dragging pins/block complete
             if not self.dragging_wire:
-                print("dragging block/pins")
+                #print("dragging block/pins")
                 for block in self.blocks:
-                    print("block....")
+                    #print("block....")
                     if block.contains_point(int(event.x), int(event.y)):
-                        print(f"block {block.block_type.lower()} drag complete")
+                        #print(f"block {block.block_type.lower()} drag complete")
                         block_dict = block.to_dict()
                         for widx, wire in enumerate(self.wires):
                             for idx, input_wires in enumerate(block_dict['input_wires']):
                                 if input_wires is not None and wire.id in input_wires:
-                                    print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
+                                    #print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
                                     if self.convert_to_tuple(wire.start_point) in block.prev_input_connections():
                                         wire.update_start_point(block_dict['input_points'][idx])
                                     elif self.convert_to_tuple(wire.end_point) in block.prev_input_connections():
                                         wire.update_end_point(block_dict['input_points'][idx])
                             for idx, output_wires in enumerate(block_dict['output_wires']):
                                 if output_wires is not None and wire.id in output_wires:
-                                    print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
+                                    #print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
                                     if self.convert_to_tuple(wire.start_point) in block.prev_output_connections():
                                         wire.update_start_point(block_dict['output_points'][idx])
                                     elif self.convert_to_tuple(wire.end_point) in block.prev_output_connections():
@@ -449,14 +451,14 @@ class BlocksWindow(Gtk.Window):
                         block.update_points()
                         break
                 for pin in self.pins:
-                    print("pin....")
+                    #print("pin....")
                     if pin.contains_point(int(event.x), int(event.y)):
-                        print(f"pin {pin.pin_type.lower()} drag complete")
+                        #print(f"pin {pin.pin_type.lower()} drag complete")
                         pin_dict = pin.to_dict()
                         for widx, wire in enumerate(self.wires):
                             for idx, wires in enumerate(pin_dict['wires']):
                                 if wires is not None and wire.id in wires:
-                                    print(f"{wire.start_point} {wire.end_point} and {pin.prev_connections()}")
+                                    #print(f"{wire.start_point} {wire.end_point} and {pin.prev_connections()}")
                                     if self.convert_to_tuple(wire.start_point) in pin.prev_connections():
                                         wire.update_start_point(pin_dict['connection_points'][idx])
                                     elif self.convert_to_tuple(wire.end_point) in pin.prev_connections():
@@ -468,7 +470,7 @@ class BlocksWindow(Gtk.Window):
     
             # dragging wire complete
             elif self.dragging_wire:
-                print("wire dragged")
+                #print("wire dragged")
                 end_point = None
                 start_block = None
                 end_block = None
@@ -497,6 +499,7 @@ class BlocksWindow(Gtk.Window):
                     if not duplicate_wire:
                         timestamp = datetime.now().isoformat(' ', 'seconds')
                         new_wire = Wire(f"wire {timestamp}", self.wire_start_point, end_point, "wire", self.grid_size, self)
+                        print(f"{new_wire.id} new wire created with name {new_wire.text}")
     
                         # Find the start block or pin
                         for block in self.blocks:
@@ -552,6 +555,7 @@ class BlocksWindow(Gtk.Window):
                         print("Duplicate wire connection detected and ignored.")
                 else:
                     print("Invalid wire connection: both ends must be on valid connection points.")
+                    self.dragging_wire = False
     
             self.drawing_area.queue_draw()
             self.update_json()
@@ -805,14 +809,17 @@ class BlocksWindow(Gtk.Window):
     def delete_block_wire_connections(self):
         try:
             block_dict = self.selected_block.to_dict()
+            print(f"Block to delete {block_dict['name']}")
             for widx, wire in enumerate(self.wires):
                 for idx, input_wires in enumerate(block_dict['input_wires']):
                     if input_wires is not None and wire.id in input_wires:
-                       input_wires[idx] = []
+                       print(f"deleting {input_wires[idx]}")
+                       #input_wires[idx] = []
                        self.delete_wire(wire)
                 for idx, output_wires in enumerate(block_dict['output_wires']):
                     if output_wires is not None and wire.id in output_wires:
-                       output_wires[idx] = []
+                       print(f"deleting {output_wires[idx]}")
+                       #output_wires[idx] = []
                        self.delete_wire(wire)
         except Exception as e:
             print(f"Error in delete_block_wire_connections: {e}")
@@ -820,12 +827,13 @@ class BlocksWindow(Gtk.Window):
     def delete_pin_wire_connections(self):
         try:
             pin_dict = self.selected_pin.to_dict()
+            print(f"Pin to delete {pin_dict['name']}")
             for widx, wire in enumerate(self.wires):
                 for idx, wires in enumerate(pin_dict['wires']):
-                    if wires is not None and wire.id in wires:
-                       print("delete wire")
-                       wires[idx] = []
-                       self.delete_wire(wire)
+                    #if wires is not None and wire.id in wires:
+                       print(f"deleting {wires[idx]}")
+                       #wires[idx] = []
+                       #self.delete_wire(wire)
         except Exception as e:
             print(f"Error in delete_pin_wire_connections: {e}")
 
@@ -840,8 +848,8 @@ class BlocksWindow(Gtk.Window):
                 self.update_json()
             elif self.selected_pin:
                 self.push_undo()
-                self.delete_pin_wire_connections()
                 self.pins.remove(self.selected_pin)
+                self.delete_pin_wire_connections()
                 self.selected_pin = None
                 self.drawing_area.queue_draw()
                 self.update_json()
