@@ -41,6 +41,32 @@ class Block:
         self.update_points()
         self.init_wires()
 
+    def print_wires(self):
+        self.print_input_wires()
+        self.print_output_wires()
+
+    def print_input_wires(self):
+        for index, wire_list in enumerate(self.input_wires):
+            print(f"Wires at pin {index}: {wire_list}")
+
+    def print_output_wires(self):
+        for index, wire_list in enumerate(self.output_wires):
+            print(f"Wires at pin {index}: {wire_list}")
+
+    def get_wires(self):
+        return self.input_wires + self.output_wires
+
+    def get_input_wires(self):
+        return self.input_wires
+
+    def get_output_wires(self):
+        return self.output_wires
+
+    def clear_wires(self):
+        self.input_wires = [[] for _ in self.input_points]
+        self.output_wires = [[] for _ in self.output_points]
+
+
     def prev_connections(self):
         return self.prev_input_points + self.prev_output_points
 

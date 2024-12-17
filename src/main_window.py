@@ -176,8 +176,8 @@ class BlocksWindow(Gtk.Window):
         try:
             self.push_undo()
             # Ensure the initial position and size are multiples of the grid size
-            initial_x = round(random.randint(40, 240) // self.grid_size) * self.grid_size
-            initial_y = round(random.randint(40, 240) // self.grid_size) * self.grid_size
+            initial_x = round(random.randint(40, 400) // self.grid_size) * self.grid_size
+            initial_y = round(random.randint(40, 400) // self.grid_size) * self.grid_size
             initial_width = round(40 // self.grid_size) * self.grid_size  # Half of the current width
             initial_height = round(40 // self.grid_size) * self.grid_size
             timestamp = datetime.now().isoformat(' ', 'seconds')
@@ -192,8 +192,8 @@ class BlocksWindow(Gtk.Window):
         try:
             self.push_undo()
             # Ensure the initial position and size are multiples of the grid size
-            initial_x = round(random.randint(40, 240) // self.grid_size) * self.grid_size
-            initial_y = round(random.randint(40, 240) // self.grid_size) * self.grid_size
+            initial_x = round(random.randint(40, 400) // self.grid_size) * self.grid_size
+            initial_y = round(random.randint(40, 400) // self.grid_size) * self.grid_size
             initial_width = round(40 // self.grid_size) * self.grid_size  # Half of the current width
             initial_height = round(40 // self.grid_size) * self.grid_size
             timestamp = datetime.now().isoformat(' ', 'seconds')
@@ -806,50 +806,83 @@ class BlocksWindow(Gtk.Window):
         except Exception as e:
             print(f"Error in on_copy_block: {e}")
 
+
     def delete_block_wire_connections(self):
         try:
-            block_dict = self.selected_block.to_dict()
-            print(f"Block to delete {block_dict['name']}")
-            for widx, wire in enumerate(self.wires):
-                for idx, input_wires in enumerate(block_dict['input_wires']):
-                    if input_wires is not None and wire.id in input_wires:
-                       print(f"deleting {input_wires[idx]}")
-                       #input_wires[idx] = []
-                       self.delete_wire(wire)
-                for idx, output_wires in enumerate(block_dict['output_wires']):
-                    if output_wires is not None and wire.id in output_wires:
-                       print(f"deleting {output_wires[idx]}")
-                       #output_wires[idx] = []
-                       self.delete_wire(wire)
+            self.selected_block.print_wires()
+            wires_to_remove = []
+
+            for wire in self.wires:
+                print(f"{wire.id}")
+                for idx, i_wire in enumerate(self.selected_block.get_input_wires()):
+                    for widx, w_wire in enumerate(i_wire):
+                        if isinstance(w_wire, str) and wire.id in w_wire:
+                            print(f"deleting {w_wire}")
+                            wires_to_remove.append(wire)
+                for idx, o_wire in enumerate(self.selected_block.get_output_wires()):
+                    for widx, w_wire in enumerate(o_wire):
+                        if isinstance(w_wire, str) and wire.id in w_wire:
+                            print(f"deleting {w_wire}")
+                            wires_to_remove.append(wire)
+
+            # Remove wires outside the loop
+            for wire in wires_to_remove:
+                self.wires.remove(wire)
+
+            self.selected_block.clear_wires()
+            self.selected_block.print_wires()
+
+            # Update the JSON file
+            self.update_json()
+            self.push_undo()
+            self.drawing_area.queue_draw()
+
         except Exception as e:
             print(f"Error in delete_block_wire_connections: {e}")
 
+
     def delete_pin_wire_connections(self):
         try:
-            pin_dict = self.selected_pin.to_dict()
-            print(f"Pin to delete {pin_dict['name']}")
-            for widx, wire in enumerate(self.wires):
-                for idx, wires in enumerate(pin_dict['wires']):
-                    #if wires is not None and wire.id in wires:
-                       print(f"deleting {wires[idx]}")
-                       #wires[idx] = []
-                       #self.delete_wire(wire)
+            self.selected_pin.print_wires()
+            wires_to_remove = []
+    
+            for wire in self.wires:
+                print(f"{wire.id}")
+                for idx, i_wire in enumerate(self.selected_pin.get_wires()):
+                    print(f"GET WIRE {i_wire}")
+                    for widx, w_wire in enumerate(i_wire):
+                        if isinstance(w_wire, str) and wire.id in w_wire:
+                            print(f"deleting {w_wire}")
+                            wires_to_remove.append(wire)
+    
+            # Remove wires outside the loop
+            for wire in wires_to_remove:
+                self.wires.remove(wire)
+    
+            self.selected_pin.clear_wires()
+            self.selected_pin.print_wires()
+    
+            # Update the JSON file
+            self.update_json()
+            self.push_undo()
+            self.drawing_area.queue_draw()
         except Exception as e:
-            print(f"Error in delete_pin_wire_connections: {e}")
+            print(f"An error occurred: {e}")
+    
 
     def on_delete_block(self, widget):
         try:
             if self.selected_block:
                 self.push_undo()
-                self.blocks.remove(self.selected_block)
                 self.delete_block_wire_connections()
+                self.blocks.remove(self.selected_block)
                 self.selected_block = None
                 self.drawing_area.queue_draw()
                 self.update_json()
             elif self.selected_pin:
                 self.push_undo()
-                self.pins.remove(self.selected_pin)
                 self.delete_pin_wire_connections()
+                self.pins.remove(self.selected_pin)
                 self.selected_pin = None
                 self.drawing_area.queue_draw()
                 self.update_json()

@@ -33,6 +33,16 @@ class Pin:
         self.parent_window = parent_window  # Add the parent_window attribute
         self.update_points()
 
+    def get_wires(self):
+        return self.wires
+
+    def clear_wires(self):
+        self.wires = [[] for _ in range(self.num_pins)]
+
+    def print_wires(self):
+        for index, wire_list in enumerate(self.wires):
+            print(f"Wires at pin {index}: {wire_list}")
+
     def set_selected(self, selected):
         self.selected = selected
 
