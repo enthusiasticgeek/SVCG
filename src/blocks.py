@@ -142,14 +142,14 @@ class Block:
                self.input_names = ["T","CLK", "PRE", "CLR"]
                self.output_names = ["Q","Q'"]
         elif self.block_type in ["MUX_2X1"]:
-            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + self.width/2), int(self.y + 2*self.height))]
-            self.output_points = [self.rotate_point(int(self.x + self.width), int(self.y + self.height))]
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 2*self.height))]
+            self.output_points = [self.rotate_point(int(self.x + self.width*(1+1)), int(self.y + self.height))]
             self.input_names = ["I0","I1","S0"]
             self.output_names = ["O0"]
         elif self.block_type in ["MUX_4X1"]:
             #print("MUX_4x1")
-            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)), self.rotate_point(int(self.x + 1*self.width/3), int(self.y + 4*self.height)), self.rotate_point(int(self.x + 2*self.width/3), int(self.y + 4*self.height)) ]
-            self.output_points = [self.rotate_point(int(self.x + self.width), int(self.y + 2*self.height))]
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 4*self.height)), self.rotate_point(int(self.x + 2*self.width), int(self.y + 4*self.height)) ]
+            self.output_points = [self.rotate_point(int(self.x + self.width*(2+1)), int(self.y + 2*self.height))]
             self.input_names = ["I0","I1","I2","I3","S0","S1"]
             self.output_names = ["O0"]
                  
@@ -827,17 +827,58 @@ class Block:
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
         cr.set_source_rgb(*fill_color)
-        cr.rectangle(0, 0, self.width, self.height*sel)
+        cr.rectangle(0, 0, self.width*sel//2 + self.width, self.height*sel)
         cr.fill()
 
         cr.set_source_rgb(*self.border_color)
-        cr.rectangle(0, 0, self.width, self.height*sel)
+        cr.rectangle(0, 0, self.width*sel//2 + self.width, self.height*sel)
         cr.stroke()
 
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
         cr.move_to(10, 10)
         cr.show_text(self.text)
+
+        self.draw_trapezoid(cr, (self.width*sel//2 + self.width)//3, (self.height*sel)//3, self.width/2, self.width/40, self.height/4,90)
+
+    def draw_trapezoid(self, cr, x, y, width, height1, height2, rotation_angle):
+        # Save the current state
+        cr.save()
+
+        # Translate to the center of the trapezoid
+        cr.translate(x + width / 2, y + (height1 + height2) / 2)
+
+        # Rotate around the center
+        cr.rotate(math.radians(rotation_angle))
+
+        # Define the points of the trapezoid
+        points = [
+            (-width / 2, -(height1 + height2) / 2),
+            (width / 2, -(height1 + height2) / 2),
+            (width / 2 + (height2 - height1) / 2, (height2 - height1) / 2),
+            (-width / 2 - (height2 - height1) / 2, (height2 - height1) / 2)
+        ]
+
+        # Move to the first point
+        cr.move_to(*points[0])
+
+        # Draw the lines
+        for point in points[1:]:
+            cr.line_to(*point)
+
+        # Close the path
+        cr.close_path()
+
+        # Fill the trapezoid
+        cr.set_source_rgb(*self.fill_color)
+        cr.fill_preserve()
+
+        # Stroke the border
+        cr.set_source_rgb(*self.border_color)
+        cr.stroke()
+
+        # Restore the previous state
+        cr.restore()
 
 
     def draw_text(self, cr, text, x, y):
