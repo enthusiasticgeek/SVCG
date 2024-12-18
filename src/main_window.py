@@ -110,8 +110,6 @@ class BlocksWindow(Gtk.Window):
         self.expander_flipflops.add(self.flipflop_box)
 
         flipflop_buttons = [
-            ("2X1 MUX", "MUX_2X1"),
-            ("4X1 MUX", "MUX_4X1"),
             ("J-K Flip Flop", "JKFF"),
             ("S-R Flip Flop", "SRFF"),
             ("D Flip Flop", "DFF"),
@@ -122,6 +120,24 @@ class BlocksWindow(Gtk.Window):
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             self.flipflop_box.pack_start(button, False, False, 0)
+
+        # Create an expander for the flip-flops menu
+        self.expander_muxes = Gtk.Expander(label="Muxes")
+        self.left_pane.pack_start(self.expander_muxes, False, False, 0)
+
+        self.muxes_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.expander_muxes.add(self.muxes_box)
+
+        muxe_buttons = [
+            ("2X1 MUX", "MUX_2X1"),
+            ("4X1 MUX", "MUX_4X1"),
+            ("8X1 MUX", "MUX_8X1")
+        ]
+
+        for label, block_type in muxe_buttons:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", self.on_button_clicked, block_type)
+            self.muxes_box.pack_start(button, False, False, 0)
 
         # Create an expander_ops for the operations menu
         self.expander_ops = Gtk.Expander(label="Edit Operations")
