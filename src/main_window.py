@@ -731,11 +731,13 @@ class BlocksWindow(Gtk.Window):
         try:
             if self.selected_block:
                 self.selected_block.rotate(90)
+                self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
             elif self.selected_pin:
                 self.selected_pin.rotate(90)
+                self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
@@ -746,11 +748,13 @@ class BlocksWindow(Gtk.Window):
         try:
             if self.selected_block:
                 self.selected_block.rotate(180)
+                self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
             elif self.selected_pin:
                 self.selected_pin.rotate(180)
+                self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
@@ -761,11 +765,13 @@ class BlocksWindow(Gtk.Window):
         try:
             if self.selected_block:
                 self.selected_block.rotate(270)
+                self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
             elif self.selected_pin:
                 self.selected_pin.rotate(270)
+                self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
@@ -1117,6 +1123,45 @@ class BlocksWindow(Gtk.Window):
             self.redo_button.set_sensitive(len(self.redo_stack) > 0)
         except Exception as e:
             print(f"Error in update_undo_redo_buttons: {e}")
+
+    def update_points(self):
+        for block in self.blocks:
+            #print("block....")
+            #if block.contains_point(int(event.x), int(event.y)):
+                #print(f"block {block.block_type.lower()} drag complete")
+                block_dict = block.to_dict()
+                for widx, wire in enumerate(self.wires):
+                    for idx, input_wires in enumerate(block_dict['input_wires']):
+                        if input_wires is not None and wire.id in input_wires:
+                            #print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
+                            if self.convert_to_tuple(wire.start_point) in block.prev_input_connections():
+                                wire.update_start_point(block_dict['input_points'][idx])
+                            elif self.convert_to_tuple(wire.end_point) in block.prev_input_connections():
+                                wire.update_end_point(block_dict['input_points'][idx])
+                    for idx, output_wires in enumerate(block_dict['output_wires']):
+                        if output_wires is not None and wire.id in output_wires:
+                            #print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
+                            if self.convert_to_tuple(wire.start_point) in block.prev_output_connections():
+                                wire.update_start_point(block_dict['output_points'][idx])
+                            elif self.convert_to_tuple(wire.end_point) in block.prev_output_connections():
+                                wire.update_end_point(block_dict['output_points'][idx])
+                block.update_points()
+                break
+        for pin in self.pins:
+            #print("pin....")
+            #if pin.contains_point(int(event.x), int(event.y)):
+                #print(f"pin {pin.pin_type.lower()} drag complete")
+                pin_dict = pin.to_dict()
+                for widx, wire in enumerate(self.wires):
+                    for idx, wires in enumerate(pin_dict['wires']):
+                        if wires is not None and wire.id in wires:
+                            #print(f"{wire.start_point} {wire.end_point} and {pin.prev_connections()}")
+                            if self.convert_to_tuple(wire.start_point) in pin.prev_connections():
+                                wire.update_start_point(pin_dict['connection_points'][idx])
+                            elif self.convert_to_tuple(wire.end_point) in pin.prev_connections():
+                                wire.update_end_point(pin_dict['connection_points'][idx])
+                pin.update_points()
+                break
 
     def print_wires(self):
         try:

@@ -1011,6 +1011,8 @@ class Block:
 
 
     def rotate(self, angle):
+        self.prev_output_points = self.output_points.copy()
+        self.prev_input_points = self.input_points.copy()
         self.rotation = (self.rotation + angle) % 360
         self.update_points()
 

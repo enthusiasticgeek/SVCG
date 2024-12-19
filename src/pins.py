@@ -402,6 +402,7 @@ class Pin:
         }
 
     def rotate(self, angle):
+        self.prev_connection_points = self.connection_points.copy()
         self.rotation = (self.rotation + angle) % 360
         self.update_points()
 
