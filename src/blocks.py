@@ -126,9 +126,9 @@ class Block:
             self.input_names = ["IN1", "IN2"]
             self.output_names = ["OUT1"]
         elif self.block_type in ["JKFF", "SRFF"]:
-            self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width/2), int(self.y)), self.rotate_point(int(self.x + self.width), int(self.y)), \
-                                 self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x + self.width), int(self.y + self.height/2))] 
-            self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height)), self.rotate_point(int(self.x + self.width), int(self.y + self.height))]
+            self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width), int(self.y)), self.rotate_point(int(self.x + self.width*2), int(self.y)), \
+                                 self.rotate_point(int(self.x), int(self.y + self.height)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height))] 
+            self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height*2)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height*2))]
             if self.block_type in ["JKFF"]:
                self.input_names = ["J","CLK","K", "PRE", "CLR"]
                self.output_names = ["Q","Q'"]
@@ -137,8 +137,8 @@ class Block:
                self.output_names = ["Q","Q'"]
         elif self.block_type in ["DFF", "TFF"]:
             self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width), int(self.y)), \
-                                 self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x + self.width), int(self.y + self.height/2))] 
-            self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height)), self.rotate_point(int(self.x + self.width), int(self.y + self.height))]
+                                 self.rotate_point(int(self.x), int(self.y + self.height)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height))] 
+            self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height*2)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height*2))]
             if self.block_type in ["DFF"]:
                self.input_names = ["D","CLK", "PRE", "CLR"]
                self.output_names = ["Q","Q'"]
@@ -822,11 +822,11 @@ class Block:
         fill_color = (1, 1, 0) if self.selected else self.fill_color
 
         cr.set_source_rgb(*fill_color)
-        cr.rectangle(0, 0, self.width, self.height)
+        cr.rectangle(0, 0, self.width*2, self.height*2)
         cr.fill()
 
         cr.set_source_rgb(*self.border_color)
-        cr.rectangle(0, 0, self.width, self.height)
+        cr.rectangle(0, 0, self.width*2, self.height*2)
         cr.stroke()
 
         cr.set_source_rgb(*self.text_color)
