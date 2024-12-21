@@ -108,9 +108,6 @@ class Block:
             self.input_wires = [[], [], [], [], [], [], [], [], [], [], []]  # Initialize wires list for input points
             self.output_wires = [[]]  # Initialize wires list for output points
 
-
-
-
     def set_selected(self, selected):
         self.selected = selected
 
@@ -178,6 +175,7 @@ class Block:
     def rotate_point(self, x, y):
         # Rotate the point around the center of the block
         cx, cy = self.x + self.width / 2, self.y + self.height / 2
+        #cx, cy = self.x + self.width, self.y + self.height
         angle = math.radians(self.rotation)
         dx, dy = x - cx, y - cy
         new_x = cx + dx * math.cos(angle) - dy * math.sin(angle)

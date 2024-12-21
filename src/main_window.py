@@ -319,7 +319,9 @@ class BlocksWindow(Gtk.Window):
             elif key == "d" and event.state & Gdk.ModifierType.CONTROL_MASK:
                 self.on_delete_block(widget)
             elif key == "p" and event.state & Gdk.ModifierType.CONTROL_MASK:
+                #print("rotate 90 deg CW")
                 self.on_rotate_90(widget)
+            return True
         except Exception as e:
             print(f"Error in on_key_press: {e}")
 
@@ -412,8 +414,8 @@ class BlocksWindow(Gtk.Window):
             print(f"Error in on_button_press: {e}")
     
     def on_button_release(self, widget, event):
-        if not self.drag_started:
-           return True
+        #if not self.drag_started:
+        #   return True
         if event.x < 0 or event.y < 0:
             return False
         if event.button == 1 and event.button == 2 or event.button == 1 and event.button == 3 or event.button == 2 and event.button == 3:
@@ -729,52 +731,58 @@ class BlocksWindow(Gtk.Window):
 
     def on_rotate_90(self, widget):
         try:
-            if self.selected_block:
+            if self.selected_block and self.block_has_no_wires_connected(self.selected_block):
                 self.selected_block.rotate(90)
                 self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
-            elif self.selected_pin:
+            elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
                 self.selected_pin.rotate(90)
                 self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
+            elif not self.block_has_no_wires_connected(self.selected_block) or not self.pin_has_no_wires_connected(self.selected_pin):
+                self.show_error_message("Cannot rotate block/pin", "The block/pin has wires connected. Disconnect wires and try again!")
         except Exception as e:
             print(f"Error in on_rotate_90: {e}")
 
     def on_rotate_180(self, widget):
         try:
-            if self.selected_block:
+            if self.selected_block and self.block_has_no_wires_connected(self.selected_block):
                 self.selected_block.rotate(180)
                 self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
-            elif self.selected_pin:
+            elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
                 self.selected_pin.rotate(180)
                 self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
+            elif not self.block_has_no_wires_connected(self.selected_block) or not self.pin_has_no_wires_connected(self.selected_pin):
+                self.show_error_message("Cannot rotate block/pin", "The block/pin has wires connected. Disconnect wires and try again!")
         except Exception as e:
             print(f"Error in on_rotate_180: {e}")
 
     def on_rotate_270(self, widget):
         try:
-            if self.selected_block:
+            if self.selected_block and self.block_has_no_wires_connected(self.selected_block):
                 self.selected_block.rotate(270)
                 self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
-            elif self.selected_pin:
+            elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
                 self.selected_pin.rotate(270)
                 self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
+            elif not self.block_has_no_wires_connected(self.selected_block) or not self.pin_has_no_wires_connected(self.selected_pin):
+                self.show_error_message("Cannot rotate block/pin", "The block/pin has wires connected. Disconnect wires and try again!")
         except Exception as e:
             print(f"Error in on_rotate_270: {e}")
 
@@ -1163,6 +1171,21 @@ class BlocksWindow(Gtk.Window):
                 pin.update_points()
                 break
 
+    def pin_has_no_wires_connected(self, pin):
+        # Check if all input_wires lists are empty
+        if all(not wires for wires in pin.wires):
+            return True
+        return False
+
+
+    def block_has_no_wires_connected(self, block):
+        # Check if all input_wires lists are empty
+        if all(not wires for wires in block.input_wires):
+            # Check if all output_wires lists are empty
+            if all(not wires for wires in block.output_wires):
+                return True
+        return False
+
     def print_wires(self):
         try:
             print("[main_window] Wires:")
@@ -1185,6 +1208,19 @@ class BlocksWindow(Gtk.Window):
             return input_data
         else:
             raise ValueError("Input must be a list or a tuple")
+
+
+    def show_error_message(self, title, message):
+        dialog = Gtk.MessageDialog(
+            transient_for=self,
+            flags=0,
+            message_type=Gtk.MessageType.ERROR,
+            buttons=Gtk.ButtonsType.OK,
+            text=title,
+        )
+        dialog.format_secondary_text(message)
+        dialog.run()
+        dialog.destroy()
     
 if __name__ == "__main__":
     win = BlocksWindow()
