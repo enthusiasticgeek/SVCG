@@ -10,7 +10,7 @@ class ContextMenu:
 
         change_border_color_item = Gtk.MenuItem(label="Change Border Color")
         change_fill_color_item = Gtk.MenuItem(label="Change Fill Color")
-        change_text_item = Gtk.MenuItem(label="Change Text")
+        change_text_item = Gtk.MenuItem(label="Change Text/Rename")
         change_text_color_item = Gtk.MenuItem(label="Change Text Color")
         rotate_90_item = Gtk.MenuItem(label="Rotate 90° (CTRL + p)")
         rotate_180_item = Gtk.MenuItem(label="Rotate 180°")
