@@ -122,7 +122,7 @@ class BlocksWindow(Gtk.Window):
             self.flipflop_box.pack_start(button, False, False, 0)
 
         # Create an expander for the flip-flops menu
-        self.expander_muxes = Gtk.Expander(label="Muxes")
+        self.expander_muxes = Gtk.Expander(label="Muxes/Buffers")
         self.left_pane.pack_start(self.expander_muxes, False, False, 0)
 
         self.muxes_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -131,7 +131,10 @@ class BlocksWindow(Gtk.Window):
         muxe_buttons = [
             ("2X1 MUX", "MUX_2X1"),
             ("4X1 MUX", "MUX_4X1"),
-            ("8X1 MUX", "MUX_8X1")
+            ("8X1 MUX", "MUX_8X1"),
+            ("TRISTATE BUF 2", "TRISTATEBUF_2"),
+            ("TRISTATE BUF 4", "TRISTATEBUF_4"),
+            ("TRISTATE BUF 8", "TRISTATEBUF_8")
         ]
 
         for label, block_type in muxe_buttons:

@@ -160,6 +160,21 @@ class Block:
             self.output_points = [self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 4*self.height))]
             self.input_names = ["I0","I1","I2","I3","I4","I5","I6","I7","S0","S1","S2"]
             self.output_names = ["O0"]
+        elif self.block_type in ["TRISTATEBUF_2"]:
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 2*self.height))]
+            self.output_points = [self.rotate_point(int(self.x + self.width*(1+1)), int(self.y + self.height/2)), self.rotate_point(int(self.x + self.width*(1+1)), int(self.y + 3*self.height/2))]
+            self.input_names = ["I0","I1","EN"]
+            self.output_names = ["O0","O1"]
+        elif self.block_type in ["TRISTATEBUF_4"]:
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 8*self.height/2))]
+            self.output_points = [self.rotate_point(int(self.x + self.width*(2+1)), int(self.y + self.height/2)), self.rotate_point(int(self.x + self.width*(2+1)), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + self.width*(2+1)), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x + self.width*(2+1)), int(self.y + 7*self.height/2))]
+            self.input_names = ["I0","I1","I2","I3","EN"]
+            self.output_names = ["O0","O1","O2","O3"]
+        elif self.block_type in ["TRISTATEBUF_8"]:
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 9*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 11*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 13*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 15*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 8*self.height))]
+            self.output_points = [self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + self.height/2)), self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 7*self.height/2)),  self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 9*self.height/2)),  self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 11*self.height/2)),  self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 13*self.height/2)),  self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 15*self.height/2))]
+            self.input_names = ["I0","I1","I2","I3","I4","I5","I6","I7","EN"]
+            self.output_names = ["O0","O1","O2","O3","O4","O5","O6","O7"]
                  
              
         # Initialize connections for new points
@@ -211,6 +226,12 @@ class Block:
             self.draw_mux(cr, 4)
         elif self.block_type == "MUX_8X1":
             self.draw_mux(cr, 8)
+        elif self.block_type == "TRISTATEBUF_2":
+            self.draw_buf(cr, 2)
+        elif self.block_type == "TRISTATEBUF_4":
+            self.draw_buf(cr, 4)
+        elif self.block_type == "TRISTATEBUF_8":
+            self.draw_buf(cr, 8)
         else:
             self.draw_default_block(cr)
         cr.stroke()
@@ -891,6 +912,23 @@ class Block:
         # Restore the previous state
         cr.restore()
 
+    def draw_buf(self, cr, sel):
+        mux = 2**sel
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width*sel//2 + self.width, self.height*sel)
+        cr.fill()
+
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, self.width*sel//2 + self.width, self.height*sel)
+        cr.stroke()
+
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(8)  # Reduced font size
+        cr.move_to(10, 10)
+        cr.show_text(self.text)
 
     def draw_text(self, cr, text, x, y):
         cr.set_source_rgb(*self.text_color)
