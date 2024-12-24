@@ -27,8 +27,16 @@ class BlocksWindow(Gtk.Window):
         self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.add(self.box)
 
+        #self.left_pane = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        #self.box.pack_start(self.left_pane, False, False, 0)
+
+        # Wrap the left_pane in a ScrolledWindow
+        self.left_scrolled_window = Gtk.ScrolledWindow()
+        self.left_scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.box.pack_start(self.left_scrolled_window, False, False, 0)
+
         self.left_pane = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.box.pack_start(self.left_pane, False, False, 0)
+        self.left_scrolled_window.add(self.left_pane)
 
         # Add a label to display mouse coordinates
         self.mouse_label = Gtk.Label()

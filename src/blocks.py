@@ -251,7 +251,7 @@ class Block:
         for point, name in zip(self.input_points, self.input_names):
             cr.set_source_rgb(*self.text_color)
             cr.set_font_size(8)
-            cr.move_to(point[0] + 5, point[1] - 10)
+            cr.move_to(point[0] - 10, point[1] + 10)
             cr.show_text(name)
             cr.stroke()
         
@@ -260,7 +260,7 @@ class Block:
         for point, name in zip(self.output_points, self.output_names):
             cr.set_source_rgb(*self.text_color)
             cr.set_font_size(8)
-            cr.move_to(point[0] + 5, point[1] + 10)
+            cr.move_to(point[0] + 10, point[1] + 10)
             cr.show_text(name)
             cr.stroke()
         cr.restore()
