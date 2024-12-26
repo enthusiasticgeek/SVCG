@@ -12,11 +12,15 @@ from pins import Pin  # Import the Pin class
 from wire import Wire
 import json
 import random
+import os
 
 class BlocksWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="Simple VHDL Code Generator (SVCG)")
         self.set_default_size(1000, 600)
+
+        self.current_file_path = None
+        #self.current_file_path = "blocks.json"  # Default file path
 
         self.mouse_x = 0
         self.mouse_y = 0
@@ -26,6 +30,31 @@ class BlocksWindow(Gtk.Window):
 
         self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.add(self.box)
+
+        # Create a menu bar
+        self.menu_bar = Gtk.MenuBar()
+        self.box.pack_start(self.menu_bar, False, False, 0)
+    
+        # Create a file menu
+        file_menu = Gtk.Menu()
+        file_item = Gtk.MenuItem(label="File")
+        file_item.set_submenu(file_menu)
+        self.menu_bar.append(file_item)
+    
+        # Create load file menu item
+        load_file_item = Gtk.MenuItem(label="Load File")
+        load_file_item.connect("activate", self.on_load_file)
+        file_menu.append(load_file_item)
+    
+        # Create save file menu item
+        save_file_item = Gtk.MenuItem(label="Save File")
+        save_file_item.connect("activate", self.on_save_file)
+        file_menu.append(save_file_item)
+    
+        # Create save as file menu item
+        save_as_file_item = Gtk.MenuItem(label="Save As File")
+        save_as_file_item.connect("activate", self.on_save_as_file)
+        file_menu.append(save_as_file_item)
 
         #self.left_pane = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         #self.box.pack_start(self.left_pane, False, False, 0)
@@ -140,15 +169,32 @@ class BlocksWindow(Gtk.Window):
             ("2X1 MUX", "MUX_2X1"),
             ("4X1 MUX", "MUX_4X1"),
             ("8X1 MUX", "MUX_8X1"),
-            ("TRISTATE BUF 2", "TRISTATEBUF_2"),
-            ("TRISTATE BUF 4", "TRISTATEBUF_4"),
-            ("TRISTATE BUF 8", "TRISTATEBUF_8")
+            ("Tristate Buf 2", "TRISTATEBUF_2"),
+            ("Tristate Buf 4", "TRISTATEBUF_4"),
+            ("Tristate Buf 8", "TRISTATEBUF_8")
         ]
 
         for label, block_type in muxe_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             self.muxes_box.pack_start(button, False, False, 0)
+
+        # Create an expander for the arithmetic menu
+        self.expander_arithmetic = Gtk.Expander(label="Arithmetic")
+        self.left_pane.pack_start(self.expander_arithmetic, False, False, 0)
+
+        self.arithmetic_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.expander_arithmetic.add(self.arithmetic_box)
+
+        arithmetic_buttons = [
+            ("Adder", "ADDER"),
+            ("Subtractor", "SUBTRACTOR")
+        ]
+
+        for label, block_type in arithmetic_buttons:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", self.on_button_clicked, block_type)
+            self.arithmetic_box.pack_start(button, False, False, 0)
 
         # Create an expander_ops for the operations menu
         self.expander_ops = Gtk.Expander(label="Edit Operations")
@@ -198,6 +244,13 @@ class BlocksWindow(Gtk.Window):
 
         self.update_undo_redo_buttons()  # Initialize the sensitivity of the buttons
         self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
+
+        #self.load_from_json()
+
+        # Initialize blocks.json with an empty list if it doesn't exist
+        #if not os.path.exists("blocks.json"):
+        #   with open("blocks.json", "w") as file:
+        #        file.write(json.dumps([], indent=4))
 
     def on_button_clicked(self, widget, block_type):
         try:
@@ -743,12 +796,14 @@ class BlocksWindow(Gtk.Window):
     def on_rotate_90(self, widget):
         try:
             if self.selected_block and self.block_has_no_wires_connected(self.selected_block):
+                print("rotate 90 block")
                 self.selected_block.rotate(90)
                 self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()  # Update the JSON file
                 self.push_undo()
             elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
+                print("rotate 90 pin")
                 self.selected_pin.rotate(90)
                 self.update_points()
                 self.drawing_area.queue_draw()
@@ -1070,7 +1125,7 @@ class BlocksWindow(Gtk.Window):
         except Exception as e:
             print(f"Error in reset_wire_by_index: {e}")
 
-    def elements_to_json(self):
+    def elements_to_json_old(self):
         try:
             blocks_dict = [block.to_dict() for block in self.blocks]
             pins_dict = [pin.to_dict() for pin in self.pins]
@@ -1079,9 +1134,24 @@ class BlocksWindow(Gtk.Window):
         except Exception as e:
             print(f"Error in elements_to_json: {e}")
 
+    def elements_to_json(self):
+        try:
+            elements = []
+            if self.blocks:
+                elements.extend([block.to_dict() for block in self.blocks])
+            if self.pins:
+                elements.extend([pin.to_dict() for pin in self.pins])
+            if self.wires:
+                elements.extend([wire.to_dict() for wire in self.wires])
+            return json.dumps(elements, indent=4)
+        except Exception as e:
+            print(f"Error in elements_to_json: {e}")
+    
     def update_json(self):
         try:
-            with open("blocks.json", "w") as file:
+         #print(f"Update JSON")
+         if self.current_file_path:
+            with open(self.current_file_path, "w") as file:
                 file.write(self.elements_to_json())
         except IOError as e:
             print(f"IOError in update_json: {e}")
@@ -1183,18 +1253,20 @@ class BlocksWindow(Gtk.Window):
                 break
 
     def pin_has_no_wires_connected(self, pin):
-        # Check if all input_wires lists are empty
-        if all(not wires for wires in pin.wires):
-            return True
+        if pin:
+           # Check if all input_wires lists are empty
+           if all(not wires for wires in pin.wires):
+              return True
         return False
 
 
     def block_has_no_wires_connected(self, block):
-        # Check if all input_wires lists are empty
-        if all(not wires for wires in block.input_wires):
-            # Check if all output_wires lists are empty
-            if all(not wires for wires in block.output_wires):
-                return True
+        if block:
+           # Check if all input_wires lists are empty
+           if all(not wires for wires in block.input_wires):
+               # Check if all output_wires lists are empty
+               if all(not wires for wires in block.output_wires):
+                   return True
         return False
 
     def print_wires(self):
@@ -1219,7 +1291,99 @@ class BlocksWindow(Gtk.Window):
             return input_data
         else:
             raise ValueError("Input must be a list or a tuple")
+   
+    def on_load_file(self, widget):
+        dialog = Gtk.FileChooserDialog(
+            title="Load File",
+            parent=self,
+            action=Gtk.FileChooserAction.OPEN
+        )
+        dialog.add_buttons(
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT
+        )
+    
+        # Add a filter to only show JSON files
+        filter_json = Gtk.FileFilter()
+        filter_json.set_name("JSON files")
+        filter_json.add_mime_type("application/json")
+        filter_json.add_pattern("*.json")
+        dialog.add_filter(filter_json)
+    
+        response = dialog.run()
+        if response == Gtk.ResponseType.ACCEPT:
+            file_path = dialog.get_filename()
+            self.load_from_json(file_path)
+        dialog.destroy()
 
+    def save_to_json(self, file_path):
+        try:
+            elements = self.elements_to_json()
+            print(f"Saving to file: {file_path}")
+            print(f"Data to save: {elements}")
+            if elements != "[]":  # Only save if there are elements to save
+                with open(file_path, "w") as file:
+                    file.write(elements)
+            else:
+                print("No data to save. The elements list is empty.")
+        except IOError as e:
+            print(f"IOError in save_to_json: {e}")
+        except Exception as e:
+            print(f"Error in save_to_json: {e}")
+    
+    def load_from_json(self, file_path):
+        try:
+            print(f"Loading from file: {file_path}")
+            with open(file_path, "r") as file:
+                data = json.load(file)
+                print(f"Loaded data: {data}")
+                if data:  # Check if data is not empty
+                    self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]
+                    self.pins = [Pin.from_dict(pin_dict, self) for pin_dict in data if pin_dict.get("pin_type")]
+                    self.wires = [Wire.from_dict(wire_dict, self) for wire_dict in data if wire_dict.get("start_point") or wire_dict.get("end_point")]
+                    self.drawing_area.queue_draw()
+                    self.current_file_path = file_path  # Update the current file path
+                else:
+                    print("The file is empty or contains no valid data.")
+        except json.JSONDecodeError as e:
+            print(f"JSONDecodeError in load_from_json: {e}")
+        except IOError as e:
+            print(f"IOError in load_from_json: {e}")
+        except Exception as e:
+            print(f"Error in load_from_json: {e}")
+    
+    
+    def on_save_file(self, widget):
+        if self.current_file_path:
+            self.save_to_json(self.current_file_path)
+        else:
+            self.on_save_as_file(widget)
+    
+    def on_save_as_file(self, widget):
+        dialog = Gtk.FileChooserDialog(
+            title="Save As File",
+            parent=self,
+            action=Gtk.FileChooserAction.SAVE
+        )
+        dialog.add_buttons(
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT
+        )
+    
+        # Add a filter to only show JSON files
+        filter_json = Gtk.FileFilter()
+        filter_json.set_name("JSON files")
+        filter_json.add_mime_type("application/json")
+        filter_json.add_pattern("*.json")
+        dialog.add_filter(filter_json)
+    
+        response = dialog.run()
+        if response == Gtk.ResponseType.ACCEPT:
+            file_path = dialog.get_filename()
+            self.save_to_json(file_path)
+            self.current_file_path = file_path
+        dialog.destroy()
+    
 
     def show_error_message(self, title, message):
         dialog = Gtk.MessageDialog(
