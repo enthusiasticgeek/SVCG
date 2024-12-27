@@ -1396,6 +1396,41 @@ class BlocksWindow(Gtk.Window):
         dialog.format_secondary_text(message)
         dialog.run()
         dialog.destroy()
+
+    def on_view_vhdl_code(self, widget):
+        try:
+            if self.selected_block:
+                block_type = self.selected_block.block_type.lower()
+                vhdl_file_path = f"vhdl/{block_type}.vhd"
+                if os.path.exists(vhdl_file_path):
+                    with open(vhdl_file_path, "r") as file:
+                        vhdl_code = file.read()
+                    self.show_vhdl_code_dialog(vhdl_code)
+                else:
+                    self.show_error_message("VHDL Code Not Found", f"The VHDL code for {block_type} was not found.")
+        except Exception as e:
+            print(f"Error in on_view_vhdl_code: {e}")
+
+    def show_vhdl_code_dialog(self, vhdl_code):
+        dialog = Gtk.Dialog(title="VHDL Code", parent=self, flags=0)
+        dialog.set_default_size(600, 400)
+    
+        scrolled_window = Gtk.ScrolledWindow()
+        scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        dialog.get_content_area().pack_start(scrolled_window, True, True, 0)  # Ensure it takes up the full space
+    
+        text_view = Gtk.TextView()
+        text_view.set_editable(False)  # Make the text view read-only
+        text_view.set_wrap_mode(Gtk.WrapMode.NONE)  # Disable text wrapping
+        text_buffer = text_view.get_buffer()
+        text_buffer.set_text(vhdl_code)
+        scrolled_window.add(text_view)
+    
+        #dialog.add_button(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+    
     
 if __name__ == "__main__":
     win = BlocksWindow()

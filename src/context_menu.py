@@ -17,6 +17,7 @@ class ContextMenu:
         rotate_270_item = Gtk.MenuItem(label="Rotate 270°")
         copy_item = Gtk.MenuItem(label="Copy (CTRL + c)")
         delete_item = Gtk.MenuItem(label="Delete (CTRL + d)")
+        view_vhdl_item = Gtk.MenuItem(label="View VHDL Code")
 
         change_border_color_item.connect("activate", self.on_change_border_color)
         change_fill_color_item.connect("activate", self.on_change_fill_color)
@@ -27,6 +28,7 @@ class ContextMenu:
         rotate_270_item.connect("activate", self.on_rotate_270)
         copy_item.connect("activate", self.on_copy_block)
         delete_item.connect("activate", self.on_delete_block)
+        view_vhdl_item.connect("activate", self.on_view_vhdl_code)
 
         self.context_menu.append(change_border_color_item)
         self.context_menu.append(change_fill_color_item)
@@ -37,6 +39,7 @@ class ContextMenu:
         self.context_menu.append(rotate_270_item)
         self.context_menu.append(copy_item)
         self.context_menu.append(delete_item)
+        self.context_menu.append(view_vhdl_item)
         self.context_menu.show_all()
 
     def popup(self, event):
@@ -68,6 +71,10 @@ class ContextMenu:
 
     def on_delete_block(self, widget):
         self.parent_window.on_delete_block(widget)
+
+    def on_view_vhdl_code(self, widget):
+        self.parent_window.on_view_vhdl_code(widget)
+
 
 class PinContextMenu:
     def __init__(self, parent_window):
