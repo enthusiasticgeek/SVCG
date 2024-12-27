@@ -89,25 +89,40 @@ class Pin:
         cr.translate(-self.width / 2, -self.height / 2)
 
         # Draw arrows based on pin type
+        if "CLK" in self.pin_type:
+            #self.border_color = (0, 0, 0.4)  # Default border color (blue)
+            self.draw_vdd_clk_gnd(cr,self.pin_type)
+            self.draw_input_arrow(cr)
+        if "GND" in self.pin_type:
+            #self.border_color = (0, 0, 0)  # Default border color (black)
+            self.draw_vdd_clk_gnd(cr,self.pin_type)
+            self.draw_input_arrow(cr)
+        if "VDD_5V" or "VDD_3V3" or "VDD_1V8" or "VDD_1V2" in self.pin_type:
+            #self.border_color = (0.9, 0, 0)  # Default border color (red)
+            self.draw_input_arrow(cr)
+            self.draw_vdd_clk_gnd(cr,self.pin_type)
         if "input_pin" in self.pin_type.lower():
+            #self.border_color = (0, 0.4, 0)  # Default border color (green)
             self.draw_pin(cr)
             self.draw_input_arrow(cr)
         if "output_pin" in self.pin_type.lower():
+            #self.border_color = (0, 0.4, 0)  # Default border color (green)
             self.draw_pin(cr)
             self.draw_output_arrow(cr)
         if "input_output_pin" in self.pin_type.lower():
+            #self.border_color = (0, 0.4, 0)  # Default border color (green)
             self.draw_pin(cr)
             self.draw_input_arrow(cr)
             self.draw_output_arrow(cr)
         if "input_bus" in self.pin_type.lower():
+            #self.border_color = (0, 0.4, 0)  # Default border color (green)
             self.draw_bus(cr)
         if "output_bus" in self.pin_type.lower():
+            #self.border_color = (0, 0.4, 0)  # Default border color (green)
             self.draw_bus(cr)
         if "input_output_bus" in self.pin_type.lower():
+            #self.border_color = (0, 0.4, 0)  # Default border color (green)
             self.draw_bus(cr)
-        if "CLK" or "GND" or "VDD_5V" or "VDD_3V3" or "VDD_1V8" or "VDD_1V2" in self.pin_type:
-            self.draw_vdd_clk_gnd(cr,self.pin_type)
-            self.draw_input_arrow(cr)
         self.update_points()
 
         cr.restore()

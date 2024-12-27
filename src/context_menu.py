@@ -75,6 +75,11 @@ class ContextMenu:
     def on_view_vhdl_code(self, widget):
         self.parent_window.on_view_vhdl_code(widget)
 
+    def set_view_vhdl_code_sensitive(self, sensitive):
+        for item in self.context_menu.get_children():
+            if item.get_label() == "View VHDL Code":
+                item.set_sensitive(sensitive)
+                break
 
 class PinContextMenu:
     def __init__(self, parent_window):
@@ -99,7 +104,6 @@ class PinContextMenu:
 
     def on_disconnect(self, widget):
         self.parent_window.on_disconnect_pin(widget)
-
 
 class WireContextMenu(Gtk.Menu):
     def __init__(self, parent):

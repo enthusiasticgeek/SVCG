@@ -447,6 +447,7 @@ class BlocksWindow(Gtk.Window):
                     if block.contains_point(int(event.x), int(event.y)):
                         self.selected_block = block
                         block.set_selected(True)
+                        self.context_menu.set_view_vhdl_code_sensitive(True)  # Enable VHDL code menu item
                         if block.contains_pin(int(event.x), int(event.y)):
                             self.pin_context_menu.popup(event)
                         else:
@@ -456,6 +457,7 @@ class BlocksWindow(Gtk.Window):
                     if pin.contains_point(int(event.x), int(event.y)):
                         self.selected_pin = pin
                         pin.set_selected(True)
+                        self.context_menu.set_view_vhdl_code_sensitive(False)  # Disable VHDL code menu item
                         connection_point = pin.contains_pin(int(event.x), int(event.y))
                         if connection_point:
                             self.pin_context_menu.popup(event)
