@@ -144,21 +144,21 @@ class Block:
                self.output_names = ["Q","Q'"]
         elif self.block_type in ["MUX_2X1"]:
             #print("MUX_2x1")
-            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 2*self.height))]
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 2*self.height)), self.rotate_point(int(self.x + 2*self.width), int(self.y + 2*self.height))]
             self.output_points = [self.rotate_point(int(self.x + self.width*(1+1)), int(self.y + self.height))]
-            self.input_names = ["I0","I1","S0"]
+            self.input_names = ["I0","I1","S0","EN"]
             self.output_names = ["O0"]
         elif self.block_type in ["MUX_4X1"]:
             #print("MUX_4x1")
-            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 4*self.height)), self.rotate_point(int(self.x + 2*self.width), int(self.y + 4*self.height)) ]
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 4*self.height)), self.rotate_point(int(self.x + 2*self.width), int(self.y + 4*self.height)), self.rotate_point(int(self.x + 3*self.width), int(self.y + 4*self.height)) ]
             self.output_points = [self.rotate_point(int(self.x + self.width*(2+1)), int(self.y + 2*self.height))]
-            self.input_names = ["I0","I1","I2","I3","S0","S1"]
+            self.input_names = ["I0","I1","I2","I3","S0","S1","EN"]
             self.output_names = ["O0"]
         elif self.block_type in ["MUX_8X1"]:
             #print("MUX_8x1")
-            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 9*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 11*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 13*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 15*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 8*self.height)), self.rotate_point(int(self.x + 2*self.width), int(self.y + 8*self.height)), self.rotate_point(int(self.x + 3*self.width), int(self.y + 8*self.height))]
+            self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x), int(self.y + 7*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 9*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 11*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 13*self.height/2)),  self.rotate_point(int(self.x), int(self.y + 15*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 8*self.height)), self.rotate_point(int(self.x + 2*self.width), int(self.y + 8*self.height)), self.rotate_point(int(self.x + 3*self.width), int(self.y + 8*self.height)), self.rotate_point(int(self.x + 4*self.width), int(self.y + 8*self.height))]
             self.output_points = [self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 4*self.height))]
-            self.input_names = ["I0","I1","I2","I3","I4","I5","I6","I7","S0","S1","S2"]
+            self.input_names = ["I0","I1","I2","I3","I4","I5","I6","I7","S0","S1","S2","EN"]
             self.output_names = ["O0"]
         elif self.block_type in ["TRISTATEBUF_2"]:
             self.input_points = [self.rotate_point(int(self.x), int(self.y + self.height/2)), self.rotate_point(int(self.x), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + 1*self.width), int(self.y + 2*self.height))]
