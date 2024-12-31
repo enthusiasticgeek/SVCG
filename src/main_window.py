@@ -7,6 +7,7 @@ from context_menu import ContextMenu
 from context_menu import PinContextMenu
 from context_menu import WireContextMenu
 from drawing_area import DrawingArea
+from menu import MenuBar
 from datetime import datetime
 from pins import Pin  # Import the Pin class
 from wire import Wire
@@ -28,9 +29,31 @@ class BlocksWindow(Gtk.Window):
         self.clipboard_block = None
         self.clipboard_pin = None
 
-        self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        self.add(self.box)
+        self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.add(self.vbox)
 
+        # Create an instance of MenuBar
+        self.menu_bar = MenuBar(self)
+
+        # Add the menu from MenuBar to the BlocksWindow
+        menubar = self.menu_bar.uimanager.get_widget("/MenuBar")
+        self.vbox.pack_start(menubar, False, False, 0)
+
+        expander_tb = Gtk.Expander(label="ToolBar")
+        self.vbox.pack_start(expander_tb, False, False, 0)
+
+
+        toolbar = self.menu_bar.uimanager.get_widget("/ToolBar")
+        #self.vbox.pack_start(toolbar, False, False, 0)
+        expander_tb.add(toolbar)
+
+
+        #eventbox = Gtk.EventBox()
+        #eventbox.connect("button-press-event", self.on_button_press_event)
+        #self.vbox.pack_start(eventbox, True, True, 0)
+
+
+        """
         # Create a menu bar
         self.menu_bar = Gtk.MenuBar()
         self.box.pack_start(self.menu_bar, False, False, 0)
@@ -55,6 +78,11 @@ class BlocksWindow(Gtk.Window):
         save_as_file_item = Gtk.MenuItem(label="Save As File")
         save_as_file_item.connect("activate", self.on_save_as_file)
         file_menu.append(save_as_file_item)
+        """
+
+        self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.vbox.pack_start(self.box, True, True, 0)
+
 
         #self.left_pane = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         #self.box.pack_start(self.left_pane, False, False, 0)
@@ -1302,6 +1330,7 @@ class BlocksWindow(Gtk.Window):
         else:
             raise ValueError("Input must be a list or a tuple")
    
+    """
     def on_load_file(self, widget):
         dialog = Gtk.FileChooserDialog(
             title="Load File",
@@ -1325,6 +1354,7 @@ class BlocksWindow(Gtk.Window):
             file_path = dialog.get_filename()
             self.load_from_json(file_path)
         dialog.destroy()
+    """
 
     def save_to_json(self, file_path):
         try:
@@ -1363,6 +1393,7 @@ class BlocksWindow(Gtk.Window):
             print(f"Error in load_from_json: {e}")
     
     
+    """
     def on_save_file(self, widget):
         if self.current_file_path:
             self.save_to_json(self.current_file_path)
@@ -1393,6 +1424,7 @@ class BlocksWindow(Gtk.Window):
             self.save_to_json(file_path)
             self.current_file_path = file_path
         dialog.destroy()
+    """
     
 
     def show_error_message(self, title, message):
