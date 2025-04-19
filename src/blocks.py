@@ -107,6 +107,21 @@ class Block:
         elif self.block_type in ["MUX_8X1"]:
             self.input_wires = [[], [], [], [], [], [], [], [], [], [], []]  # Initialize wires list for input points
             self.output_wires = [[]]  # Initialize wires list for output points
+        elif self.block_type in ["TRISTATEBUF_2"]:
+            self.input_wires = [[], [], []]  # Initialize wires list for input points
+            self.output_wires = [[], []]  # Initialize wires list for output points
+        elif self.block_type in ["TRISTATEBUF_4"]:
+            self.input_wires = [[], [], [], [], []]  # Initialize wires list for input points
+            self.output_wires = [[], [], [], []]  # Initialize wires list for output points
+        elif self.block_type in ["TRISTATEBUF_8"]:
+            self.input_wires = [[], [], [], [], [], [], [], [], []]  # Initialize wires list for input points
+            self.output_wires = [[], [], [], [], [], [], [], []]  # Initialize wires list for output points
+        elif self.block_type in ["FA","FA_GC", "FA_WC"]:
+            self.input_wires = [[], [], [], []]  # Initialize wires list for input points
+            self.output_wires = [[], []]  # Initialize wires list for output points
+        elif self.block_type in ["HA"]:
+            self.input_wires = [[], []]  # Initialize wires list for input points
+            self.output_wires = [[], []]  # Initialize wires list for output points
 
     def set_selected(self, selected):
         self.selected = selected
@@ -132,6 +147,12 @@ class Block:
             elif self.block_type in ["SRFF"]:
                self.input_names = ["S","CLK","R", "PRE", "CLR"]
                self.output_names = ["Q","Q'"]
+        elif self.block_type in ["DFF_PIPELINE"]:
+            self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width*2), int(self.y)), \
+                                 self.rotate_point(int(self.x), int(self.y + self.height))] 
+            self.output_points = [self.rotate_point(int(self.x + self.width), int(self.y + self.height*2))]
+            self.input_names = ["D","CLK", "N_RST"]
+            self.output_names = ["Q"]
         elif self.block_type in ["DFF", "TFF"]:
             self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width), int(self.y)), \
                                  self.rotate_point(int(self.x), int(self.y + self.height)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height))] 
@@ -175,6 +196,17 @@ class Block:
             self.output_points = [self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + self.height/2)), self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 3*self.height/2)), self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 5*self.height/2)), self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 7*self.height/2)),  self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 9*self.height/2)),  self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 11*self.height/2)),  self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 13*self.height/2)),  self.rotate_point(int(self.x + self.width*(2+3)), int(self.y + 15*self.height/2))]
             self.input_names = ["I0","I1","I2","I3","I4","I5","I6","I7","EN"]
             self.output_names = ["O0","O1","O2","O3","O4","O5","O6","O7"]
+        elif self.block_type in ["FA","FA_GC", "FA_WC"]:
+            self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width*2), int(self.y)), \
+                                 self.rotate_point(int(self.x), int(self.y + self.height)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height))] 
+            self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height*2)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height*2))]
+            self.input_names = ["SI","CI", "A", "B"]
+            self.output_names = ["CO","SO"]
+        elif self.block_type in ["HA"]:
+            self.input_points = [self.rotate_point(int(self.x), int(self.y)), self.rotate_point(int(self.x + self.width*2), int(self.y))]
+            self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height*2)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height*2))]
+            self.input_names = ["A", "B"]
+            self.output_names = ["CO","SO"]
                  
              
         # Initialize connections for new points
@@ -218,6 +250,8 @@ class Block:
             self.draw_xnor_block(cr)
         elif self.block_type == "JKFF" or self.block_type == "SRFF":
             self.draw_flipflop_block(cr)
+        elif self.block_type == "DFF_PIPELINE":
+            self.draw_flipflop_block(cr)
         elif self.block_type == "DFF" or self.block_type == "TFF":
             self.draw_flipflop_block(cr)
         elif self.block_type == "MUX_2X1":
@@ -232,6 +266,10 @@ class Block:
             self.draw_buf(cr, 4)
         elif self.block_type == "TRISTATEBUF_8":
             self.draw_buf(cr, 8)
+        elif self.block_type == "FA" or self.block_type == "FA_GC" or self.block_type == "FA_WC":
+            self.draw_fa(cr)
+        elif self.block_type == "HA":
+            self.draw_ha(cr)
         else:
             self.draw_default_block(cr)
         cr.stroke()
@@ -923,6 +961,40 @@ class Block:
 
         cr.set_source_rgb(*self.border_color)
         cr.rectangle(0, 0, self.width*sel//2 + self.width, self.height*sel)
+        cr.stroke()
+
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(8)  # Reduced font size
+        cr.move_to(10, 10)
+        cr.show_text(self.text)
+
+    def draw_fa(self, cr):
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width*2, self.height*2)
+        cr.fill()
+
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, self.width*2, self.height*2)
+        cr.stroke()
+
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(8)  # Reduced font size
+        cr.move_to(10, 10)
+        cr.show_text(self.text)
+
+    def draw_ha(self, cr):
+        # Set fill color based on selection state
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width*2, self.height*2)
+        cr.fill()
+
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, self.width*2, self.height*2)
         cr.stroke()
 
         cr.set_source_rgb(*self.text_color)

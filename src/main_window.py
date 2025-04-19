@@ -179,6 +179,7 @@ class BlocksWindow(Gtk.Window):
         flipflop_buttons = [
             ("J-K Flip Flop", "JKFF"),
             ("S-R Flip Flop", "SRFF"),
+            ("D Flip Flop Pipeline", "DFF_PIPELINE"),
             ("D Flip Flop", "DFF"),
             ("T Flip Flop", "TFF")
         ]
@@ -218,19 +219,18 @@ class BlocksWindow(Gtk.Window):
         self.arithmetic_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.expander_arithmetic.add(self.arithmetic_box)
 
-        """
         arithmetic_buttons = [
-            ("Adder", "ADDER"),
-            ("Subtractor", "SUBTRACTOR")
+            ("Full Adder", "FA"),
+            ("Half Adder", "HA"),
+            ("Full Adder Gray Cell", "FA_GC"),
+            ("Full Adder White Cell", "FA_WC")
         ]
 
         for label, block_type in arithmetic_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             button.set_tooltip_text("Right click top left area of the generated block for more options!")
-            self.muxes_box.pack_start(button, False, False, 0)
             self.arithmetic_box.pack_start(button, False, False, 0)
-        """
 
         # Create an expander_ops for the operations menu
         self.expander_ops = Gtk.Expander(label="Edit Operations")
