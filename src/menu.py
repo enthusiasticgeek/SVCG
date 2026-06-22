@@ -47,6 +47,11 @@ class MenuBar:
         file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Generate VHDL...",             self.on_generate_vhdl))
         file_menu.append(Gtk.SeparatorMenuItem())
+        file_menu.append(_mi("Export as SVG...",             self.on_export_svg))
+        file_menu.append(_mi("Export as PNG...",             self.on_export_png))
+        file_menu.append(Gtk.SeparatorMenuItem())
+        file_menu.append(_mi("Toggle Dark Mode",             self.on_toggle_dark_mode))
+        file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Quit",                         self.on_menu_file_quit))
 
         menubar.append(file_item)
@@ -285,6 +290,20 @@ class MenuBar:
         if confirm_response != Gtk.ResponseType.YES:
             return
         self.on_load_json_file(widget)
+
+    def on_export_svg(self, widget):
+        self.main_window.on_export_svg(widget)
+
+    def on_export_png(self, widget):
+        self.main_window.on_export_png(widget)
+
+    def on_toggle_dark_mode(self, widget):
+        mw = self.main_window
+        mw.dark_mode = not mw.dark_mode
+        Gtk.Settings.get_default().set_property(
+            "gtk-application-prefer-dark-theme", mw.dark_mode
+        )
+        mw.drawing_area.queue_draw()
 
     def on_menu_file_quit(self, widget):
         Gtk.main_quit()

@@ -68,15 +68,39 @@ class Wire:
             print("Start or end point is None. Cannot calculate path.")
             return []
         grid = self.parent_window.drawing_area.grid
-        astar = AStar(grid)
-        start_point = (int(self.start_point[0] / self.grid_size), int(self.start_point[1] / self.grid_size))
-        end_point = (int(self.end_point[0] / self.grid_size), int(self.end_point[1] / self.grid_size))
-        came_from, cost_so_far = astar.astar(start_point, end_point)
-        path = astar.reconstruct_path(came_from, start_point, end_point)
-        if not path:
-            print(f"A* found no path {start_point}→{end_point}; using Manhattan fallback")
-            path = self._manhattan_path(start_point, end_point)
-        return path
+        sc0 = int(self.start_point[0] / self.grid_size)
+        sc1 = int(self.start_point[1] / self.grid_size)
+        ec0 = int(self.end_point[0] / self.grid_size)
+        ec1 = int(self.end_point[1] / self.grid_size)
+
+        # Clip A* to a padded bounding box so search is O(margin^2) not O(grid^2)
+        MARGIN = 25
+        d0, d1 = grid.shape
+        r0 = max(0, min(sc0, ec0) - MARGIN)
+        r1 = min(d0, max(sc0, ec0) + MARGIN + 1)
+        c0 = max(0, min(sc1, ec1) - MARGIN)
+        c1 = min(d1, max(sc1, ec1) + MARGIN + 1)
+        sub_grid = grid[r0:r1, c0:c1]
+
+        start_local = (sc0 - r0, sc1 - c0)
+        end_local   = (ec0 - r0, ec1 - c0)
+
+        astar = AStar(sub_grid)
+        came_from, _ = astar.astar(start_local, end_local)
+        path_local = astar.reconstruct_path(came_from, start_local, end_local)
+
+        if path_local:
+            return [(px + r0, py + c0) for px, py in path_local]
+
+        # bbox too tight or blocked — retry on full grid before Manhattan
+        astar_full = AStar(grid)
+        came_from_full, _ = astar_full.astar((sc0, sc1), (ec0, ec1))
+        path_full = astar_full.reconstruct_path(came_from_full, (sc0, sc1), (ec0, ec1))
+        if path_full:
+            return path_full
+
+        print(f"A* found no path ({sc0},{sc1})->({ec0},{ec1}); using Manhattan fallback")
+        return self._manhattan_path((sc0, sc1), (ec0, ec1))
 
     def _manhattan_path(self, start, end):
         """L-shaped Manhattan path: horizontal segment then vertical segment."""

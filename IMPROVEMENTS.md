@@ -78,11 +78,11 @@ All templates now exist in `src/vhdl/`:
 - `vhdl_viewer.py` — `VhdlViewerMixin`: per-block VHDL template dialog (3 methods)
 - `BlocksWindow` inherits from all three mixins + `Gtk.Window`; all `self.xxx` call sites unchanged
 
-### 3.3 Replace `Block.init_wires()` lookup table with data-driven config
-`blocks.py:init_wires` is a 30-branch `elif` chain. Replace with a dict mapping `block_type` → `(num_inputs, num_outputs)`.
+### 3.3 Replace `Block.init_wires()` lookup table with data-driven config ✅
+`blocks.py:init_wires` replaced with `_WIRE_COUNTS` dict mapping `block_type` → `(n_inputs, n_outputs)`. Also added `DFF_PIPELINE` which was missing from the old elif chain.
 
-### 3.4 A* grid resolution
-The A* grid maps 1 cell per `grid_size` pixel (20px → 1 cell). On a 5000×5000 canvas this is a 250×250 grid — manageable, but wire routing still blocks on complex schematics. Consider limiting A* to a bounding box around the start/end points, or switching to a rectilinear Steiner tree for multi-segment routes.
+### 3.4 A* grid resolution ✅
+A* search is now clipped to a padded bounding box (25-cell margin) around start/end points instead of the full 250×250 canvas grid. Falls back to full-grid A* if the bounding box is too tight, then to Manhattan if both fail. Implemented in `wire.py:calculate_path_astar`.
 
 ### 3.5 Wire routing — Manhattan fallback ✅
 `wire.py:_manhattan_path` — when A* returns `[]`, an L-shaped Manhattan route is generated so wires always appear.
@@ -100,11 +100,11 @@ Connect to an open-source HDL simulator (GHDL or Icarus Verilog via a Verilog ex
 ### 4.3 Netlist import
 Import EDIF or JSON netlists from third-party tools and auto-place blocks on the canvas.
 
-### 4.4 Dark mode / theme support
-Respect the GTK theme. Currently all colors are hardcoded (green grid, black borders, gray fills).
+### 4.4 Dark mode / theme support ✅
+`File > Toggle Dark Mode` flips `gtk-application-prefer-dark-theme` (darkens menus/toolbar/buttons) and repaints the canvas with a dark background, dim green grid dots, and light gray axis labels. Toggle is persistent within a session. Implemented via `self.dark_mode` flag in `main_window.py`, `on_toggle_dark_mode` in `menu.py`, and updated `on_draw` in `event_handler.py`.
 
-### 4.5 Export canvas as SVG/PNG
-Right-click → "Export as image" using Cairo's SVG/PDF surface.
+### 4.5 Export canvas as SVG/PNG ✅
+`File > Export as SVG...` and `File > Export as PNG...` crop to a tight bounding box of all schematic elements (blocks, pins, wires) with 40px padding, render blocks/pins/wires onto a Cairo surface, and save. Implemented in `main_window.py` (`_compute_bbox`, `_render_schematic`, `on_export_svg`, `on_export_png`) and wired into `menu.py`.
 
 ---
 

@@ -224,6 +224,7 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Gtk.
         self.drawing_area.grab_focus()
 
         self.dirty = False
+        self.dark_mode = False
 
         self.status_bar = Gtk.Label()
         self.status_bar.set_markup("<span color='#555555'>Ready</span>")
@@ -737,6 +738,113 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Gtk.
                 print("Disconnect pin")
         except Exception as e:
             print(f"Error in on_disconnect_pin: {e}")
+
+    # ------------------------------------------------------------------
+    # Canvas export (SVG / PNG)
+    # ------------------------------------------------------------------
+
+    def _compute_bbox(self, padding=40):
+        xs, ys = [], []
+        for b in self.blocks:
+            xs += [b.x, b.x + b.width]
+            ys += [b.y, b.y + b.height]
+        for p in self.pins:
+            xs += [p.x, p.x + p.width]
+            ys += [p.y, p.y + p.height]
+        for w in self.wires:
+            for gx, gy in (w.path or []):
+                xs.append(gx * self.grid_size)
+                ys.append(gy * self.grid_size)
+        if not xs:
+            return 0, 0, 400, 300
+        return (max(0, min(xs) - padding), max(0, min(ys) - padding),
+                max(xs) + padding, max(ys) + padding)
+
+    def _render_schematic(self, cr):
+        for block in self.blocks:
+            block.draw(cr)
+        for pin in self.pins:
+            pin.draw(cr)
+        for wire in self.wires:
+            wire.draw(cr)
+
+    def on_export_svg(self, widget):
+        try:
+            import cairo as _cairo
+            if not self.blocks and not self.pins:
+                self.show_error_message("Nothing to export", "Add blocks and pins to the canvas first.")
+                return
+            dialog = Gtk.FileChooserDialog(
+                title="Export as SVG", parent=self,
+                action=Gtk.FileChooserAction.SAVE,
+            )
+            dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                Gtk.STOCK_SAVE,   Gtk.ResponseType.ACCEPT)
+            flt = Gtk.FileFilter()
+            flt.set_name("SVG files (*.svg)")
+            flt.add_pattern("*.svg")
+            dialog.add_filter(flt)
+            base = os.path.splitext(os.path.basename(self.current_file_path))[0] if self.current_file_path else "schematic"
+            dialog.set_current_name(f"{base}.svg")
+            resp = dialog.run()
+            if resp == Gtk.ResponseType.ACCEPT:
+                path = dialog.get_filename()
+                if not path.lower().endswith(".svg"):
+                    path += ".svg"
+                dialog.destroy()
+                x0, y0, x1, y1 = self._compute_bbox()
+                w, h = max(1.0, x1 - x0), max(1.0, y1 - y0)
+                surface = _cairo.SVGSurface(path, w, h)
+                cr = _cairo.Context(surface)
+                cr.set_source_rgb(1, 1, 1)
+                cr.paint()
+                cr.translate(-x0, -y0)
+                self._render_schematic(cr)
+                surface.finish()
+            else:
+                dialog.destroy()
+        except Exception as e:
+            self.show_error_message("SVG export failed", str(e))
+            print(f"Error in on_export_svg: {e}")
+
+    def on_export_png(self, widget):
+        try:
+            import cairo as _cairo
+            if not self.blocks and not self.pins:
+                self.show_error_message("Nothing to export", "Add blocks and pins to the canvas first.")
+                return
+            dialog = Gtk.FileChooserDialog(
+                title="Export as PNG", parent=self,
+                action=Gtk.FileChooserAction.SAVE,
+            )
+            dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                Gtk.STOCK_SAVE,   Gtk.ResponseType.ACCEPT)
+            flt = Gtk.FileFilter()
+            flt.set_name("PNG files (*.png)")
+            flt.add_pattern("*.png")
+            dialog.add_filter(flt)
+            base = os.path.splitext(os.path.basename(self.current_file_path))[0] if self.current_file_path else "schematic"
+            dialog.set_current_name(f"{base}.png")
+            resp = dialog.run()
+            if resp == Gtk.ResponseType.ACCEPT:
+                path = dialog.get_filename()
+                if not path.lower().endswith(".png"):
+                    path += ".png"
+                dialog.destroy()
+                x0, y0, x1, y1 = self._compute_bbox()
+                w, h = max(1, int(x1 - x0)), max(1, int(y1 - y0))
+                surface = _cairo.ImageSurface(_cairo.FORMAT_ARGB32, w, h)
+                cr = _cairo.Context(surface)
+                cr.set_source_rgb(1, 1, 1)
+                cr.paint()
+                cr.translate(-x0, -y0)
+                self._render_schematic(cr)
+                surface.write_to_png(path)
+            else:
+                dialog.destroy()
+        except Exception as e:
+            self.show_error_message("PNG export failed", str(e))
+            print(f"Error in on_export_png: {e}")
 
 
 if __name__ == "__main__":

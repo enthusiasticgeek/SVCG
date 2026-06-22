@@ -14,14 +14,26 @@ class EventHandlerMixin:
 
     def on_draw(self, widget, cr):
         try:
-            cr.set_source_rgb(0, 1, 0)
+            dark = getattr(self, 'dark_mode', False)
             width, height = DrawingArea.CANVAS_SIZE, DrawingArea.CANVAS_SIZE
+
+            # Canvas background
+            if dark:
+                cr.set_source_rgb(0.12, 0.12, 0.12)
+            else:
+                cr.set_source_rgb(1.0, 1.0, 1.0)
+            cr.rectangle(0, 0, width, height)
+            cr.fill()
+
+            # Grid dots
+            cr.set_source_rgb(0, 0.55, 0) if dark else cr.set_source_rgb(0, 1, 0)
             for x in range(0, width, self.grid_size):
                 for y in range(0, height, self.grid_size):
                     cr.rectangle(x, y, 2, 2)
                     cr.fill()
 
-            cr.set_source_rgb(0, 0, 0)
+            # Axis labels
+            cr.set_source_rgb(0.75, 0.75, 0.75) if dark else cr.set_source_rgb(0, 0, 0)
             cr.set_font_size(12)
             for i, x in enumerate(range(0, width, self.grid_size)):
                 label = self.get_column_label(i)
