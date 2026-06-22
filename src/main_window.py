@@ -36,15 +36,14 @@ class BlocksWindow(Gtk.Window):
         self.menu_bar = MenuBar(self)
 
         # Add the menu from MenuBar to the BlocksWindow
-        menubar = self.menu_bar.uimanager.get_widget("/MenuBar")
+        menubar = self.menu_bar.menubar
         self.vbox.pack_start(menubar, False, False, 0)
 
         expander_tb = Gtk.Expander(label="ToolBar")
         self.vbox.pack_start(expander_tb, False, False, 0)
 
 
-        toolbar = self.menu_bar.uimanager.get_widget("/ToolBar")
-        #self.vbox.pack_start(toolbar, False, False, 0)
+        toolbar = self.menu_bar.toolbar
         expander_tb.add(toolbar)
 
 

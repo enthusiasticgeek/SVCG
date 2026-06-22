@@ -7,6 +7,37 @@ with entity + architecture (Structural).
 """
 
 import re
+import shutil
+import subprocess
+import tempfile
+import os
+
+
+def check_vhdl_syntax(vhd_path):
+    """
+    Run 'ghdl -a <file>' if ghdl is on PATH.
+    Returns (available, success, output_text).
+      available : bool  -- False if ghdl is not installed
+      success   : bool  -- True if ghdl exited 0
+      output    : str   -- combined stdout+stderr from ghdl
+    """
+    ghdl = shutil.which("ghdl")
+    if not ghdl:
+        return False, False, ""
+    try:
+        # Use a temp workdir so ghdl doesn't litter the project dir
+        with tempfile.TemporaryDirectory() as workdir:
+            result = subprocess.run(
+                [ghdl, "-a", "--std=08", vhd_path],
+                cwd=workdir,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+        output = (result.stdout + result.stderr).strip()
+        return True, result.returncode == 0, output
+    except Exception as exc:
+        return True, False, str(exc)
 
 # Maps block_type -> VHDL entity name
 ENTITY_MAP = {

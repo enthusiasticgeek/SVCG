@@ -57,19 +57,19 @@ Window title shows `*` prefix when unsaved changes exist. Closing the window wit
 ### 2.2 VHDL syntax check / preview
 After generation, run `ghdl -a` (if installed) to verify the output compiles. Display errors inline.
 
-### 2.3 Add missing VHDL templates
-Currently only basic gates and flip-flops have templates. Needed:
-- MUX 2×1, 4×1, 8×1
-- Tristate buffer 2, 4, 8
-- Full/Half adder
-- DFF pipeline
+### 2.3 Add missing VHDL templates ✅
+All templates now exist in `src/vhdl/`:
+- MUX 2×1, 4×1, 8×1 — `mux_2x1.vhd`, `mux_4x1.vhd`, `mux_8x1.vhd`
+- Tristate buffer 2, 4, 8 — `tristatebuf_2.vhd`, `tristatebuf_4.vhd`, `tristatebuf_8.vhd`
+- Full/Half adder — `fa.vhd`, `fa_gc.vhd`, `fa_wc.vhd`, `ha.vhd`
+- DFF pipeline — `dff_pipeline.vhd`
 
 ---
 
 ## P3 — Architecture / Code Quality (pay down tech debt)
 
-### 3.1 Replace deprecated `Gtk.UIManager` / `Gtk.Action`
-`menu.py` uses `Gtk.UIManager` and `Gtk.Action` which were deprecated in GTK 3.10 and removed in GTK 4. Migrate to `Gio.SimpleAction` + `Gio.Menu` for future-proofing and to eliminate deprecation warnings at startup.
+### 3.1 Replace deprecated `Gtk.UIManager` / `Gtk.Action` ✅
+`menu.py` rewritten without `Gtk.UIManager`, `Gtk.ActionGroup`, `Gtk.Action`, `Gtk.ToggleAction`, or `Gtk.STOCK_*`. Menu bar and toolbar are now built directly as `Gtk.MenuBar`/`Gtk.Toolbar` with `Gtk.MenuItem`/`Gtk.ToolButton`. `main_window.py` updated to access `menu_bar.menubar` and `menu_bar.toolbar` directly.
 
 ### 3.2 Split `main_window.py` into focused modules
 `main_window.py` is ~1500 lines covering event handling, JSON I/O, undo/redo, VHDL display, and UI construction. Suggested split:
@@ -83,8 +83,8 @@ Currently only basic gates and flip-flops have templates. Needed:
 ### 3.4 A* grid resolution
 The A* grid maps 1 cell per `grid_size` pixel (20px → 1 cell). On a 5000×5000 canvas this is a 250×250 grid — manageable, but wire routing still blocks on complex schematics. Consider limiting A* to a bounding box around the start/end points, or switching to a rectilinear Steiner tree for multi-segment routes.
 
-### 3.5 Wire routing — Manhattan fallback
-When A* fails to find a path (returns `[]`), the wire silently disappears. Add a Manhattan routing fallback so the user always gets a visible (if imperfect) connection.
+### 3.5 Wire routing — Manhattan fallback ✅
+`wire.py:_manhattan_path` — when A* returns `[]`, an L-shaped Manhattan route is generated so wires always appear.
 
 ---
 

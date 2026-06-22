@@ -85,43 +85,36 @@ class Block:
     def output_connections(self):
         return self.output_points
 
+    # (num_inputs, num_outputs) for each block type
+    _WIRE_COUNTS = {
+        "NOT":           (1, 1),
+        "AND":           (2, 1),
+        "NAND":          (2, 1),
+        "OR":            (2, 1),
+        "NOR":           (2, 1),
+        "XOR":           (2, 1),
+        "XNOR":          (2, 1),
+        "JKFF":          (5, 2),
+        "SRFF":          (5, 2),
+        "DFF":           (4, 2),
+        "TFF":           (4, 2),
+        "DFF_PIPELINE":  (3, 1),
+        "MUX_2X1":       (3, 1),
+        "MUX_4X1":       (6, 1),
+        "MUX_8X1":       (11, 1),
+        "TRISTATEBUF_2": (3, 2),
+        "TRISTATEBUF_4": (5, 4),
+        "TRISTATEBUF_8": (9, 8),
+        "FA":            (4, 2),
+        "FA_GC":         (4, 2),
+        "FA_WC":         (4, 2),
+        "HA":            (2, 2),
+    }
+
     def init_wires(self):
-        if self.block_type == "NOT":
-            self.input_wires = [[]]  # Initialize wires list for input points
-            self.output_wires = [[]]  # Initialize wires list for output points
-        elif self.block_type in ["AND", "NAND", "OR", "NOR", "XOR", "XNOR"]:
-            self.input_wires = [[], []]  # Initialize wires list for input points
-            self.output_wires = [[]]  # Initialize wires list for output points
-        elif self.block_type in ["JKFF", "SRFF"]:
-            self.input_wires = [[], [], [], [], []]  # Initialize wires list for input points
-            self.output_wires = [[], []]  # Initialize wires list for output points
-        elif self.block_type in ["DFF", "TFF"]:
-            self.input_wires = [[], [], [], []]  # Initialize wires list for input points
-            self.output_wires = [[], []]  # Initialize wires list for output points
-        elif self.block_type in ["MUX_2X1"]:
-            self.input_wires = [[], [], []]  # Initialize wires list for input points
-            self.output_wires = [[]]  # Initialize wires list for output points
-        elif self.block_type in ["MUX_4X1"]:
-            self.input_wires = [[], [], [], [], [], []]  # Initialize wires list for input points
-            self.output_wires = [[]]  # Initialize wires list for output points
-        elif self.block_type in ["MUX_8X1"]:
-            self.input_wires = [[], [], [], [], [], [], [], [], [], [], []]  # Initialize wires list for input points
-            self.output_wires = [[]]  # Initialize wires list for output points
-        elif self.block_type in ["TRISTATEBUF_2"]:
-            self.input_wires = [[], [], []]  # Initialize wires list for input points
-            self.output_wires = [[], []]  # Initialize wires list for output points
-        elif self.block_type in ["TRISTATEBUF_4"]:
-            self.input_wires = [[], [], [], [], []]  # Initialize wires list for input points
-            self.output_wires = [[], [], [], []]  # Initialize wires list for output points
-        elif self.block_type in ["TRISTATEBUF_8"]:
-            self.input_wires = [[], [], [], [], [], [], [], [], []]  # Initialize wires list for input points
-            self.output_wires = [[], [], [], [], [], [], [], []]  # Initialize wires list for output points
-        elif self.block_type in ["FA","FA_GC", "FA_WC"]:
-            self.input_wires = [[], [], [], []]  # Initialize wires list for input points
-            self.output_wires = [[], []]  # Initialize wires list for output points
-        elif self.block_type in ["HA"]:
-            self.input_wires = [[], []]  # Initialize wires list for input points
-            self.output_wires = [[], []]  # Initialize wires list for output points
+        n_in, n_out = self._WIRE_COUNTS.get(self.block_type, (0, 0))
+        self.input_wires  = [[] for _ in range(n_in)]
+        self.output_wires = [[] for _ in range(n_out)]
 
     def set_selected(self, selected):
         self.selected = selected
