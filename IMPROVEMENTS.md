@@ -26,9 +26,8 @@ These are bugs that cause silent data loss or crashes during normal use.
 ### 1.1 Wire label editing ✅
 Right-click a wire → "Rename (set net name)" dialog. Wire text is saved to JSON and displayed on canvas. Net names will carry into VHDL `signal` declarations.
 
-### 1.2 Multi-select and group operations
-Hold Shift and click to select multiple blocks/pins/wires. Enable group move, group delete, group copy.
-Without this, rearranging a complex circuit requires many individual drags.
+### 1.2 Multi-select and group operations ✅
+Shift+click toggles blocks/pins/wires in a persistent multi-select list. Group move (drag any selected item moves all), group delete (Ctrl+D), group copy (Ctrl+C duplicates all selected with 2-grid offset). Escape clears selection. Status bar shows "N items selected" when multiple are active.
 
 ### 1.3 Zoom in/out ✅
 Ctrl+scroll-wheel zoom (0.2×–4.0×). Canvas coordinates are correctly transformed; A* grid and mouse hit-testing both account for zoom level.

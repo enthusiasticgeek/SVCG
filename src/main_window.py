@@ -274,6 +274,11 @@ class BlocksWindow(Gtk.Window):
         self.selected_pin = None  # Variable to store the selected pin
         self.selected_wire = None  # Variable to store the selected wire
 
+        # Multi-select lists (Shift+click)
+        self.selected_blocks = []
+        self.selected_pins = []
+        self.selected_wires = []
+
         # Initialize undo/redo stacks
         self.undo_stack = []
         self.redo_stack = []
@@ -305,7 +310,10 @@ class BlocksWindow(Gtk.Window):
 
     def update_status_bar(self):
         parts = []
-        if self.selected_block:
+        total_sel = len(self.selected_blocks) + len(self.selected_pins) + len(self.selected_wires)
+        if total_sel > 1:
+            parts.append(f"Selected: {total_sel} items (Blocks:{len(self.selected_blocks)} Pins:{len(self.selected_pins)} Wires:{len(self.selected_wires)})")
+        elif self.selected_block:
             parts.append(f"Block: {self.selected_block.text} [{self.selected_block.block_type}]")
         elif self.selected_pin:
             parts.append(f"Pin: {self.selected_pin.text} [{self.selected_pin.pin_type}]")
@@ -480,9 +488,24 @@ class BlocksWindow(Gtk.Window):
             elif key == "p" and event.state & Gdk.ModifierType.CONTROL_MASK:
                 #print("rotate 90 deg CW")
                 self.on_rotate_90(widget)
+            elif key == "Escape":
+                self._clear_multi_select()
+                self.drawing_area.queue_draw()
+                self.update_status_bar()
             return True
         except Exception as e:
             print(f"Error in on_key_press: {e}")
+
+    def _clear_multi_select(self):
+        for b in self.selected_blocks:
+            b.set_selected(False)
+        for p in self.selected_pins:
+            p.set_selected(False)
+        for w in self.selected_wires:
+            w.set_selected(False)
+        self.selected_blocks = []
+        self.selected_pins = []
+        self.selected_wires = []
 
     def on_button_press(self, widget, event):
        if not self.drag_started:
@@ -494,45 +517,93 @@ class BlocksWindow(Gtk.Window):
         try:
             self.push_undo()  # Push the current state to the undo stack
             if event.button == 1:  # Left click
-                #print("Left button pressed")
-                self.selected_block = None
-                self.selected_pin = None
-                self.selected_wire = None
-                #######################
-                # dragging wire only
-                #######################
-                for block in self.blocks:
-                    if block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                        self.wire_start_point = block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
-                        self.dragging_wire = True
-                        break
-                for pin in self.pins:
-                    if pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                        self.wire_start_point = pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
-                        self.dragging_wire = True
-                        break
-                #######################
-                # not dragging wire?
-                # then move the block
-                #######################
-                if not self.dragging_wire:
+                shift_held = bool(event.state & Gdk.ModifierType.SHIFT_MASK)
+                cx = int(event.x / self.drawing_area.zoom)
+                cy = int(event.y / self.drawing_area.zoom)
+
+                if shift_held:
+                    # Shift+click: toggle item in multi-select, no wire dragging
+                    clicked = False
                     for block in self.blocks:
-                        if block.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                            self.selected_block = block
-                            block.set_selected(True)
-                            block.start_drag(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
+                        if block.contains_point(cx, cy):
+                            if block in self.selected_blocks:
+                                self.selected_blocks.remove(block)
+                                block.set_selected(False)
+                            else:
+                                self.selected_blocks.append(block)
+                                block.set_selected(True)
+                                self.selected_block = block
+                            clicked = True
+                            break
+                    if not clicked:
+                        for pin in self.pins:
+                            if pin.contains_point(cx, cy):
+                                if pin in self.selected_pins:
+                                    self.selected_pins.remove(pin)
+                                    pin.set_selected(False)
+                                else:
+                                    self.selected_pins.append(pin)
+                                    pin.set_selected(True)
+                                    self.selected_pin = pin
+                                clicked = True
+                                break
+                    if not clicked:
+                        for wire in self.wires:
+                            if wire.contains_point(cx, cy):
+                                if wire in self.selected_wires:
+                                    self.selected_wires.remove(wire)
+                                    wire.set_selected(False)
+                                else:
+                                    self.selected_wires.append(wire)
+                                    wire.set_selected(True)
+                                    self.selected_wire = wire
+                                break
+                    # Start drag on all selected for group move
+                    for b in self.selected_blocks:
+                        b.start_drag(cx, cy)
+                    for p in self.selected_pins:
+                        p.start_drag(cx, cy)
+                else:
+                    # Plain click: clear multi-select, normal single-select
+                    self._clear_multi_select()
+                    self.selected_block = None
+                    self.selected_pin = None
+                    self.selected_wire = None
+                    #######################
+                    # dragging wire only
+                    #######################
+                    for block in self.blocks:
+                        if block.contains_pin(cx, cy):
+                            self.wire_start_point = block.contains_pin(cx, cy)
+                            self.dragging_wire = True
                             break
                     for pin in self.pins:
-                        if pin.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                            self.selected_pin = pin
-                            pin.set_selected(True)
-                            pin.start_drag(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
+                        if pin.contains_pin(cx, cy):
+                            self.wire_start_point = pin.contains_pin(cx, cy)
+                            self.dragging_wire = True
                             break
-                    for wire in self.wires:
-                        if wire.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                            self.selected_wire = wire
-                            wire.set_selected(True)
-                            break
+                    #######################
+                    # not dragging wire?
+                    # then move the block
+                    #######################
+                    if not self.dragging_wire:
+                        for block in self.blocks:
+                            if block.contains_point(cx, cy):
+                                self.selected_block = block
+                                block.set_selected(True)
+                                block.start_drag(cx, cy)
+                                break
+                        for pin in self.pins:
+                            if pin.contains_point(cx, cy):
+                                self.selected_pin = pin
+                                pin.set_selected(True)
+                                pin.start_drag(cx, cy)
+                                break
+                        for wire in self.wires:
+                            if wire.contains_point(cx, cy):
+                                self.selected_wire = wire
+                                wire.set_selected(True)
+                                break
             elif event.button == 2:  # middle click
                 #print("Middle button pressed")
                 pass
@@ -598,11 +669,13 @@ class BlocksWindow(Gtk.Window):
             self.push_undo()
             for block in self.blocks:
                 block.end_drag()
-                block.set_selected(False)
+                if block not in self.selected_blocks:
+                    block.set_selected(False)
                 block.update_points()
             for pin in self.pins:
                 pin.end_drag()
-                pin.set_selected(False)
+                if pin not in self.selected_pins:
+                    pin.set_selected(False)
                 pin.update_points()
     
             # dragging pins/block complete
@@ -956,10 +1029,42 @@ class BlocksWindow(Gtk.Window):
 
     def on_copy_block(self, widget):
         try:
-            if self.selected_block:
+            if self.selected_blocks or self.selected_pins:
+                self.push_undo()
+                offset = self.grid_size * 2
+                new_blocks = []
+                new_pins = []
+                for block in list(self.selected_blocks):
+                    nb = Block(block.x + offset, block.y + offset, block.width, block.height,
+                               block.text, block.block_type, self.grid_size, self)
+                    nb.border_color = block.border_color
+                    nb.fill_color = block.fill_color
+                    nb.text_color = block.text_color
+                    nb.rotation = block.rotation
+                    self.blocks.append(nb)
+                    new_blocks.append(nb)
+                for pin in list(self.selected_pins):
+                    np_ = Pin(pin.x + offset, pin.y + offset, pin.width, pin.height,
+                              pin.text, pin.pin_type, self.grid_size, pin.num_pins, self)
+                    np_.border_color = pin.border_color
+                    np_.fill_color = pin.fill_color
+                    np_.text_color = pin.text_color
+                    np_.rotation = pin.rotation
+                    self.pins.append(np_)
+                    new_pins.append(np_)
+                # Swap selection to copies
+                self._clear_multi_select()
+                for nb in new_blocks:
+                    nb.set_selected(True)
+                    self.selected_blocks.append(nb)
+                for np_ in new_pins:
+                    np_.set_selected(True)
+                    self.selected_pins.append(np_)
+                self.drawing_area.queue_draw()
+                self.update_json()
+            elif self.selected_block:
                 self.clipboard_block = self.selected_block
                 self.clipboard_pin = None  # Clear the pin clipboard
-                # Create a copy of the selected block
                 new_block = Block(
                     self.selected_block.x + self.grid_size,
                     self.selected_block.y + self.grid_size,
@@ -981,7 +1086,6 @@ class BlocksWindow(Gtk.Window):
             elif self.selected_pin:
                 self.clipboard_pin = self.selected_pin
                 self.clipboard_block = None  # Clear the block clipboard
-                # Create a copy of the selected pin
                 new_pin = Pin(
                     self.selected_pin.x + self.grid_size,
                     self.selected_pin.y + self.grid_size,
@@ -990,7 +1094,7 @@ class BlocksWindow(Gtk.Window):
                     self.selected_pin.text,
                     self.selected_pin.pin_type,
                     self.grid_size,
-                    self.selected_pin.num_pins,  # Include number of pins for buses
+                    self.selected_pin.num_pins,
                     self
                 )
                 new_pin.border_color = self.selected_pin.border_color
@@ -1070,7 +1174,25 @@ class BlocksWindow(Gtk.Window):
 
     def on_delete_block(self, widget):
         try:
-            if self.selected_block:
+            if self.selected_blocks or self.selected_pins:
+                self.push_undo()
+                for block in list(self.selected_blocks):
+                    self.selected_block = block
+                    self.delete_block_wire_connections()
+                    if block in self.blocks:
+                        self.blocks.remove(block)
+                for pin in list(self.selected_pins):
+                    self.selected_pin = pin
+                    self.delete_pin_wire_connections()
+                    if pin in self.pins:
+                        self.pins.remove(pin)
+                self.selected_blocks = []
+                self.selected_pins = []
+                self.selected_block = None
+                self.selected_pin = None
+                self.drawing_area.queue_draw()
+                self.update_json()
+            elif self.selected_block:
                 self.push_undo()
                 self.delete_block_wire_connections()
                 self.blocks.remove(self.selected_block)
@@ -1089,7 +1211,25 @@ class BlocksWindow(Gtk.Window):
 
     def on_cut_block(self, widget):
         try:
-            if self.selected_block:
+            if self.selected_blocks or self.selected_pins:
+                self.push_undo()
+                for block in list(self.selected_blocks):
+                    self.selected_block = block
+                    self.delete_block_wire_connections()
+                    if block in self.blocks:
+                        self.blocks.remove(block)
+                for pin in list(self.selected_pins):
+                    self.selected_pin = pin
+                    self.delete_pin_wire_connections()
+                    if pin in self.pins:
+                        self.pins.remove(pin)
+                self.selected_blocks = []
+                self.selected_pins = []
+                self.selected_block = None
+                self.selected_pin = None
+                self.drawing_area.queue_draw()
+                self.update_json()
+            elif self.selected_block:
                 self.push_undo()
                 self.delete_block_wire_connections()
                 self.clipboard_block = self.selected_block
