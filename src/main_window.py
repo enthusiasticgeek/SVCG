@@ -9,19 +9,21 @@ from context_menu import WireContextMenu
 from drawing_area import DrawingArea
 from menu import MenuBar
 from datetime import datetime
-from pins import Pin  # Import the Pin class
+from pins import Pin
 from wire import Wire
-import json
+from project_manager import ProjectManagerMixin
+from event_handler import EventHandlerMixin
+from vhdl_viewer import VhdlViewerMixin
 import random
 import os
 
-class BlocksWindow(Gtk.Window):
+
+class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Gtk.Window):
     def __init__(self):
         super().__init__(title="Simple VHDL Code Generator (SVCG)")
         self.set_default_size(1000, 600)
 
         self.current_file_path = None
-        #self.current_file_path = "blocks.json"  # Default file path
 
         self.mouse_x = 0
         self.mouse_y = 0
@@ -32,61 +34,18 @@ class BlocksWindow(Gtk.Window):
         self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.add(self.vbox)
 
-        # Create an instance of MenuBar
         self.menu_bar = MenuBar(self)
-
-        # Add the menu from MenuBar to the BlocksWindow
         menubar = self.menu_bar.menubar
         self.vbox.pack_start(menubar, False, False, 0)
 
         expander_tb = Gtk.Expander(label="ToolBar")
         self.vbox.pack_start(expander_tb, False, False, 0)
-
-
         toolbar = self.menu_bar.toolbar
         expander_tb.add(toolbar)
-
-
-        #eventbox = Gtk.EventBox()
-        #eventbox.connect("button-press-event", self.on_button_press_event)
-        #self.vbox.pack_start(eventbox, True, True, 0)
-
-
-        """
-        # Create a menu bar
-        self.menu_bar = Gtk.MenuBar()
-        self.box.pack_start(self.menu_bar, False, False, 0)
-    
-        # Create a file menu
-        file_menu = Gtk.Menu()
-        file_item = Gtk.MenuItem(label="File")
-        file_item.set_submenu(file_menu)
-        self.menu_bar.append(file_item)
-    
-        # Create load file menu item
-        load_file_item = Gtk.MenuItem(label="Load File")
-        load_file_item.connect("activate", self.on_load_file)
-        file_menu.append(load_file_item)
-    
-        # Create save file menu item
-        save_file_item = Gtk.MenuItem(label="Save File")
-        save_file_item.connect("activate", self.on_save_file)
-        file_menu.append(save_file_item)
-    
-        # Create save as file menu item
-        save_as_file_item = Gtk.MenuItem(label="Save As File")
-        save_as_file_item.connect("activate", self.on_save_as_file)
-        file_menu.append(save_as_file_item)
-        """
 
         self.box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.vbox.pack_start(self.box, True, True, 0)
 
-
-        #self.left_pane = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        #self.box.pack_start(self.left_pane, False, False, 0)
-
-        # Wrap the left_pane in a ScrolledWindow
         self.left_scrolled_window = Gtk.ScrolledWindow()
         self.left_scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.box.pack_start(self.left_scrolled_window, False, False, 0)
@@ -94,12 +53,10 @@ class BlocksWindow(Gtk.Window):
         self.left_pane = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.left_scrolled_window.add(self.left_pane)
 
-        # Add a label to display mouse coordinates
         self.mouse_label = Gtk.Label()
         self.mouse_label.set_markup(f"<span color='green'>Cursor: (0,0)</span>")
         self.left_pane.pack_start(self.mouse_label, False, False, 0)
 
-        # Create an expander_basic_ios for the basic_ios menu
         self.expander_basic_ios = Gtk.Expander(label="Clk/Vdd/Gnd")
         self.left_pane.pack_start(self.expander_basic_ios, False, False, 0)
 
@@ -107,45 +64,39 @@ class BlocksWindow(Gtk.Window):
         self.expander_basic_ios.add(self.basic_ios_box)
 
         self.connections = []
-        # Add buttons for creating basic_ios and buses
         basic_io_buttons = [
             ("CLK", "CLK"),
             ("GND", "GND"),
             ("VDD 5V", "VDD_5V"),
             ("VDD 3.3V", "VDD_3V3"),
             ("VDD 1.8V", "VDD_1V8"),
-            ("VDD 1.2V", "VDD_1V2")
+            ("VDD 1.2V", "VDD_1V2"),
         ]
-
         for label, basic_io_type in basic_io_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_pin_button_clicked, basic_io_type)
             self.basic_ios_box.pack_start(button, False, False, 0)
 
-        # Create an expander_pins for the pins menu
         self.expander_pins = Gtk.Expander(label="IO Pins/Buses")
         self.left_pane.pack_start(self.expander_pins, False, False, 0)
 
         self.pins_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.expander_pins.add(self.pins_box)
 
-        # Add buttons for creating pins and buses
         pin_buttons = [
             ("Input Pin", "input_pin"),
             ("Output Pin", "output_pin"),
             ("Input/Output Pin", "input_output_pin"),
             ("Input Bus", "input_bus"),
             ("Output Bus", "output_bus"),
-            ("Input/Output Bus", "input_output_bus")
+            ("Input/Output Bus", "input_output_bus"),
         ]
-
         for label, pin_type in pin_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_pin_button_clicked, pin_type)
             button.set_tooltip_text("Right click top left area of the generated pin for more options!")
             self.pins_box.pack_start(button, False, False, 0)
 
-        # Create an expander for the digital gates menu
         self.expander_gates = Gtk.Expander(label="Digital Gates")
         self.left_pane.pack_start(self.expander_gates, False, False, 0)
 
@@ -159,16 +110,14 @@ class BlocksWindow(Gtk.Window):
             ("NAND Gate", "NAND"),
             ("NOR Gate", "NOR"),
             ("XOR Gate", "XOR"),
-            ("XNOR Gate", "XNOR")
+            ("XNOR Gate", "XNOR"),
         ]
-
         for label, block_type in gates_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             button.set_tooltip_text("Right click top left area of the generated block for more options!")
             self.gate_box.pack_start(button, False, False, 0)
 
-        # Create an expander for the flip-flops menu
         self.expander_flipflops = Gtk.Expander(label="Flip-Flops")
         self.left_pane.pack_start(self.expander_flipflops, False, False, 0)
 
@@ -180,16 +129,14 @@ class BlocksWindow(Gtk.Window):
             ("S-R Flip Flop", "SRFF"),
             ("D Flip Flop Pipeline", "DFF_PIPELINE"),
             ("D Flip Flop", "DFF"),
-            ("T Flip Flop", "TFF")
+            ("T Flip Flop", "TFF"),
         ]
-
         for label, block_type in flipflop_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             button.set_tooltip_text("Right click top left area of the generated block for more options!")
             self.flipflop_box.pack_start(button, False, False, 0)
 
-        # Create an expander for the flip-flops menu
         self.expander_muxes = Gtk.Expander(label="Muxes/Buffers")
         self.left_pane.pack_start(self.expander_muxes, False, False, 0)
 
@@ -202,16 +149,14 @@ class BlocksWindow(Gtk.Window):
             ("8X1 MUX", "MUX_8X1"),
             ("Tristate Buf 2", "TRISTATEBUF_2"),
             ("Tristate Buf 4", "TRISTATEBUF_4"),
-            ("Tristate Buf 8", "TRISTATEBUF_8")
+            ("Tristate Buf 8", "TRISTATEBUF_8"),
         ]
-
         for label, block_type in muxe_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             button.set_tooltip_text("Right click top left area of the generated block for more options!")
             self.muxes_box.pack_start(button, False, False, 0)
 
-        # Create an expander for the arithmetic menu
         self.expander_arithmetic = Gtk.Expander(label="Arithmetic")
         self.left_pane.pack_start(self.expander_arithmetic, False, False, 0)
 
@@ -222,23 +167,20 @@ class BlocksWindow(Gtk.Window):
             ("Full Adder", "FA"),
             ("Half Adder", "HA"),
             ("Full Adder Gray Cell", "FA_GC"),
-            ("Full Adder White Cell", "FA_WC")
+            ("Full Adder White Cell", "FA_WC"),
         ]
-
         for label, block_type in arithmetic_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             button.set_tooltip_text("Right click top left area of the generated block for more options!")
             self.arithmetic_box.pack_start(button, False, False, 0)
 
-        # Create an expander_ops for the operations menu
         self.expander_ops = Gtk.Expander(label="Edit Operations")
         self.left_pane.pack_start(self.expander_ops, False, False, 0)
 
         self.ops_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.expander_ops.add(self.ops_box)
 
-        # Add undo/redo buttons
         self.undo_button = Gtk.Button(label="Undo [CTRL+z]")
         self.undo_button.connect("clicked", self.on_undo)
         self.ops_box.pack_start(self.undo_button, False, False, 0)
@@ -247,7 +189,6 @@ class BlocksWindow(Gtk.Window):
         self.redo_button.connect("clicked", self.on_redo)
         self.ops_box.pack_start(self.redo_button, False, False, 0)
 
-        # Wrap the DrawingArea in a ScrolledWindow
         self.scrolled_window = Gtk.ScrolledWindow()
         self.scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.drawing_area = DrawingArea(self)
@@ -256,7 +197,7 @@ class BlocksWindow(Gtk.Window):
         self.box.pack_start(self.scrolled_window, True, True, 0)
 
         self.blocks = []
-        self.pins = []  # List to store pins
+        self.pins = []
         self.grid_size = 20
 
         self.wires = []
@@ -264,31 +205,26 @@ class BlocksWindow(Gtk.Window):
         self.drag_started = False
         self.wire_start_point = None
 
-        # Create context menu
         self.context_menu = ContextMenu(self)
         self.pin_context_menu = PinContextMenu(self)
         self.wire_context_menu = WireContextMenu(self)
 
         self.selected_block = None
-        self.selected_pin = None  # Variable to store the selected pin
-        self.selected_wire = None  # Variable to store the selected wire
+        self.selected_pin = None
+        self.selected_wire = None
 
-        # Multi-select lists (Shift+click)
         self.selected_blocks = []
         self.selected_pins = []
         self.selected_wires = []
 
-        # Initialize undo/redo stacks
         self.undo_stack = []
         self.redo_stack = []
 
-        self.update_undo_redo_buttons()  # Initialize the sensitivity of the buttons
-        self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
+        self.update_undo_redo_buttons()
+        self.drawing_area.grab_focus()
 
-        # Dirty flag — tracks unsaved changes
         self.dirty = False
 
-        # Status bar
         self.status_bar = Gtk.Label()
         self.status_bar.set_markup("<span color='#555555'>Ready</span>")
         self.status_bar.set_halign(Gtk.Align.START)
@@ -297,6 +233,10 @@ class BlocksWindow(Gtk.Window):
         self.vbox.pack_end(self.status_bar, False, False, 0)
 
         self.connect("delete-event", self.on_delete_event)
+
+    # ------------------------------------------------------------------
+    # Window-level state
+    # ------------------------------------------------------------------
 
     def set_dirty(self, dirty):
         self.dirty = dirty
@@ -324,7 +264,7 @@ class BlocksWindow(Gtk.Window):
         if self.current_file_path:
             parts.append(os.path.basename(self.current_file_path))
         self.status_bar.set_markup(
-            "<span color='#555555'>" + " │ ".join(parts) + "</span>"
+            "<span color='#555555'>" + " | ".join(parts) + "</span>"
         )
 
     def on_delete_event(self, widget, event):
@@ -348,22 +288,26 @@ class BlocksWindow(Gtk.Window):
                 self.save_to_json(self.current_file_path)
             else:
                 self.menu_bar.on_save_as_json_file(None)
-            return self.dirty  # if save-as was cancelled dirty is still True
+            return self.dirty
         elif response == Gtk.ResponseType.NO:
             return False
         else:
-            return True  # Cancel — prevent close
+            return True
+
+    # ------------------------------------------------------------------
+    # Element creation
+    # ------------------------------------------------------------------
 
     def on_button_clicked(self, widget, block_type):
         try:
             self.push_undo()
-            # Ensure the initial position and size are multiples of the grid size
             initial_x = round(random.randint(40, 400) // self.grid_size) * self.grid_size
             initial_y = round(random.randint(40, 400) // self.grid_size) * self.grid_size
-            initial_width = round(40 // self.grid_size) * self.grid_size  # Half of the current width
+            initial_width = round(40 // self.grid_size) * self.grid_size
             initial_height = round(40 // self.grid_size) * self.grid_size
             timestamp = datetime.now().isoformat(' ', 'seconds')
-            new_block = Block(initial_x, initial_y, initial_width, initial_height, f"{block_type} {timestamp}", block_type, self.grid_size, self)
+            new_block = Block(initial_x, initial_y, initial_width, initial_height,
+                              f"{block_type} {timestamp}", block_type, self.grid_size, self)
             self.blocks.append(new_block)
             self.drawing_area.queue_draw()
             self.update_json()
@@ -373,17 +317,15 @@ class BlocksWindow(Gtk.Window):
     def on_pin_button_clicked(self, widget, pin_type):
         try:
             self.push_undo()
-            # Ensure the initial position and size are multiples of the grid size
             initial_x = round(random.randint(40, 400) // self.grid_size) * self.grid_size
             initial_y = round(random.randint(40, 400) // self.grid_size) * self.grid_size
-            initial_width = round(40 // self.grid_size) * self.grid_size  # Half of the current width
+            initial_width = round(40 // self.grid_size) * self.grid_size
             initial_height = round(40 // self.grid_size) * self.grid_size
             timestamp = datetime.now().isoformat(' ', 'seconds')
 
             if "bus" in pin_type:
                 dialog = Gtk.MessageDialog(
-                    transient_for=self,
-                    flags=0,
+                    transient_for=self, flags=0,
                     message_type=Gtk.MessageType.QUESTION,
                     buttons=Gtk.ButtonsType.OK_CANCEL,
                     text="Enter Number of Pins",
@@ -394,15 +336,16 @@ class BlocksWindow(Gtk.Window):
                 response = dialog.run()
                 if response == Gtk.ResponseType.OK:
                     num_pins = int(entry.get_text())
-                    # Adjust the height based on the number of pins
                     initial_height = round((40 * 1) // self.grid_size) * self.grid_size
-                    new_pin = Pin(initial_x, initial_y, initial_width, initial_height, f"{pin_type} {timestamp}", pin_type, self.grid_size, num_pins, self)
+                    new_pin = Pin(initial_x, initial_y, initial_width, initial_height,
+                                  f"{pin_type} {timestamp}", pin_type, self.grid_size, num_pins, self)
                     self.pins.append(new_pin)
                     self.drawing_area.queue_draw()
                     self.update_json()
                 dialog.destroy()
             else:
-                new_pin = Pin(initial_x, initial_y, initial_width, initial_height, f"{pin_type} {timestamp}", pin_type, self.grid_size, 1, self)
+                new_pin = Pin(initial_x, initial_y, initial_width, initial_height,
+                              f"{pin_type} {timestamp}", pin_type, self.grid_size, 1, self)
                 self.pins.append(new_pin)
                 self.drawing_area.queue_draw()
                 self.update_json()
@@ -411,459 +354,21 @@ class BlocksWindow(Gtk.Window):
         except Exception as e:
             print(f"Error in on_pin_button_clicked: {e}")
 
-    def on_draw(self, widget, cr):
-        try:
-            # Draw grid (coordinates are in canvas space — cr is already scaled by zoom)
-            cr.set_source_rgb(0, 1, 0)  # Green color for grid points
-            width, height = DrawingArea.CANVAS_SIZE, DrawingArea.CANVAS_SIZE
-            for x in range(0, width, self.grid_size):
-                for y in range(0, height, self.grid_size):
-                    cr.rectangle(x, y, 2, 2)
-                    cr.fill()
-
-            # Draw row labels (A, B, ..., Z, AA, ..., ZZ)
-            cr.set_source_rgb(0, 0, 0)  # Black color for labels
-            cr.set_font_size(12)
-            for i, x in enumerate(range(0, width, self.grid_size)):
-                label = self.get_column_label(i)
-                cr.move_to(x + 5, 15)
-                cr.show_text(label)
-
-            # Draw column labels (1, 2, 3, ...)
-            for i, y in enumerate(range(0, height, self.grid_size)):
-                label = str(i + 1)
-                cr.move_to(5, y + 15)
-                cr.show_text(label)
-
-            # Draw blocks
-            for block in self.blocks:
-                block.draw(cr)
-
-            # Draw pins
-            for pin in self.pins:
-                pin.draw(cr)
-
-            # Draw wires
-            for wire in self.wires:
-                wire.draw(cr)
-
-            # Draw temporary wire while dragging
-            if self.dragging_wire:
-                cr.set_source_rgb(1, 0, 0)  # Red color for wires
-                cr.set_line_width(2)
-                cr.move_to(self.wire_start_point[0], self.wire_start_point[1])
-                cr.line_to(self.mouse_x, self.wire_start_point[1])
-                cr.line_to(self.mouse_x, self.mouse_y)
-                cr.stroke()
-
-            # for CTRL+z or CTRL+r not loosing drawing area focus
-            self.drawing_area.grab_focus()
-        except Exception as e:
-            print(f"Error in on_draw: {e}")
-
-    def get_column_label(self, index):
-        label = ""
-        while index >= 0:
-            label = chr(index % 26 + ord('A')) + label
-            index = index // 26 - 1
-        return label
-
-    def on_key_press(self, widget, event):
-        try:
-            self.drawing_area.grab_focus()
-            key = Gdk.keyval_name(event.keyval)
-            if key == "z" and event.state & Gdk.ModifierType.CONTROL_MASK:
-                self.undo()
-            elif key == "r" and event.state & Gdk.ModifierType.CONTROL_MASK:
-                self.redo()
-            elif key == "c" and event.state & Gdk.ModifierType.CONTROL_MASK:
-                self.on_copy_block(widget)
-            elif key == "x" and event.state & Gdk.ModifierType.CONTROL_MASK:
-                self.on_cut_block(widget)
-            elif key == "v" and event.state & Gdk.ModifierType.CONTROL_MASK:
-                self.on_paste_block(widget)
-            elif key == "d" and event.state & Gdk.ModifierType.CONTROL_MASK:
-                self.on_delete_block(widget)
-            elif key == "p" and event.state & Gdk.ModifierType.CONTROL_MASK:
-                #print("rotate 90 deg CW")
-                self.on_rotate_90(widget)
-            elif key == "Escape":
-                self._clear_multi_select()
-                self.drawing_area.queue_draw()
-                self.update_status_bar()
-            return True
-        except Exception as e:
-            print(f"Error in on_key_press: {e}")
-
-    def _clear_multi_select(self):
-        for b in self.selected_blocks:
-            b.set_selected(False)
-        for p in self.selected_pins:
-            p.set_selected(False)
-        for w in self.selected_wires:
-            w.set_selected(False)
-        self.selected_blocks = []
-        self.selected_pins = []
-        self.selected_wires = []
-
-    def on_button_press(self, widget, event):
-       if not self.drag_started:
-        if event.x < 0 or event.y < 0:
-            return False
-        if event.button == 1 and event.button == 2 or event.button == 1 and event.button == 3 or event.button == 2 and event.button == 3:
-            #print("Multiple buttons pressed")
-            return False
-        try:
-            self.push_undo()  # Push the current state to the undo stack
-            if event.button == 1:  # Left click
-                shift_held = bool(event.state & Gdk.ModifierType.SHIFT_MASK)
-                cx = int(event.x / self.drawing_area.zoom)
-                cy = int(event.y / self.drawing_area.zoom)
-
-                if shift_held:
-                    # Shift+click: toggle item in multi-select, no wire dragging
-                    clicked = False
-                    for block in self.blocks:
-                        if block.contains_point(cx, cy):
-                            if block in self.selected_blocks:
-                                self.selected_blocks.remove(block)
-                                block.set_selected(False)
-                            else:
-                                self.selected_blocks.append(block)
-                                block.set_selected(True)
-                                self.selected_block = block
-                            clicked = True
-                            break
-                    if not clicked:
-                        for pin in self.pins:
-                            if pin.contains_point(cx, cy):
-                                if pin in self.selected_pins:
-                                    self.selected_pins.remove(pin)
-                                    pin.set_selected(False)
-                                else:
-                                    self.selected_pins.append(pin)
-                                    pin.set_selected(True)
-                                    self.selected_pin = pin
-                                clicked = True
-                                break
-                    if not clicked:
-                        for wire in self.wires:
-                            if wire.contains_point(cx, cy):
-                                if wire in self.selected_wires:
-                                    self.selected_wires.remove(wire)
-                                    wire.set_selected(False)
-                                else:
-                                    self.selected_wires.append(wire)
-                                    wire.set_selected(True)
-                                    self.selected_wire = wire
-                                break
-                    # Start drag on all selected for group move
-                    for b in self.selected_blocks:
-                        b.start_drag(cx, cy)
-                    for p in self.selected_pins:
-                        p.start_drag(cx, cy)
-                else:
-                    # Plain click: clear multi-select, normal single-select
-                    self._clear_multi_select()
-                    self.selected_block = None
-                    self.selected_pin = None
-                    self.selected_wire = None
-                    #######################
-                    # dragging wire only
-                    #######################
-                    for block in self.blocks:
-                        if block.contains_pin(cx, cy):
-                            self.wire_start_point = block.contains_pin(cx, cy)
-                            self.dragging_wire = True
-                            break
-                    for pin in self.pins:
-                        if pin.contains_pin(cx, cy):
-                            self.wire_start_point = pin.contains_pin(cx, cy)
-                            self.dragging_wire = True
-                            break
-                    #######################
-                    # not dragging wire?
-                    # then move the block
-                    #######################
-                    if not self.dragging_wire:
-                        for block in self.blocks:
-                            if block.contains_point(cx, cy):
-                                self.selected_block = block
-                                block.set_selected(True)
-                                block.start_drag(cx, cy)
-                                break
-                        for pin in self.pins:
-                            if pin.contains_point(cx, cy):
-                                self.selected_pin = pin
-                                pin.set_selected(True)
-                                pin.start_drag(cx, cy)
-                                break
-                        for wire in self.wires:
-                            if wire.contains_point(cx, cy):
-                                self.selected_wire = wire
-                                wire.set_selected(True)
-                                break
-            elif event.button == 2:  # middle click
-                #print("Middle button pressed")
-                pass
-            elif event.button == 3:  # Right click
-                #print("Right button pressed")
-                for block in self.blocks:
-                    if block.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                        self.selected_block = block
-                        block.set_selected(True)
-                        self.context_menu.set_view_vhdl_code_sensitive(True)  # Enable VHDL code menu item
-                        if block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                            self.pin_context_menu.popup(event)
-                        else:
-                            self.context_menu.popup(event)
-                        break
-                for pin in self.pins:
-                    if pin.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                        self.selected_pin = pin
-                        pin.set_selected(True)
-                        self.context_menu.set_view_vhdl_code_sensitive(False)  # Disable VHDL code menu item
-                        connection_point = pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
-                        if connection_point:
-                            self.pin_context_menu.popup(event)
-                        else:
-                            self.context_menu.popup(event)
-                        break
-                for wire in self.wires:
-                    if wire.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                        self.selected_wire = wire
-                        wire.set_selected(True)
-                        self.wire_context_menu.popup(None, None, None, None, event.button, event.time)
-                        break
-    
-            self.drawing_area.queue_draw()
-            self.update_json()
-            self.push_undo()
-            self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
-            self.drag_started = True
-            self.update_status_bar()
-        except Exception as e:
-            print(f"Error in on_button_press: {e}")
-    
-    def on_button_release(self, widget, event):
-        #if not self.drag_started:
-        #   return True
-        if event.x < 0 or event.y < 0:
-            return False
-        if event.button == 1 and event.button == 2 or event.button == 1 and event.button == 3 or event.button == 2 and event.button == 3:
-            #print("Multiple buttons released")
-            return False
-    
-        if event.button == 1:  # left click
-            #print("Left button released")
-            pass
-        elif event.button == 2:  # middle click
-            #print("Middle button released")
-            pass
-        elif event.button == 3:  # Right click
-            #print("Right button released")
-            pass
-    
-        try:
-            self.push_undo()
-            for block in self.blocks:
-                block.end_drag()
-                if block not in self.selected_blocks:
-                    block.set_selected(False)
-                block.update_points()
-            for pin in self.pins:
-                pin.end_drag()
-                if pin not in self.selected_pins:
-                    pin.set_selected(False)
-                pin.update_points()
-    
-            # dragging pins/block complete
-            if not self.dragging_wire:
-                #print("dragging block/pins")
-                for block in self.blocks:
-                    #print("block....")
-                    if block.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                        #print(f"block {block.block_type.lower()} drag complete")
-                        block_dict = block.to_dict()
-                        for widx, wire in enumerate(self.wires):
-                            for idx, input_wires in enumerate(block_dict['input_wires']):
-                                if input_wires is not None and wire.id in input_wires:
-                                    #print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
-                                    if self.convert_to_tuple(wire.start_point) in block.prev_input_connections():
-                                        wire.update_start_point(block_dict['input_points'][idx])
-                                    elif self.convert_to_tuple(wire.end_point) in block.prev_input_connections():
-                                        wire.update_end_point(block_dict['input_points'][idx])
-                            for idx, output_wires in enumerate(block_dict['output_wires']):
-                                if output_wires is not None and wire.id in output_wires:
-                                    #print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
-                                    if self.convert_to_tuple(wire.start_point) in block.prev_output_connections():
-                                        wire.update_start_point(block_dict['output_points'][idx])
-                                    elif self.convert_to_tuple(wire.end_point) in block.prev_output_connections():
-                                        wire.update_end_point(block_dict['output_points'][idx])
-                        block.update_points()
-                        break
-                for pin in self.pins:
-                    #print("pin....")
-                    if pin.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                        #print(f"pin {pin.pin_type.lower()} drag complete")
-                        pin_dict = pin.to_dict()
-                        for widx, wire in enumerate(self.wires):
-                            for idx, wires in enumerate(pin_dict['wires']):
-                                if wires is not None and wire.id in wires:
-                                    #print(f"{wire.start_point} {wire.end_point} and {pin.prev_connections()}")
-                                    if self.convert_to_tuple(wire.start_point) in pin.prev_connections():
-                                        wire.update_start_point(pin_dict['connection_points'][idx])
-                                    elif self.convert_to_tuple(wire.end_point) in pin.prev_connections():
-                                        wire.update_end_point(pin_dict['connection_points'][idx])
-                        pin.update_points()
-                        break
-    
-                self.update_json()
-    
-            # dragging wire complete
-            elif self.dragging_wire:
-                #print("wire dragged")
-                end_point = None
-                start_block = None
-                end_block = None
-                start_pin = None
-                end_pin = None
-    
-                # Find the end point
-                for block in self.blocks:
-                    if block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                        end_point = block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
-                        end_block = block
-                        break
-                for pin in self.pins:
-                    if pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
-                        end_point = pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
-                        end_pin = pin
-                        break
-    
-                if end_point and end_point != self.wire_start_point:
-                    # Check for duplicate wire
-                    duplicate_wire = any(
-                        (wire.start_point == self.wire_start_point and wire.end_point == end_point) or
-                        (wire.start_point == end_point and wire.end_point == self.wire_start_point)
-                        for wire in self.wires
-                    )
-                    if not duplicate_wire:
-                        timestamp = datetime.now().isoformat(' ', 'seconds')
-                        new_wire = Wire(f"wire {timestamp}", self.wire_start_point, end_point, "wire", self.grid_size, self)
-                        print(f"{new_wire.id} new wire created with name {new_wire.text}")
-    
-                        # Find the start block or pin
-                        for block in self.blocks:
-                            if block.contains_pin(int(self.wire_start_point[0]), int(self.wire_start_point[1])):
-                                start_block = block
-                                break
-                        for pin in self.pins:
-                            if pin.contains_pin(int(self.wire_start_point[0]), int(self.wire_start_point[1])):
-                                start_pin = pin
-                                break
-    
-                        self.wires.append(new_wire)
-                        self.update_json()
-    
-                        # Update the wires list in the connected blocks and pins
-                        if start_block:
-                            index = self.find_closest_point(start_block.input_points + start_block.output_points, self.wire_start_point)
-                            if index is not None:
-                                if self.wire_start_point in start_block.input_points:
-                                    if start_block.input_wires[start_block.input_points.index(self.wire_start_point)] is None:
-                                        start_block.input_wires[start_block.input_points.index(self.wire_start_point)] = []
-                                    start_block.input_wires[start_block.input_points.index(self.wire_start_point)].append(new_wire.id)
-                                else:
-                                    if start_block.output_wires[start_block.output_points.index(self.wire_start_point)] is None:
-                                        start_block.output_wires[start_block.output_points.index(self.wire_start_point)] = []
-                                    start_block.output_wires[start_block.output_points.index(self.wire_start_point)].append(new_wire.id)
-                        if end_block:
-                            index = self.find_closest_point(end_block.input_points + end_block.output_points, end_point)
-                            if index is not None:
-                                if end_point in end_block.input_points:
-                                    if end_block.input_wires[end_block.input_points.index(end_point)] is None:
-                                        end_block.input_wires[end_block.input_points.index(end_point)] = []
-                                    end_block.input_wires[end_block.input_points.index(end_point)].append(new_wire.id)
-                                else:
-                                    if end_block.output_wires[end_block.output_points.index(end_point)] is None:
-                                        end_block.output_wires[end_block.output_points.index(end_point)] = []
-                                    end_block.output_wires[end_block.output_points.index(end_point)].append(new_wire.id)
-                        if start_pin:
-                            index = self.find_closest_point(start_pin.connection_points, self.wire_start_point)
-                            if index is not None:
-                                if start_pin.wires[index] is None:
-                                    start_pin.wires[index] = []
-                                start_pin.wires[index].append(new_wire.id)
-                        if end_pin:
-                            index = self.find_closest_point(end_pin.connection_points, end_point)
-                            if index is not None:
-                                if end_pin.wires[index] is None:
-                                    end_pin.wires[index] = []
-                                end_pin.wires[index].append(new_wire.id)
-                        self.dragging_wire = False
-    
-                    else:
-                        print("Duplicate wire connection detected and ignored.")
-                else:
-                    print("Invalid wire connection: both ends must be on valid connection points.")
-                    self.dragging_wire = False
-    
-            self.drawing_area.queue_draw()
-            self.update_json()
-            self.push_undo()
-            self.drawing_area.grab_focus()
-            self.drag_started = False
-            self.update_status_bar()
-
-        except Exception as e:
-            print(f"Error in on_button_release: {e}")
-
-    def on_motion_notify(self, widget, event):
-        #print("MOUSE BUTTON MOTION")
-        try:
-            self.mouse_x, self.mouse_y = max(0,int(event.x / self.drawing_area.zoom)), max(0,int(event.y / self.drawing_area.zoom))
-            width, height = self.drawing_area.get_allocated_width(), self.drawing_area.get_allocated_height()
-            for block in self.blocks:
-                block.drag(self.mouse_x, self.mouse_y, width, height)
-            for pin in self.pins:
-                pin.drag(self.mouse_x, self.mouse_y, width, height)
-            if self.dragging_wire:
-                self.drawing_area.queue_draw()
-            self.drawing_area.queue_draw()
-            self.update_json()
-            self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
-            # Update the label with the current mouse coordinates
-            self.mouse_label.set_markup(f"<span color='green'>Cursor: ({int(self.mouse_x)}, {int(self.mouse_y)})</span>")
-        except Exception as e:
-            print(f"Error in on_motion_notify: {e}")
-
-    def find_closest_point(self, points, target, tolerance=10):
-        for i, point in enumerate(points):
-            if abs(point[0] - target[0]) <= tolerance and abs(point[1] - target[1]) <= tolerance:
-                return i
-        return None
+    # ------------------------------------------------------------------
+    # Element operations (context menu handlers)
+    # ------------------------------------------------------------------
 
     def on_change_border_color(self, widget):
         try:
-            if self.selected_block:
+            target = self.selected_block or self.selected_pin
+            if target:
                 dialog = Gtk.ColorChooserDialog(title="Choose Border Color", transient_for=self)
                 response = dialog.run()
                 if response == Gtk.ResponseType.OK:
                     color = dialog.get_rgba()
-                    self.selected_block.border_color = (color.red, color.green, color.blue)
+                    target.border_color = (color.red, color.green, color.blue)
                     self.drawing_area.queue_draw()
-                    self.update_json()  # Update the JSON file
-                    self.push_undo()
-                dialog.destroy()
-            elif self.selected_pin:
-                dialog = Gtk.ColorChooserDialog(title="Choose Border Color", transient_for=self)
-                response = dialog.run()
-                if response == Gtk.ResponseType.OK:
-                    color = dialog.get_rgba()
-                    self.selected_pin.border_color = (color.red, color.green, color.blue)
-                    self.drawing_area.queue_draw()
-                    self.update_json()  # Update the JSON file
+                    self.update_json()
                     self.push_undo()
                 dialog.destroy()
         except Exception as e:
@@ -871,24 +376,15 @@ class BlocksWindow(Gtk.Window):
 
     def on_change_fill_color(self, widget):
         try:
-            if self.selected_block:
+            target = self.selected_block or self.selected_pin
+            if target:
                 dialog = Gtk.ColorChooserDialog(title="Choose Fill Color", transient_for=self)
                 response = dialog.run()
                 if response == Gtk.ResponseType.OK:
                     color = dialog.get_rgba()
-                    self.selected_block.fill_color = (color.red, color.green, color.blue)
+                    target.fill_color = (color.red, color.green, color.blue)
                     self.drawing_area.queue_draw()
-                    self.update_json()  # Update the JSON file
-                    self.push_undo()
-                dialog.destroy()
-            elif self.selected_pin:
-                dialog = Gtk.ColorChooserDialog(title="Choose Fill Color", transient_for=self)
-                response = dialog.run()
-                if response == Gtk.ResponseType.OK:
-                    color = dialog.get_rgba()
-                    self.selected_pin.fill_color = (color.red, color.green, color.blue)
-                    self.drawing_area.queue_draw()
-                    self.update_json()  # Update the JSON file
+                    self.update_json()
                     self.push_undo()
                 dialog.destroy()
         except Exception as e:
@@ -897,68 +393,43 @@ class BlocksWindow(Gtk.Window):
     def on_change_text(self, widget):
         try:
             if self.selected_block:
-                dialog = Gtk.MessageDialog(
-                    transient_for=self,
-                    flags=0,
-                    message_type=Gtk.MessageType.QUESTION,
-                    buttons=Gtk.ButtonsType.OK_CANCEL,
-                    text="Change Text",
-                )
-                dialog.format_secondary_text("Enter new text for the block:")
-                entry = Gtk.Entry()
-                entry.set_text(self.selected_block.text)
-                dialog.get_content_area().add(entry)
-                dialog.show_all()
-                response = dialog.run()
-                if response == Gtk.ResponseType.OK:
-                    self.selected_block.text = entry.get_text()
-                    self.drawing_area.queue_draw()
-                    self.update_json()  # Update the JSON file
-                    self.push_undo()
-                dialog.destroy()
+                self._text_dialog("Change Text", "Enter new text for the block:", self.selected_block)
             elif self.selected_pin:
-                dialog = Gtk.MessageDialog(
-                    transient_for=self,
-                    flags=0,
-                    message_type=Gtk.MessageType.QUESTION,
-                    buttons=Gtk.ButtonsType.OK_CANCEL,
-                    text="Change Text",
-                )
-                dialog.format_secondary_text("Enter new text for the pin:")
-                entry = Gtk.Entry()
-                entry.set_text(self.selected_pin.text)
-                dialog.get_content_area().add(entry)
-                dialog.show_all()
-                response = dialog.run()
-                if response == Gtk.ResponseType.OK:
-                    self.selected_pin.text = entry.get_text()
-                    self.drawing_area.queue_draw()
-                    self.update_json()  # Update the JSON file
-                    self.push_undo()
-                dialog.destroy()
+                self._text_dialog("Change Text", "Enter new text for the pin:", self.selected_pin)
         except Exception as e:
             print(f"Error in on_change_text: {e}")
 
+    def _text_dialog(self, title, prompt, target):
+        dialog = Gtk.MessageDialog(
+            transient_for=self, flags=0,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text=title,
+        )
+        dialog.format_secondary_text(prompt)
+        entry = Gtk.Entry()
+        entry.set_text(target.text)
+        dialog.get_content_area().add(entry)
+        dialog.show_all()
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            target.text = entry.get_text()
+            self.drawing_area.queue_draw()
+            self.update_json()
+            self.push_undo()
+        dialog.destroy()
+
     def on_change_text_color(self, widget):
         try:
-            if self.selected_block:
+            target = self.selected_block or self.selected_pin
+            if target:
                 dialog = Gtk.ColorChooserDialog(title="Choose Text Color", transient_for=self)
                 response = dialog.run()
                 if response == Gtk.ResponseType.OK:
                     color = dialog.get_rgba()
-                    self.selected_block.text_color = (color.red, color.green, color.blue)
+                    target.text_color = (color.red, color.green, color.blue)
                     self.drawing_area.queue_draw()
-                    self.update_json()  # Update the JSON file
-                    self.push_undo()
-                dialog.destroy()
-            elif self.selected_pin:
-                dialog = Gtk.ColorChooserDialog(title="Choose Text Color", transient_for=self)
-                response = dialog.run()
-                if response == Gtk.ResponseType.OK:
-                    color = dialog.get_rgba()
-                    self.selected_pin.text_color = (color.red, color.green, color.blue)
-                    self.drawing_area.queue_draw()
-                    self.update_json()  # Update the JSON file
+                    self.update_json()
                     self.push_undo()
                 dialog.destroy()
         except Exception as e:
@@ -967,14 +438,12 @@ class BlocksWindow(Gtk.Window):
     def on_rotate_90(self, widget):
         try:
             if self.selected_block and self.block_has_no_wires_connected(self.selected_block):
-                print("rotate 90 block")
                 self.selected_block.rotate(90)
                 self.update_points()
                 self.drawing_area.queue_draw()
                 self.update_json()
                 self.push_undo()
             elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
-                print("rotate 90 pin")
                 self.selected_pin.rotate(90)
                 self.update_points()
                 self.drawing_area.queue_draw()
@@ -982,7 +451,8 @@ class BlocksWindow(Gtk.Window):
                 self.push_undo()
             elif (self.selected_block and not self.block_has_no_wires_connected(self.selected_block)) or \
                  (self.selected_pin and not self.pin_has_no_wires_connected(self.selected_pin)):
-                self.show_error_message("Cannot rotate block/pin", "The block/pin has wires connected. Disconnect wires and try again!")
+                self.show_error_message("Cannot rotate block/pin",
+                                        "The block/pin has wires connected. Disconnect wires and try again!")
         except Exception as e:
             print(f"Error in on_rotate_90: {e}")
 
@@ -1002,7 +472,8 @@ class BlocksWindow(Gtk.Window):
                 self.push_undo()
             elif (self.selected_block and not self.block_has_no_wires_connected(self.selected_block)) or \
                  (self.selected_pin and not self.pin_has_no_wires_connected(self.selected_pin)):
-                self.show_error_message("Cannot rotate block/pin", "The block/pin has wires connected. Disconnect wires and try again!")
+                self.show_error_message("Cannot rotate block/pin",
+                                        "The block/pin has wires connected. Disconnect wires and try again!")
         except Exception as e:
             print(f"Error in on_rotate_180: {e}")
 
@@ -1022,7 +493,8 @@ class BlocksWindow(Gtk.Window):
                 self.push_undo()
             elif (self.selected_block and not self.block_has_no_wires_connected(self.selected_block)) or \
                  (self.selected_pin and not self.pin_has_no_wires_connected(self.selected_pin)):
-                self.show_error_message("Cannot rotate block/pin", "The block/pin has wires connected. Disconnect wires and try again!")
+                self.show_error_message("Cannot rotate block/pin",
+                                        "The block/pin has wires connected. Disconnect wires and try again!")
         except Exception as e:
             print(f"Error in on_rotate_270: {e}")
 
@@ -1051,7 +523,6 @@ class BlocksWindow(Gtk.Window):
                     np_.rotation = pin.rotation
                     self.pins.append(np_)
                     new_pins.append(np_)
-                # Swap selection to copies
                 self._clear_multi_select()
                 for nb in new_blocks:
                     nb.set_selected(True)
@@ -1063,16 +534,13 @@ class BlocksWindow(Gtk.Window):
                 self.update_json()
             elif self.selected_block:
                 self.clipboard_block = self.selected_block
-                self.clipboard_pin = None  # Clear the pin clipboard
+                self.clipboard_pin = None
                 new_block = Block(
                     self.selected_block.x + self.grid_size,
                     self.selected_block.y + self.grid_size,
-                    self.selected_block.width,
-                    self.selected_block.height,
-                    self.selected_block.text,
-                    self.selected_block.block_type,
-                    self.grid_size,
-                    self
+                    self.selected_block.width, self.selected_block.height,
+                    self.selected_block.text, self.selected_block.block_type,
+                    self.grid_size, self,
                 )
                 new_block.border_color = self.selected_block.border_color
                 new_block.fill_color = self.selected_block.fill_color
@@ -1084,17 +552,13 @@ class BlocksWindow(Gtk.Window):
                 self.push_undo()
             elif self.selected_pin:
                 self.clipboard_pin = self.selected_pin
-                self.clipboard_block = None  # Clear the block clipboard
+                self.clipboard_block = None
                 new_pin = Pin(
                     self.selected_pin.x + self.grid_size,
                     self.selected_pin.y + self.grid_size,
-                    self.selected_pin.width,
-                    self.selected_pin.height,
-                    self.selected_pin.text,
-                    self.selected_pin.pin_type,
-                    self.grid_size,
-                    self.selected_pin.num_pins,
-                    self
+                    self.selected_pin.width, self.selected_pin.height,
+                    self.selected_pin.text, self.selected_pin.pin_type,
+                    self.grid_size, self.selected_pin.num_pins, self,
                 )
                 new_pin.border_color = self.selected_pin.border_color
                 new_pin.fill_color = self.selected_pin.fill_color
@@ -1107,69 +571,45 @@ class BlocksWindow(Gtk.Window):
         except Exception as e:
             print(f"Error in on_copy_block: {e}")
 
-
     def delete_block_wire_connections(self):
         try:
             self.selected_block.print_wires()
             wires_to_remove = []
-
             for wire in self.wires:
-                print(f"{wire.id}")
                 for idx, i_wire in enumerate(self.selected_block.get_input_wires()):
                     for widx, w_wire in enumerate(i_wire):
                         if isinstance(w_wire, str) and wire.id in w_wire:
-                            print(f"deleting {w_wire}")
                             wires_to_remove.append(wire)
                 for idx, o_wire in enumerate(self.selected_block.get_output_wires()):
                     for widx, w_wire in enumerate(o_wire):
                         if isinstance(w_wire, str) and wire.id in w_wire:
-                            print(f"deleting {w_wire}")
                             wires_to_remove.append(wire)
-
-            # Remove wires outside the loop
             for wire in wires_to_remove:
                 self.wires.remove(wire)
-
             self.selected_block.clear_wires()
-            self.selected_block.print_wires()
-
-            # Update the JSON file
             self.update_json()
             self.push_undo()
             self.drawing_area.queue_draw()
-
         except Exception as e:
             print(f"Error in delete_block_wire_connections: {e}")
-
 
     def delete_pin_wire_connections(self):
         try:
             self.selected_pin.print_wires()
             wires_to_remove = []
-    
             for wire in self.wires:
-                print(f"{wire.id}")
                 for idx, i_wire in enumerate(self.selected_pin.get_wires()):
-                    print(f"GET WIRE {i_wire}")
                     for widx, w_wire in enumerate(i_wire):
                         if isinstance(w_wire, str) and wire.id in w_wire:
-                            print(f"deleting {w_wire}")
                             wires_to_remove.append(wire)
-    
-            # Remove wires outside the loop
             for wire in wires_to_remove:
                 self.wires.remove(wire)
-    
             self.selected_pin.clear_wires()
-            self.selected_pin.print_wires()
-    
-            # Update the JSON file
             self.update_json()
             self.push_undo()
             self.drawing_area.queue_draw()
         except Exception as e:
             print(f"An error occurred: {e}")
-    
 
     def on_delete_block(self, widget):
         try:
@@ -1232,7 +672,7 @@ class BlocksWindow(Gtk.Window):
                 self.push_undo()
                 self.delete_block_wire_connections()
                 self.clipboard_block = self.selected_block
-                self.clipboard_pin = None  # Clear the pin clipboard
+                self.clipboard_pin = None
                 self.blocks.remove(self.selected_block)
                 self.selected_block = None
                 self.drawing_area.queue_draw()
@@ -1241,7 +681,7 @@ class BlocksWindow(Gtk.Window):
                 self.push_undo()
                 self.delete_pin_wire_connections()
                 self.clipboard_pin = self.selected_pin
-                self.clipboard_block = None  # Clear the block clipboard
+                self.clipboard_block = None
                 self.pins.remove(self.selected_pin)
                 self.selected_pin = None
                 self.drawing_area.queue_draw()
@@ -1254,14 +694,10 @@ class BlocksWindow(Gtk.Window):
             if self.clipboard_block:
                 self.push_undo()
                 new_block = Block(
-                    self.mouse_x,
-                    self.mouse_y,
-                    self.clipboard_block.width,
-                    self.clipboard_block.height,
-                    self.clipboard_block.text,
-                    self.clipboard_block.block_type,
-                    self.grid_size,
-                    self
+                    self.mouse_x, self.mouse_y,
+                    self.clipboard_block.width, self.clipboard_block.height,
+                    self.clipboard_block.text, self.clipboard_block.block_type,
+                    self.grid_size, self,
                 )
                 new_block.border_color = self.clipboard_block.border_color
                 new_block.fill_color = self.clipboard_block.fill_color
@@ -1273,15 +709,10 @@ class BlocksWindow(Gtk.Window):
             elif self.clipboard_pin:
                 self.push_undo()
                 new_pin = Pin(
-                    self.mouse_x,
-                    self.mouse_y,
-                    self.clipboard_pin.width,
-                    self.clipboard_pin.height,
-                    self.clipboard_pin.text,
-                    self.clipboard_pin.pin_type,
-                    self.grid_size,
-                    self.clipboard_pin.num_pins,  # Include number of pins for buses
-                    self
+                    self.mouse_x, self.mouse_y,
+                    self.clipboard_pin.width, self.clipboard_pin.height,
+                    self.clipboard_pin.text, self.clipboard_pin.pin_type,
+                    self.grid_size, self.clipboard_pin.num_pins, self,
                 )
                 new_pin.border_color = self.clipboard_pin.border_color
                 new_pin.fill_color = self.clipboard_pin.fill_color
@@ -1295,387 +726,21 @@ class BlocksWindow(Gtk.Window):
 
     def on_connect_pin(self, widget):
         try:
-            if self.selected_block:
-               print("Connect pin")  # Placeholder for connect action
-            elif self.selected_pin:
-               print("Connect pin")  # Placeholder for connect action
+            if self.selected_block or self.selected_pin:
+                print("Connect pin")
         except Exception as e:
             print(f"Error in on_connect_pin: {e}")
 
     def on_disconnect_pin(self, widget):
         try:
-            if self.selected_block:
-               print("Disconnect pin")  # Placeholder for disconnect action
-            elif self.selected_pin:
-               print("Disconnect pin")  # Placeholder for connect action
+            if self.selected_block or self.selected_pin:
+                print("Disconnect pin")
         except Exception as e:
             print(f"Error in on_disconnect_pin: {e}")
 
-    def update_wires(self):
-        try:
-            for wire in self.wires:
-                wire.path = wire.calculate_path()
-                if not wire.path:
-                    self.delete_wire(wire)
-            self.drawing_area.queue_draw()
-        except Exception as e:
-            print(f"Error in update_wires: {e}")
 
-    def delete_wire(self, wire):
-        try:
-            # Remove the wire from the wires list
-            self.wires.remove(wire)
-
-            for block in self.blocks:
-                block_dict = block.to_dict()
-                if wire.start_point in block.input_connections():
-                   print("Found wire start point in input connections!")
-                   self.reset_wire_by_index(wire, block_dict['input_wires'])
-                if wire.start_point in block.output_connections():
-                   print("Found wire start point in output connections!")
-                   self.reset_wire_by_index(wire, block_dict['output_wires'])
-                if wire.end_point in block.input_connections():
-                   print("Found wire end point in input connections!")
-                   self.reset_wire_by_index(wire, block_dict['input_wires'])
-                if wire.end_point in block.output_connections():
-                   print("Found wire end point in output connections!")
-                   self.reset_wire_by_index(wire, block_dict['output_wires'])
-
-            for pin in self.pins:
-                pin_dict = pin.to_dict()
-                if wire.start_point in pin.connections():
-                   print("Found wire start point in connections!")
-                   self.reset_wire_by_index(wire, pin_dict['wires'])
-                if wire.end_point in pin.connections():
-                   print("Found wire end point in connections!")
-                   self.reset_wire_by_index(wire, pin_dict['wires'])
-
-            # Update the JSON file
-            self.update_json()
-            self.push_undo()
-            self.drawing_area.queue_draw()
-        except Exception as e:
-            print(f"Error in delete_wire: {e}")
-
-    def reset_wire_by_index(self, wire, wires):
-        try:
-            for idx, w in enumerate(wires):
-                if w is not None and wire.id in w:
-                   print(f"Found {wire.id} at index {idx}")
-                   wires[idx] = []
-        except Exception as e:
-            print(f"Error in reset_wire_by_index: {e}")
-
-    def elements_to_json_old(self):
-        try:
-            blocks_dict = [block.to_dict() for block in self.blocks]
-            pins_dict = [pin.to_dict() for pin in self.pins]
-            wires_dict = [wire.to_dict() for wire in self.wires]
-            return json.dumps(blocks_dict + pins_dict + wires_dict, indent=4)
-        except Exception as e:
-            print(f"Error in elements_to_json: {e}")
-
-    def elements_to_json(self):
-        try:
-            elements = []
-            if self.blocks:
-                elements.extend([block.to_dict() for block in self.blocks])
-            if self.pins:
-                elements.extend([pin.to_dict() for pin in self.pins])
-            if self.wires:
-                elements.extend([wire.to_dict() for wire in self.wires])
-            return json.dumps(elements, indent=4)
-        except Exception as e:
-            print(f"Error in elements_to_json: {e}")
-    
-    def update_json(self):
-        try:
-         #print(f"Update JSON")
-         if self.current_file_path:
-            with open(self.current_file_path, "w") as file:
-                file.write(self.elements_to_json())
-        except IOError as e:
-            print(f"IOError in update_json: {e}")
-        except Exception as e:
-            print(f"Error in update_json: {e}")
-
-    def push_undo(self):
-        try:
-            self.undo_stack.append(self.elements_to_json())
-            self.redo_stack = []
-            self.update_undo_redo_buttons()
-            self.set_dirty(True)
-        except Exception as e:
-            print(f"Error in push_undo: {e}")
-
-    def undo(self):
-        try:
-            if self.undo_stack:
-                self.redo_stack.append(self.elements_to_json())
-                data = json.loads(self.undo_stack.pop())
-                self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]
-                self.pins = [Pin.from_dict(pin_dict, self) for pin_dict in data if pin_dict.get("pin_type")]
-                self.wires = [Wire.from_dict(wire_dict, self) for wire_dict in data if wire_dict.get("start_point") or wire_dict.get("end_point")]
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.update_undo_redo_buttons()
-        except Exception as e:
-            print(f"Error in undo: {e}")
-
-    def redo(self):
-        try:
-            if self.redo_stack:
-                self.undo_stack.append(self.elements_to_json())
-                data = json.loads(self.redo_stack.pop())
-                self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]
-                self.pins = [Pin.from_dict(pin_dict, self) for pin_dict in data if pin_dict.get("pin_type")]
-                self.wires = [Wire.from_dict(wire_dict, self) for wire_dict in data if wire_dict.get("start_point") or wire_dict.get("end_point")]
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.update_undo_redo_buttons()
-        except Exception as e:
-            print(f"Error in redo: {e}")
-
-    def on_undo(self, widget):
-        try:
-            self.undo()
-        except Exception as e:
-            print(f"Error in on_undo: {e}")
-
-    def on_redo(self, widget):
-        try:
-            self.redo()
-        except Exception as e:
-            print(f"Error in on_redo: {e}")
-
-    def update_undo_redo_buttons(self):
-        try:
-            self.undo_button.set_sensitive(len(self.undo_stack) > 0)
-            self.redo_button.set_sensitive(len(self.redo_stack) > 0)
-        except Exception as e:
-            print(f"Error in update_undo_redo_buttons: {e}")
-
-    def update_points(self):
-        for block in self.blocks:
-            block_dict = block.to_dict()
-            for widx, wire in enumerate(self.wires):
-                for idx, input_wires in enumerate(block_dict['input_wires']):
-                    if input_wires is not None and wire.id in input_wires:
-                        if self.convert_to_tuple(wire.start_point) in block.prev_input_connections():
-                            wire.update_start_point(block_dict['input_points'][idx])
-                        elif self.convert_to_tuple(wire.end_point) in block.prev_input_connections():
-                            wire.update_end_point(block_dict['input_points'][idx])
-                for idx, output_wires in enumerate(block_dict['output_wires']):
-                    if output_wires is not None and wire.id in output_wires:
-                        if self.convert_to_tuple(wire.start_point) in block.prev_output_connections():
-                            wire.update_start_point(block_dict['output_points'][idx])
-                        elif self.convert_to_tuple(wire.end_point) in block.prev_output_connections():
-                            wire.update_end_point(block_dict['output_points'][idx])
-            block.update_points()
-        for pin in self.pins:
-            pin_dict = pin.to_dict()
-            for widx, wire in enumerate(self.wires):
-                for idx, wires in enumerate(pin_dict['wires']):
-                    if wires is not None and wire.id in wires:
-                        if self.convert_to_tuple(wire.start_point) in pin.prev_connections():
-                            wire.update_start_point(pin_dict['connection_points'][idx])
-                        elif self.convert_to_tuple(wire.end_point) in pin.prev_connections():
-                            wire.update_end_point(pin_dict['connection_points'][idx])
-            pin.update_points()
-
-    def pin_has_no_wires_connected(self, pin):
-        if pin:
-           # Check if all input_wires lists are empty
-           if all(not wires for wires in pin.wires):
-              return True
-        return False
-
-
-    def block_has_no_wires_connected(self, block):
-        if block:
-           # Check if all input_wires lists are empty
-           if all(not wires for wires in block.input_wires):
-               # Check if all output_wires lists are empty
-               if all(not wires for wires in block.output_wires):
-                   return True
-        return False
-
-    def print_wires(self):
-        try:
-            print("[main_window] Wires:")
-            for wire in self.wires:
-                print(f"Wire ID: {wire.id}")
-                print(f"Wire Text: {wire.text}")
-                print(f"Start Point: {wire.start_point}")
-                print(f"End Point: {wire.end_point}")
-                print(f"Grid Size: {wire.grid_size}")
-                print(f"Path: {wire.path}")
-                print(f"Wire Type: {wire.wire_type}")
-                print("---------------------------")
-        except Exception as e:
-            print(f"Error in print_wires: {e}")
-
-    def convert_to_tuple(self, input_data):
-        if isinstance(input_data, list):
-            return tuple(input_data)
-        elif isinstance(input_data, tuple):
-            return input_data
-        else:
-            raise ValueError("Input must be a list or a tuple")
-   
-    """
-    def on_load_file(self, widget):
-        dialog = Gtk.FileChooserDialog(
-            title="Load File",
-            parent=self,
-            action=Gtk.FileChooserAction.OPEN
-        )
-        dialog.add_buttons(
-            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-            Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT
-        )
-    
-        # Add a filter to only show JSON files
-        filter_json = Gtk.FileFilter()
-        filter_json.set_name("JSON files")
-        filter_json.add_mime_type("application/json")
-        filter_json.add_pattern("*.json")
-        dialog.add_filter(filter_json)
-    
-        response = dialog.run()
-        if response == Gtk.ResponseType.ACCEPT:
-            file_path = dialog.get_filename()
-            self.load_from_json(file_path)
-        dialog.destroy()
-    """
-
-    def save_to_json(self, file_path):
-        try:
-            elements = self.elements_to_json()
-            print(f"Saving to file: {file_path}")
-            print(f"Data to save: {elements}")
-            if elements != "[]":  # Only save if there are elements to save
-                with open(file_path, "w") as file:
-                    file.write(elements)
-                self.current_file_path = file_path
-                self.set_dirty(False)
-                self.update_status_bar()
-            else:
-                print("No data to save. The elements list is empty.")
-        except IOError as e:
-            print(f"IOError in save_to_json: {e}")
-        except Exception as e:
-            print(f"Error in save_to_json: {e}")
-    
-    def load_from_json(self, file_path):
-        try:
-            print(f"Loading from file: {file_path}")
-            with open(file_path, "r") as file:
-                data = json.load(file)
-                print(f"Loaded data: {data}")
-                if data:  # Check if data is not empty
-                    self.blocks = [Block.from_dict(block_dict, self) for block_dict in data if block_dict.get("block_type")]
-                    self.pins = [Pin.from_dict(pin_dict, self) for pin_dict in data if pin_dict.get("pin_type")]
-                    self.wires = [Wire.from_dict(wire_dict, self) for wire_dict in data if wire_dict.get("start_point") or wire_dict.get("end_point")]
-                    self.drawing_area.queue_draw()
-                    self.current_file_path = file_path
-                    self.set_dirty(False)
-                    self.update_status_bar()
-                else:
-                    print("The file is empty or contains no valid data.")
-        except json.JSONDecodeError as e:
-            print(f"JSONDecodeError in load_from_json: {e}")
-        except IOError as e:
-            print(f"IOError in load_from_json: {e}")
-        except Exception as e:
-            print(f"Error in load_from_json: {e}")
-    
-    
-    """
-    def on_save_file(self, widget):
-        if self.current_file_path:
-            self.save_to_json(self.current_file_path)
-        else:
-            self.on_save_as_file(widget)
-    
-    def on_save_as_file(self, widget):
-        dialog = Gtk.FileChooserDialog(
-            title="Save As File",
-            parent=self,
-            action=Gtk.FileChooserAction.SAVE
-        )
-        dialog.add_buttons(
-            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-            Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT
-        )
-    
-        # Add a filter to only show JSON files
-        filter_json = Gtk.FileFilter()
-        filter_json.set_name("JSON files")
-        filter_json.add_mime_type("application/json")
-        filter_json.add_pattern("*.json")
-        dialog.add_filter(filter_json)
-    
-        response = dialog.run()
-        if response == Gtk.ResponseType.ACCEPT:
-            file_path = dialog.get_filename()
-            self.save_to_json(file_path)
-            self.current_file_path = file_path
-        dialog.destroy()
-    """
-    
-
-    def show_error_message(self, title, message):
-        dialog = Gtk.MessageDialog(
-            transient_for=self,
-            flags=0,
-            message_type=Gtk.MessageType.ERROR,
-            buttons=Gtk.ButtonsType.OK,
-            text=title,
-        )
-        dialog.format_secondary_text(message)
-        dialog.run()
-        dialog.destroy()
-
-    def on_view_vhdl_code(self, widget):
-        try:
-            if self.selected_block:
-                block_type = self.selected_block.block_type.lower()
-                src_dir = os.path.dirname(os.path.abspath(__file__))
-                vhdl_file_path = os.path.join(src_dir, "vhdl", f"{block_type}.vhd")
-                if os.path.exists(vhdl_file_path):
-                    with open(vhdl_file_path, "r") as file:
-                        vhdl_code = file.read()
-                    self.show_vhdl_code_dialog(vhdl_code)
-                else:
-                    self.show_error_message("VHDL Code Not Found", f"The VHDL code for {block_type} was not found.")
-        except Exception as e:
-            print(f"Error in on_view_vhdl_code: {e}")
-
-    def show_vhdl_code_dialog(self, vhdl_code):
-        dialog = Gtk.Dialog(title="VHDL Code", parent=self, flags=0)
-        dialog.set_default_size(600, 400)
-    
-        scrolled_window = Gtk.ScrolledWindow()
-        scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        dialog.get_content_area().pack_start(scrolled_window, True, True, 0)  # Ensure it takes up the full space
-    
-        text_view = Gtk.TextView()
-        text_view.set_editable(False)  # Make the text view read-only
-        text_view.set_wrap_mode(Gtk.WrapMode.NONE)  # Disable text wrapping
-        text_buffer = text_view.get_buffer()
-        text_buffer.set_text(vhdl_code)
-        scrolled_window.add(text_view)
-    
-        #dialog.add_button(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE)
-        dialog.show_all()
-        dialog.run()
-        dialog.destroy()
-    
-    
 if __name__ == "__main__":
     win = BlocksWindow()
     win.connect("destroy", Gtk.main_quit)
     win.show_all()
     Gtk.main()
-

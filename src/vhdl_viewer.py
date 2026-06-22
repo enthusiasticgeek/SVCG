@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""
+vhdl_viewer.py -- mixin for per-block VHDL template viewer and error dialogs
+"""
+import os
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+
+
+class VhdlViewerMixin:
+
+    def show_error_message(self, title, message):
+        dialog = Gtk.MessageDialog(
+            transient_for=self, flags=0,
+            message_type=Gtk.MessageType.ERROR,
+            buttons=Gtk.ButtonsType.OK,
+            text=title,
+        )
+        dialog.format_secondary_text(message)
+        dialog.run()
+        dialog.destroy()
+
+    def on_view_vhdl_code(self, widget):
+        try:
+            if self.selected_block:
+                block_type = self.selected_block.block_type.lower()
+                src_dir = os.path.dirname(os.path.abspath(__file__))
+                vhdl_file_path = os.path.join(src_dir, "vhdl", f"{block_type}.vhd")
+                if os.path.exists(vhdl_file_path):
+                    with open(vhdl_file_path, "r") as f:
+                        vhdl_code = f.read()
+                    self.show_vhdl_code_dialog(vhdl_code)
+                else:
+                    self.show_error_message(
+                        "VHDL Code Not Found",
+                        f"No VHDL template found for block type '{block_type}'.",
+                    )
+        except Exception as e:
+            print(f"Error in on_view_vhdl_code: {e}")
+
+    def show_vhdl_code_dialog(self, vhdl_code):
+        dialog = Gtk.Dialog(title="VHDL Code", parent=self, flags=0)
+        dialog.set_default_size(600, 400)
+        sw = Gtk.ScrolledWindow()
+        sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        dialog.get_content_area().pack_start(sw, True, True, 0)
+        tv = Gtk.TextView()
+        tv.set_editable(False)
+        tv.set_monospace(True)
+        tv.set_wrap_mode(Gtk.WrapMode.NONE)
+        tv.get_buffer().set_text(vhdl_code)
+        sw.add(tv)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()

@@ -71,11 +71,12 @@ All templates now exist in `src/vhdl/`:
 ### 3.1 Replace deprecated `Gtk.UIManager` / `Gtk.Action` ✅
 `menu.py` rewritten without `Gtk.UIManager`, `Gtk.ActionGroup`, `Gtk.Action`, `Gtk.ToggleAction`, or `Gtk.STOCK_*`. Menu bar and toolbar are now built directly as `Gtk.MenuBar`/`Gtk.Toolbar` with `Gtk.MenuItem`/`Gtk.ToolButton`. `main_window.py` updated to access `menu_bar.menubar` and `menu_bar.toolbar` directly.
 
-### 3.2 Split `main_window.py` into focused modules
-`main_window.py` is ~1500 lines covering event handling, JSON I/O, undo/redo, VHDL display, and UI construction. Suggested split:
-- `project_manager.py` — save/load/undo/redo
-- `event_handler.py` — mouse/keyboard events
-- `vhdl_viewer.py` — VHDL display dialog
+### 3.2 Split `main_window.py` into focused modules ✅
+`main_window.py` reduced from ~1681 lines to ~450 lines using Python mixin inheritance:
+- `project_manager.py` — `ProjectManagerMixin`: save/load/undo/redo (10 methods)
+- `event_handler.py` — `EventHandlerMixin`: mouse/keyboard events, drawing, wire management (16 methods)
+- `vhdl_viewer.py` — `VhdlViewerMixin`: per-block VHDL template dialog (3 methods)
+- `BlocksWindow` inherits from all three mixins + `Gtk.Window`; all `self.xxx` call sites unchanged
 
 ### 3.3 Replace `Block.init_wires()` lookup table with data-driven config
 `blocks.py:init_wires` is a 30-branch `elif` chain. Replace with a dict mapping `block_type` → `(num_inputs, num_outputs)`.
