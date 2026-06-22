@@ -23,25 +23,24 @@ These are bugs that cause silent data loss or crashes during normal use.
 
 ## P1 — Core UX / Usability (high value, moderate effort)
 
-### 1.1 Wire label editing
-Right-click a wire → "Rename" to set a net name. Net names carry into VHDL `signal` declarations.
-Currently wires have a `text` field that is saved/loaded but never editable through the UI.
+### 1.1 Wire label editing ✅
+Right-click a wire → "Rename (set net name)" dialog. Wire text is saved to JSON and displayed on canvas. Net names will carry into VHDL `signal` declarations.
 
 ### 1.2 Multi-select and group operations
 Hold Shift and click to select multiple blocks/pins/wires. Enable group move, group delete, group copy.
 Without this, rearranging a complex circuit requires many individual drags.
 
-### 1.3 Zoom in/out
-Add Ctrl+scroll-wheel zoom. The canvas is 5000×5000 but has no zoom — blocks become tiny on high-DPI displays and there is no way to get a bird's-eye view.
+### 1.3 Zoom in/out ✅
+Ctrl+scroll-wheel zoom (0.2×–4.0×). Canvas coordinates are correctly transformed; A* grid and mouse hit-testing both account for zoom level.
 
-### 1.4 Status bar
-Add a one-line status bar at the bottom showing: selected element name + type, wire count, block count, current file path. Currently the only feedback is mouse coordinates.
+### 1.4 Status bar ✅
+One-line status bar at the bottom showing: selected element name + type, block/pin/wire counts, and current filename. Updates on every click and selection change.
 
-### 1.5 "New project" actually clears the canvas
-`File > New SVCG Project` currently only prints to console. It should confirm with the user, clear all blocks/pins/wires, and reset `current_file_path`.
+### 1.5 "New project" actually clears the canvas ✅
+`File > New SVCG Project` now asks to save unsaved changes, then clears all blocks/pins/wires, resets the file path, and refreshes the canvas.
 
-### 1.6 Auto-save / dirty flag
-Track whether unsaved changes exist (window title asterisk). Prompt "Save before closing?" on Quit. Currently all changes are lost if the window is closed without explicitly saving.
+### 1.6 Auto-save / dirty flag ✅
+Window title shows `*` prefix when unsaved changes exist. Closing the window with unsaved changes prompts "Save / Discard / Cancel". Title updates to show filename on save/load.
 
 ---
 

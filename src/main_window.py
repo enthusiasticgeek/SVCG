@@ -252,7 +252,7 @@ class BlocksWindow(Gtk.Window):
         self.scrolled_window = Gtk.ScrolledWindow()
         self.scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.drawing_area = DrawingArea(self)
-        self.drawing_area.set_size_request(5000, 5000)  # Set a large size to trigger scroll bars
+        self.drawing_area.set_size_request(DrawingArea.CANVAS_SIZE, DrawingArea.CANVAS_SIZE)
         self.scrolled_window.add(self.drawing_area)
         self.box.pack_start(self.scrolled_window, True, True, 0)
 
@@ -281,12 +281,71 @@ class BlocksWindow(Gtk.Window):
         self.update_undo_redo_buttons()  # Initialize the sensitivity of the buttons
         self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
 
-        #self.load_from_json()
+        # Dirty flag — tracks unsaved changes
+        self.dirty = False
 
-        # Initialize blocks.json with an empty list if it doesn't exist
-        #if not os.path.exists("blocks.json"):
-        #   with open("blocks.json", "w") as file:
-        #        file.write(json.dumps([], indent=4))
+        # Status bar
+        self.status_bar = Gtk.Label()
+        self.status_bar.set_markup("<span color='#555555'>Ready</span>")
+        self.status_bar.set_halign(Gtk.Align.START)
+        self.status_bar.set_margin_start(6)
+        self.status_bar.set_margin_bottom(2)
+        self.vbox.pack_end(self.status_bar, False, False, 0)
+
+        self.connect("delete-event", self.on_delete_event)
+
+    def set_dirty(self, dirty):
+        self.dirty = dirty
+        title = "Simple VHDL Code Generator (SVCG)"
+        if self.current_file_path:
+            title += f" — {os.path.basename(self.current_file_path)}"
+        if dirty:
+            title = "* " + title
+        self.set_title(title)
+
+    def update_status_bar(self):
+        parts = []
+        if self.selected_block:
+            parts.append(f"Block: {self.selected_block.text} [{self.selected_block.block_type}]")
+        elif self.selected_pin:
+            parts.append(f"Pin: {self.selected_pin.text} [{self.selected_pin.pin_type}]")
+        elif self.selected_wire:
+            parts.append(f"Wire: {self.selected_wire.text}")
+        else:
+            parts.append("Ready")
+        parts.append(f"Blocks: {len(self.blocks)}  Pins: {len(self.pins)}  Wires: {len(self.wires)}")
+        if self.current_file_path:
+            parts.append(os.path.basename(self.current_file_path))
+        self.status_bar.set_markup(
+            "<span color='#555555'>" + " │ ".join(parts) + "</span>"
+        )
+
+    def on_delete_event(self, widget, event):
+        if not self.dirty:
+            return False
+        dialog = Gtk.MessageDialog(
+            transient_for=self, flags=0,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.NONE,
+            text="You have unsaved changes.",
+        )
+        dialog.format_secondary_text("Save before closing?")
+        dialog.add_button("Discard", Gtk.ResponseType.NO)
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("Save", Gtk.ResponseType.YES)
+        dialog.set_default_response(Gtk.ResponseType.YES)
+        response = dialog.run()
+        dialog.destroy()
+        if response == Gtk.ResponseType.YES:
+            if self.current_file_path:
+                self.save_to_json(self.current_file_path)
+            else:
+                self.menu_bar.on_save_as_json_file(None)
+            return self.dirty  # if save-as was cancelled dirty is still True
+        elif response == Gtk.ResponseType.NO:
+            return False
+        else:
+            return True  # Cancel — prevent close
 
     def on_button_clicked(self, widget, block_type):
         try:
@@ -347,9 +406,9 @@ class BlocksWindow(Gtk.Window):
 
     def on_draw(self, widget, cr):
         try:
-            # Draw grid
+            # Draw grid (coordinates are in canvas space — cr is already scaled by zoom)
             cr.set_source_rgb(0, 1, 0)  # Green color for grid points
-            width, height = self.drawing_area.get_allocated_width(), self.drawing_area.get_allocated_height()
+            width, height = DrawingArea.CANVAS_SIZE, DrawingArea.CANVAS_SIZE
             for x in range(0, width, self.grid_size):
                 for y in range(0, height, self.grid_size):
                     cr.rectangle(x, y, 2, 2)
@@ -443,13 +502,13 @@ class BlocksWindow(Gtk.Window):
                 # dragging wire only
                 #######################
                 for block in self.blocks:
-                    if block.contains_pin(int(event.x), int(event.y)):
-                        self.wire_start_point = block.contains_pin(int(event.x), int(event.y))
+                    if block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
+                        self.wire_start_point = block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
                         self.dragging_wire = True
                         break
                 for pin in self.pins:
-                    if pin.contains_pin(int(event.x), int(event.y)):
-                        self.wire_start_point = pin.contains_pin(int(event.x), int(event.y))
+                    if pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
+                        self.wire_start_point = pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
                         self.dragging_wire = True
                         break
                 #######################
@@ -458,19 +517,19 @@ class BlocksWindow(Gtk.Window):
                 #######################
                 if not self.dragging_wire:
                     for block in self.blocks:
-                        if block.contains_point(int(event.x), int(event.y)):
+                        if block.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
                             self.selected_block = block
                             block.set_selected(True)
-                            block.start_drag(int(event.x), int(event.y))
+                            block.start_drag(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
                             break
                     for pin in self.pins:
-                        if pin.contains_point(int(event.x), int(event.y)):
+                        if pin.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
                             self.selected_pin = pin
                             pin.set_selected(True)
-                            pin.start_drag(int(event.x), int(event.y))
+                            pin.start_drag(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
                             break
                     for wire in self.wires:
-                        if wire.contains_point(int(event.x), int(event.y)):
+                        if wire.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
                             self.selected_wire = wire
                             wire.set_selected(True)
                             break
@@ -480,28 +539,28 @@ class BlocksWindow(Gtk.Window):
             elif event.button == 3:  # Right click
                 #print("Right button pressed")
                 for block in self.blocks:
-                    if block.contains_point(int(event.x), int(event.y)):
+                    if block.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
                         self.selected_block = block
                         block.set_selected(True)
                         self.context_menu.set_view_vhdl_code_sensitive(True)  # Enable VHDL code menu item
-                        if block.contains_pin(int(event.x), int(event.y)):
+                        if block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
                             self.pin_context_menu.popup(event)
                         else:
                             self.context_menu.popup(event)
                         break
                 for pin in self.pins:
-                    if pin.contains_point(int(event.x), int(event.y)):
+                    if pin.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
                         self.selected_pin = pin
                         pin.set_selected(True)
                         self.context_menu.set_view_vhdl_code_sensitive(False)  # Disable VHDL code menu item
-                        connection_point = pin.contains_pin(int(event.x), int(event.y))
+                        connection_point = pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
                         if connection_point:
                             self.pin_context_menu.popup(event)
                         else:
                             self.context_menu.popup(event)
                         break
                 for wire in self.wires:
-                    if wire.contains_point(int(event.x), int(event.y)):
+                    if wire.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
                         self.selected_wire = wire
                         wire.set_selected(True)
                         self.wire_context_menu.popup(None, None, None, None, event.button, event.time)
@@ -512,6 +571,7 @@ class BlocksWindow(Gtk.Window):
             self.push_undo()
             self.drawing_area.grab_focus()  # Ensure the DrawingArea has keyboard focus
             self.drag_started = True
+            self.update_status_bar()
         except Exception as e:
             print(f"Error in on_button_press: {e}")
     
@@ -550,7 +610,7 @@ class BlocksWindow(Gtk.Window):
                 #print("dragging block/pins")
                 for block in self.blocks:
                     #print("block....")
-                    if block.contains_point(int(event.x), int(event.y)):
+                    if block.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
                         #print(f"block {block.block_type.lower()} drag complete")
                         block_dict = block.to_dict()
                         for widx, wire in enumerate(self.wires):
@@ -572,7 +632,7 @@ class BlocksWindow(Gtk.Window):
                         break
                 for pin in self.pins:
                     #print("pin....")
-                    if pin.contains_point(int(event.x), int(event.y)):
+                    if pin.contains_point(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
                         #print(f"pin {pin.pin_type.lower()} drag complete")
                         pin_dict = pin.to_dict()
                         for widx, wire in enumerate(self.wires):
@@ -599,13 +659,13 @@ class BlocksWindow(Gtk.Window):
     
                 # Find the end point
                 for block in self.blocks:
-                    if block.contains_pin(int(event.x), int(event.y)):
-                        end_point = block.contains_pin(int(event.x), int(event.y))
+                    if block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
+                        end_point = block.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
                         end_block = block
                         break
                 for pin in self.pins:
-                    if pin.contains_pin(int(event.x), int(event.y)):
-                        end_point = pin.contains_pin(int(event.x), int(event.y))
+                    if pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom)):
+                        end_point = pin.contains_pin(int(event.x / self.drawing_area.zoom), int(event.y / self.drawing_area.zoom))
                         end_pin = pin
                         break
     
@@ -682,14 +742,15 @@ class BlocksWindow(Gtk.Window):
             self.push_undo()
             self.drawing_area.grab_focus()
             self.drag_started = False
-    
+            self.update_status_bar()
+
         except Exception as e:
             print(f"Error in on_button_release: {e}")
 
     def on_motion_notify(self, widget, event):
         #print("MOUSE BUTTON MOTION")
         try:
-            self.mouse_x, self.mouse_y = max(0,int(event.x)), max(0,int(event.y))
+            self.mouse_x, self.mouse_y = max(0,int(event.x / self.drawing_area.zoom)), max(0,int(event.y / self.drawing_area.zoom))
             width, height = self.drawing_area.get_allocated_width(), self.drawing_area.get_allocated_height()
             for block in self.blocks:
                 block.drag(self.mouse_x, self.mouse_y, width, height)
@@ -1203,7 +1264,8 @@ class BlocksWindow(Gtk.Window):
         try:
             self.undo_stack.append(self.elements_to_json())
             self.redo_stack = []
-            self.update_undo_redo_buttons()  # Update the sensitivity of the buttons
+            self.update_undo_redo_buttons()
+            self.set_dirty(True)
         except Exception as e:
             print(f"Error in push_undo: {e}")
 
@@ -1356,6 +1418,9 @@ class BlocksWindow(Gtk.Window):
             if elements != "[]":  # Only save if there are elements to save
                 with open(file_path, "w") as file:
                     file.write(elements)
+                self.current_file_path = file_path
+                self.set_dirty(False)
+                self.update_status_bar()
             else:
                 print("No data to save. The elements list is empty.")
         except IOError as e:
@@ -1374,7 +1439,9 @@ class BlocksWindow(Gtk.Window):
                     self.pins = [Pin.from_dict(pin_dict, self) for pin_dict in data if pin_dict.get("pin_type")]
                     self.wires = [Wire.from_dict(wire_dict, self) for wire_dict in data if wire_dict.get("start_point") or wire_dict.get("end_point")]
                     self.drawing_area.queue_draw()
-                    self.current_file_path = file_path  # Update the current file path
+                    self.current_file_path = file_path
+                    self.set_dirty(False)
+                    self.update_status_bar()
                 else:
                     print("The file is empty or contains no valid data.")
         except json.JSONDecodeError as e:

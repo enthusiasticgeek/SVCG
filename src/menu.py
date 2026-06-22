@@ -162,7 +162,41 @@ class MenuBar:
         action_group.add_action(three)
 
     def on_menu_file_new_generic_svcg(self, widget):
-        print("A SVCG File|New menu item was selected.")
+        if self.main_window.dirty:
+            save_dialog = Gtk.MessageDialog(
+                transient_for=self.main_window, flags=0,
+                message_type=Gtk.MessageType.WARNING,
+                buttons=Gtk.ButtonsType.NONE,
+                text="You have unsaved changes.",
+            )
+            save_dialog.format_secondary_text("Save before creating a new project?")
+            save_dialog.add_button("Discard", Gtk.ResponseType.NO)
+            save_dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+            save_dialog.add_button("Save", Gtk.ResponseType.YES)
+            save_dialog.set_default_response(Gtk.ResponseType.YES)
+            resp = save_dialog.run()
+            save_dialog.destroy()
+            if resp == Gtk.ResponseType.YES:
+                if self.main_window.current_file_path:
+                    self.main_window.save_to_json(self.main_window.current_file_path)
+                else:
+                    self.on_save_as_json_file(widget)
+            elif resp == Gtk.ResponseType.CANCEL:
+                return
+
+        self.main_window.blocks = []
+        self.main_window.pins = []
+        self.main_window.wires = []
+        self.main_window.current_file_path = None
+        self.main_window.undo_stack = []
+        self.main_window.redo_stack = []
+        self.main_window.selected_block = None
+        self.main_window.selected_pin = None
+        self.main_window.selected_wire = None
+        self.main_window.update_undo_redo_buttons()
+        self.main_window.drawing_area.queue_draw()
+        self.main_window.set_dirty(False)
+        self.main_window.update_status_bar()
 
     def on_menu_file_load_generic_svcg(self, widget):
         print("A SVCG File|Load menu item was selected.")

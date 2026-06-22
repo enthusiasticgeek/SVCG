@@ -74,7 +74,23 @@ class Wire:
         came_from, cost_so_far = astar.astar(start_point, end_point)
         path = astar.reconstruct_path(came_from, start_point, end_point)
         if not path:
-            print(f"No path found from {start_point} to {end_point}")
+            print(f"A* found no path {start_point}→{end_point}; using Manhattan fallback")
+            path = self._manhattan_path(start_point, end_point)
+        return path
+
+    def _manhattan_path(self, start, end):
+        """L-shaped Manhattan path: horizontal segment then vertical segment."""
+        x1, y1 = start
+        x2, y2 = end
+        path = []
+        # horizontal leg
+        step = 1 if x2 >= x1 else -1
+        for x in range(x1, x2 + step, step):
+            path.append((x, y1))
+        # vertical leg
+        step = 1 if y2 >= y1 else -1
+        for y in range(y1 + step, y2 + step, step):
+            path.append((x2, y))
         return path
     
 

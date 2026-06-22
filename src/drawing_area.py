@@ -6,25 +6,42 @@ from blocks import Block
 import numpy as np
 
 class DrawingArea(Gtk.DrawingArea):
+    CANVAS_SIZE = 5000
+
     def __init__(self, parent_window):
         super().__init__()
         self.parent_window = parent_window
         self.grid = None
+        self.zoom = 1.0
         self.connect("draw", self.on_draw)
         self.set_events(Gdk.EventMask.BUTTON_PRESS_MASK |
                         Gdk.EventMask.BUTTON_RELEASE_MASK |
                         Gdk.EventMask.POINTER_MOTION_MASK |
-                        Gdk.EventMask.KEY_PRESS_MASK)
+                        Gdk.EventMask.KEY_PRESS_MASK |
+                        Gdk.EventMask.SCROLL_MASK)
         self.connect("button-press-event", self.on_button_press)
         self.connect("button-release-event", self.on_button_release)
         self.connect("motion-notify-event", self.on_motion_notify)
         self.connect("key-press-event", self.on_key_press)
-        self.set_can_focus(True)  # Allow the widget to receive focus
+        self.connect("scroll-event", self.on_scroll)
+        self.set_can_focus(True)
 
     def on_draw(self, widget, cr):
-        width, height = self.get_allocated_width(), self.get_allocated_height()
-        self.create_grid(width, height, self.parent_window.grid_size)
+        self.create_grid(self.CANVAS_SIZE, self.CANVAS_SIZE, self.parent_window.grid_size)
+        cr.scale(self.zoom, self.zoom)
         self.parent_window.on_draw(widget, cr)
+
+    def on_scroll(self, widget, event):
+        if event.state & Gdk.ModifierType.CONTROL_MASK:
+            if event.direction == Gdk.ScrollDirection.UP:
+                self.zoom = min(4.0, round(self.zoom * 1.15, 3))
+            elif event.direction == Gdk.ScrollDirection.DOWN:
+                self.zoom = max(0.2, round(self.zoom / 1.15, 3))
+            size = int(self.CANVAS_SIZE * self.zoom)
+            self.set_size_request(size, size)
+            self.queue_draw()
+            return True
+        return False
 
     def create_grid(self, width, height, grid_size):
         self.grid = np.zeros((height // grid_size, width // grid_size), dtype=int)
