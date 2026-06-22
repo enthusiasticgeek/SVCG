@@ -838,16 +838,17 @@ class BlocksWindow(Gtk.Window):
                 self.selected_block.rotate(90)
                 self.update_points()
                 self.drawing_area.queue_draw()
-                self.update_json()  # Update the JSON file
+                self.update_json()
                 self.push_undo()
             elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
                 print("rotate 90 pin")
                 self.selected_pin.rotate(90)
                 self.update_points()
                 self.drawing_area.queue_draw()
-                self.update_json()  # Update the JSON file
+                self.update_json()
                 self.push_undo()
-            elif not self.block_has_no_wires_connected(self.selected_block) or not self.pin_has_no_wires_connected(self.selected_pin):
+            elif (self.selected_block and not self.block_has_no_wires_connected(self.selected_block)) or \
+                 (self.selected_pin and not self.pin_has_no_wires_connected(self.selected_pin)):
                 self.show_error_message("Cannot rotate block/pin", "The block/pin has wires connected. Disconnect wires and try again!")
         except Exception as e:
             print(f"Error in on_rotate_90: {e}")
@@ -858,15 +859,16 @@ class BlocksWindow(Gtk.Window):
                 self.selected_block.rotate(180)
                 self.update_points()
                 self.drawing_area.queue_draw()
-                self.update_json()  # Update the JSON file
+                self.update_json()
                 self.push_undo()
             elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
                 self.selected_pin.rotate(180)
                 self.update_points()
                 self.drawing_area.queue_draw()
-                self.update_json()  # Update the JSON file
+                self.update_json()
                 self.push_undo()
-            elif not self.block_has_no_wires_connected(self.selected_block) or not self.pin_has_no_wires_connected(self.selected_pin):
+            elif (self.selected_block and not self.block_has_no_wires_connected(self.selected_block)) or \
+                 (self.selected_pin and not self.pin_has_no_wires_connected(self.selected_pin)):
                 self.show_error_message("Cannot rotate block/pin", "The block/pin has wires connected. Disconnect wires and try again!")
         except Exception as e:
             print(f"Error in on_rotate_180: {e}")
@@ -877,15 +879,16 @@ class BlocksWindow(Gtk.Window):
                 self.selected_block.rotate(270)
                 self.update_points()
                 self.drawing_area.queue_draw()
-                self.update_json()  # Update the JSON file
+                self.update_json()
                 self.push_undo()
             elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
                 self.selected_pin.rotate(270)
                 self.update_points()
                 self.drawing_area.queue_draw()
-                self.update_json()  # Update the JSON file
+                self.update_json()
                 self.push_undo()
-            elif not self.block_has_no_wires_connected(self.selected_block) or not self.pin_has_no_wires_connected(self.selected_pin):
+            elif (self.selected_block and not self.block_has_no_wires_connected(self.selected_block)) or \
+                 (self.selected_pin and not self.pin_has_no_wires_connected(self.selected_pin)):
                 self.show_error_message("Cannot rotate block/pin", "The block/pin has wires connected. Disconnect wires and try again!")
         except Exception as e:
             print(f"Error in on_rotate_270: {e}")
@@ -1253,42 +1256,31 @@ class BlocksWindow(Gtk.Window):
 
     def update_points(self):
         for block in self.blocks:
-            #print("block....")
-            #if block.contains_point(int(event.x), int(event.y)):
-                #print(f"block {block.block_type.lower()} drag complete")
-                block_dict = block.to_dict()
-                for widx, wire in enumerate(self.wires):
-                    for idx, input_wires in enumerate(block_dict['input_wires']):
-                        if input_wires is not None and wire.id in input_wires:
-                            #print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
-                            if self.convert_to_tuple(wire.start_point) in block.prev_input_connections():
-                                wire.update_start_point(block_dict['input_points'][idx])
-                            elif self.convert_to_tuple(wire.end_point) in block.prev_input_connections():
-                                wire.update_end_point(block_dict['input_points'][idx])
-                    for idx, output_wires in enumerate(block_dict['output_wires']):
-                        if output_wires is not None and wire.id in output_wires:
-                            #print(f"{wire.start_point} {wire.end_point} and {block.prev_input_connections()}")
-                            if self.convert_to_tuple(wire.start_point) in block.prev_output_connections():
-                                wire.update_start_point(block_dict['output_points'][idx])
-                            elif self.convert_to_tuple(wire.end_point) in block.prev_output_connections():
-                                wire.update_end_point(block_dict['output_points'][idx])
-                block.update_points()
-                break
+            block_dict = block.to_dict()
+            for widx, wire in enumerate(self.wires):
+                for idx, input_wires in enumerate(block_dict['input_wires']):
+                    if input_wires is not None and wire.id in input_wires:
+                        if self.convert_to_tuple(wire.start_point) in block.prev_input_connections():
+                            wire.update_start_point(block_dict['input_points'][idx])
+                        elif self.convert_to_tuple(wire.end_point) in block.prev_input_connections():
+                            wire.update_end_point(block_dict['input_points'][idx])
+                for idx, output_wires in enumerate(block_dict['output_wires']):
+                    if output_wires is not None and wire.id in output_wires:
+                        if self.convert_to_tuple(wire.start_point) in block.prev_output_connections():
+                            wire.update_start_point(block_dict['output_points'][idx])
+                        elif self.convert_to_tuple(wire.end_point) in block.prev_output_connections():
+                            wire.update_end_point(block_dict['output_points'][idx])
+            block.update_points()
         for pin in self.pins:
-            #print("pin....")
-            #if pin.contains_point(int(event.x), int(event.y)):
-                #print(f"pin {pin.pin_type.lower()} drag complete")
-                pin_dict = pin.to_dict()
-                for widx, wire in enumerate(self.wires):
-                    for idx, wires in enumerate(pin_dict['wires']):
-                        if wires is not None and wire.id in wires:
-                            #print(f"{wire.start_point} {wire.end_point} and {pin.prev_connections()}")
-                            if self.convert_to_tuple(wire.start_point) in pin.prev_connections():
-                                wire.update_start_point(pin_dict['connection_points'][idx])
-                            elif self.convert_to_tuple(wire.end_point) in pin.prev_connections():
-                                wire.update_end_point(pin_dict['connection_points'][idx])
-                pin.update_points()
-                break
+            pin_dict = pin.to_dict()
+            for widx, wire in enumerate(self.wires):
+                for idx, wires in enumerate(pin_dict['wires']):
+                    if wires is not None and wire.id in wires:
+                        if self.convert_to_tuple(wire.start_point) in pin.prev_connections():
+                            wire.update_start_point(pin_dict['connection_points'][idx])
+                        elif self.convert_to_tuple(wire.end_point) in pin.prev_connections():
+                            wire.update_end_point(pin_dict['connection_points'][idx])
+            pin.update_points()
 
     def pin_has_no_wires_connected(self, pin):
         if pin:
@@ -1443,7 +1435,8 @@ class BlocksWindow(Gtk.Window):
         try:
             if self.selected_block:
                 block_type = self.selected_block.block_type.lower()
-                vhdl_file_path = f"vhdl/{block_type}.vhd"
+                src_dir = os.path.dirname(os.path.abspath(__file__))
+                vhdl_file_path = os.path.join(src_dir, "vhdl", f"{block_type}.vhd")
                 if os.path.exists(vhdl_file_path):
                     with open(vhdl_file_path, "r") as file:
                         vhdl_code = file.read()

@@ -178,7 +178,6 @@ class MenuBar:
         confirm_dialog.destroy()
 
         if confirm_response != Gtk.ResponseType.YES:
-            dialog.destroy()
             return
         self.on_load_json_file(widget)
 
@@ -202,7 +201,6 @@ class MenuBar:
         confirm_dialog.destroy()
 
         if confirm_response != Gtk.ResponseType.YES:
-            dialog.destroy()
             return
         self.on_load_json_file(widget)
 
@@ -256,7 +254,7 @@ class MenuBar:
         if self.main_window.current_file_path:
             self.main_window.save_to_json(self.main_window.current_file_path)
         else:
-            self.on_save_as_file(widget)
+            self.on_save_as_json_file(widget)
 
     def on_save_as_json_file(self, widget):
         dialog = Gtk.FileChooserDialog(

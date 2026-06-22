@@ -97,7 +97,7 @@ class Pin:
             #self.border_color = (0, 0, 0)  # Default border color (black)
             self.draw_vdd_clk_gnd(cr,self.pin_type)
             self.draw_input_arrow(cr)
-        if "VDD_5V" or "VDD_3V3" or "VDD_1V8" or "VDD_1V2" in self.pin_type:
+        if any(v in self.pin_type for v in ["VDD_5V", "VDD_3V3", "VDD_1V8", "VDD_1V2"]):
             #self.border_color = (0.9, 0, 0)  # Default border color (red)
             self.draw_input_arrow(cr)
             self.draw_vdd_clk_gnd(cr,self.pin_type)
