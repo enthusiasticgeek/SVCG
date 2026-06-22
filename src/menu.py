@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import gi
 import os
+import re
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
+from vhdl_export import generate_vhdl
 
 UI_INFO = """
 <ui>
@@ -14,6 +16,8 @@ UI_INFO = """
         <menuitem action='ImportSVCGJsonFile' />
         <menuitem action='ExportSVCGJsonFile' />
       </menu>
+      <separator />
+      <menuitem action='GenerateVHDL' />
       <separator />
       <menuitem action='FileQuit' />
     </menu>
@@ -126,6 +130,14 @@ class MenuBar:
                 ),
             ]
         )
+        action_gen_vhdl = Gtk.Action(
+            name="GenerateVHDL",
+            label="Generate VHDL...",
+            tooltip="Generate VHDL entity+architecture from schematic",
+        )
+        action_gen_vhdl.connect("activate", self.on_generate_vhdl)
+        action_group.add_action(action_gen_vhdl)
+
         action_filequit = Gtk.Action(name="FileQuit", stock_id=Gtk.STOCK_QUIT)
         action_filequit.connect("activate", self.on_menu_file_quit)
         action_group.add_action(action_filequit)
@@ -160,6 +172,109 @@ class MenuBar:
         three = Gtk.ToggleAction(name="ChoiceThree", label="Three")
         three.connect("toggled", self.on_menu_choices_toggled)
         action_group.add_action(three)
+
+    def on_generate_vhdl(self, widget):
+        mw = self.main_window
+        if not mw.blocks and not mw.pins:
+            self._show_error("Nothing to export", "Add some blocks and IO pins to the canvas first.")
+            return
+
+        # ── Ask for entity name ──────────────────────────────────────────────
+        name_dialog = Gtk.MessageDialog(
+            transient_for=mw, flags=0,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text="Generate VHDL",
+        )
+        name_dialog.format_secondary_text("Enter top-level entity name:")
+        entry = Gtk.Entry()
+        default_name = "SCHEMATIC"
+        if mw.current_file_path:
+            base = os.path.splitext(os.path.basename(mw.current_file_path))[0]
+            default_name = re.sub(r"[^A-Za-z0-9_]", "_", base).upper() or "SCHEMATIC"
+        entry.set_text(default_name)
+        entry.set_activates_default(True)
+        name_dialog.get_content_area().pack_end(entry, False, False, 6)
+        name_dialog.set_default_response(Gtk.ResponseType.OK)
+        name_dialog.show_all()
+        resp = name_dialog.run()
+        entity_name = entry.get_text().strip() or default_name
+        name_dialog.destroy()
+        if resp != Gtk.ResponseType.OK:
+            return
+
+        # ── Generate VHDL ────────────────────────────────────────────────────
+        try:
+            vhdl_text = generate_vhdl(entity_name, mw.blocks, mw.pins, mw.wires)
+        except Exception as exc:
+            self._show_error("VHDL generation failed", str(exc))
+            return
+
+        # ── Save file dialog ─────────────────────────────────────────────────
+        save_dialog = Gtk.FileChooserDialog(
+            title="Save VHDL File",
+            parent=mw,
+            action=Gtk.FileChooserAction.SAVE,
+        )
+        save_dialog.add_buttons(
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_SAVE,   Gtk.ResponseType.ACCEPT,
+        )
+        save_dialog.set_current_name(f"{entity_name.lower()}.vhd")
+        flt = Gtk.FileFilter()
+        flt.set_name("VHDL files (*.vhd, *.vhdl)")
+        flt.add_pattern("*.vhd")
+        flt.add_pattern("*.vhdl")
+        save_dialog.add_filter(flt)
+
+        if mw.current_file_path:
+            save_dialog.set_current_folder(os.path.dirname(mw.current_file_path))
+
+        resp = save_dialog.run()
+        if resp == Gtk.ResponseType.ACCEPT:
+            path = save_dialog.get_filename()
+            if not path.lower().endswith((".vhd", ".vhdl")):
+                path += ".vhd"
+            save_dialog.destroy()
+            try:
+                with open(path, "w") as f:
+                    f.write(vhdl_text)
+            except IOError as exc:
+                self._show_error("Could not write file", str(exc))
+                return
+
+            # ── Preview dialog ───────────────────────────────────────────────
+            preview = Gtk.Dialog(
+                title=f"Generated VHDL — {os.path.basename(path)}",
+                transient_for=mw,
+                flags=0,
+            )
+            preview.add_button("Close", Gtk.ResponseType.CLOSE)
+            preview.set_default_size(700, 500)
+            sw = Gtk.ScrolledWindow()
+            sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            tv = Gtk.TextView()
+            tv.set_editable(False)
+            tv.set_monospace(True)
+            tv.get_buffer().set_text(vhdl_text)
+            sw.add(tv)
+            preview.get_content_area().pack_start(sw, True, True, 0)
+            preview.show_all()
+            preview.run()
+            preview.destroy()
+        else:
+            save_dialog.destroy()
+
+    def _show_error(self, title, message):
+        d = Gtk.MessageDialog(
+            transient_for=self.main_window, flags=0,
+            message_type=Gtk.MessageType.ERROR,
+            buttons=Gtk.ButtonsType.OK,
+            text=title,
+        )
+        d.format_secondary_text(message)
+        d.run()
+        d.destroy()
 
     def on_menu_file_new_generic_svcg(self, widget):
         if self.main_window.dirty:

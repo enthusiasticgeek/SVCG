@@ -45,14 +45,14 @@ Window title shows `*` prefix when unsaved changes exist. Closing the window wit
 
 ## P2 — VHDL Generation (the core value proposition)
 
-### 2.1 Whole-schematic VHDL export
-Generate a complete VHDL entity + architecture from the wired-up canvas:
-- Infer port names from the IO pins
-- Infer `signal` declarations from wires (using wire `text` as net name)
-- Instantiate each block as a component using the existing per-block `.vhd` templates
-- Write `port map` connections from the wire topology
-
-This is the main missing feature — the per-block VHDL viewer exists but there is no end-to-end generator yet.
+### 2.1 Whole-schematic VHDL export ✅
+`File > Generate VHDL...` produces a complete structural VHDL file:
+- Entity ports inferred from IO pins (input_pin/output_pin/bus types → in/out/inout STD_LOGIC)
+- `signal` declarations for every internal wire (using wire `text` as net name)
+- `component` declarations for each unique block type used
+- Structural `port map` connections derived from the wire topology (block.input_wires/output_wires)
+- Asks for entity name (defaults to filename), saves to `.vhd`, shows inline preview
+- Implemented in `src/vhdl_export.py`; wired into `File` menu in `src/menu.py`
 
 ### 2.2 VHDL syntax check / preview
 After generation, run `ghdl -a` (if installed) to verify the output compiles. Display errors inline.
