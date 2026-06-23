@@ -112,10 +112,6 @@ class EventHandlerMixin:
         if not self.drag_started:
             if event.x < 0 or event.y < 0:
                 return False
-            if (event.button == 1 and event.button == 2 or
-                    event.button == 1 and event.button == 3 or
-                    event.button == 2 and event.button == 3):
-                return False
             try:
                 self.push_undo()
                 if event.button == 1:
@@ -237,11 +233,6 @@ class EventHandlerMixin:
     def on_button_release(self, widget, event):
         if event.x < 0 or event.y < 0:
             return False
-        if (event.button == 1 and event.button == 2 or
-                event.button == 1 and event.button == 3 or
-                event.button == 2 and event.button == 3):
-            return False
-
         try:
             self.push_undo()
             for block in self.blocks:

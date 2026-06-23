@@ -251,19 +251,27 @@ def import_yosys_json(path, parent_window):
             if hasattr(src_obj, "output_points") and src_pt in src_obj.output_points:
                 idx = src_obj.output_points.index(src_pt)
                 if idx < len(src_obj.output_wires):
+                    if src_obj.output_wires[idx] is None:
+                        src_obj.output_wires[idx] = []
                     src_obj.output_wires[idx].append(w.id)
             elif hasattr(src_obj, "connection_points") and src_pt in src_obj.connection_points:
                 idx = src_obj.connection_points.index(src_pt)
                 if idx < len(src_obj.wires):
+                    if src_obj.wires[idx] is None:
+                        src_obj.wires[idx] = []
                     src_obj.wires[idx].append(w.id)
             # Register wire in destination block/pin
             if hasattr(dst_obj, "input_points") and dst_pt in dst_obj.input_points:
                 idx = dst_obj.input_points.index(dst_pt)
                 if idx < len(dst_obj.input_wires):
+                    if dst_obj.input_wires[idx] is None:
+                        dst_obj.input_wires[idx] = []
                     dst_obj.input_wires[idx].append(w.id)
             elif hasattr(dst_obj, "connection_points") and dst_pt in dst_obj.connection_points:
                 idx = dst_obj.connection_points.index(dst_pt)
                 if idx < len(dst_obj.wires):
+                    if dst_obj.wires[idx] is None:
+                        dst_obj.wires[idx] = []
                     dst_obj.wires[idx].append(w.id)
             new_wires.append(w)
         wired_nets.add(bit)

@@ -27,6 +27,11 @@ A GTK3-based Python desktop application for visually designing digital circuits 
 - **Status bar** — shows selected element, canvas counts, and current filename
 - **Save/Load** — JSON project files via File menu
 - **EDIF export** (experimental) — `src/experimental/edif_convertor.py`
+- **Dark mode** — `File > Toggle Dark Mode` flips the GTK chrome and repaints the canvas with a dark background
+- **SVG/PNG export** — `File > Export as SVG...` / `Export as PNG...` renders a tight-cropped image of the schematic
+- **Component library** — `File > Save Selection as Component...` saves a selected sub-circuit; Components panel on the left re-instantiates saved components with fresh IDs
+- **Simulation** — `File > Generate Testbench + Simulate...` writes a structural VHDL entity and testbench, optionally runs GHDL, and launches GTKWave on the resulting VCD
+- **Yosys import** — `File > Import Yosys Netlist...` reads a `yosys ... write_json` JSON and places mapped cells on the canvas
 
 ---
 
@@ -34,7 +39,8 @@ A GTK3-based Python desktop application for visually designing digital circuits 
 
 ### Windows (MSYS2 MINGW64)
 
-Open the **MSYS2 MINGW64** shell and run:
+1. Install [MSYS2](https://www.msys2.org/) if you haven't already.
+2. Open the **MSYS2 MinGW64** shell and run:
 
 ```bash
 pacman -S mingw-w64-x86_64-python-gobject \
@@ -42,6 +48,9 @@ pacman -S mingw-w64-x86_64-python-gobject \
           mingw-w64-x86_64-python-cairo \
           mingw-w64-x86_64-python-numpy
 ```
+
+> **Tested on Windows 11** with MSYS2 MinGW64 (`C:\msys64\mingw64\bin\python.exe`).
+> Launch from the MSYS2 MinGW64 terminal — the standard Windows PowerShell/CMD prompt does not have GTK3 bindings.
 
 ### Linux (Debian/Ubuntu)
 
@@ -114,6 +123,47 @@ The generated file contains:
 
 ---
 
+## Simulation (GHDL + GTKWave)
+
+`File > Generate Testbench + Simulate...` does the following in one step:
+
+1. Generates a structural VHDL entity from the schematic (same as `File > Generate VHDL...`).
+2. Generates a simulation testbench with a 100 MHz clock process and stimulus for every input port.
+3. If [GHDL](https://github.com/ghdl/ghdl) is on `PATH`, runs `ghdl -a / -e / -r --vcd` and shows the log inline.
+4. A **Launch GTKWave** button appears if simulation produced a `.vcd` waveform file.
+
+Install GHDL on MSYS2:
+```bash
+pacman -S mingw-w64-x86_64-ghdl-llvm
+```
+
+---
+
+## Yosys Netlist Import
+
+`File > Import Yosys Netlist...` imports a synthesis JSON produced by [Yosys](https://github.com/YosysHQ/yosys):
+
+```bash
+yosys -p "synth -flatten; write_json out.json" design.v
+```
+
+Supported cell types: `$_AND_`, `$_OR_`, `$_NOT_`, `$_NAND_`, `$_NOR_`, `$_XOR_`, `$_XNOR_`, `$_MUX_`, `$_DFF_P_/N_`, `$_HA_`, `$_FA_` and their Yosys-internal equivalents. Cells are auto-placed in columns by topological depth; unsupported types are skipped with a warning.
+
+---
+
+## Component Library
+
+Save any Shift+click selection as a reusable component:
+
+1. Shift+click the blocks/pins you want to save.
+2. `File > Save Selection as Component...` — enter a name.
+3. The component appears in the **Components** expander in the left panel.
+4. Click its button to drop a fresh copy (new UUIDs, shifted position) onto the canvas.
+
+Components are stored as JSON files in `src/components/`.
+
+---
+
 ## Project File Format
 
 Designs are stored as JSON arrays. Each element is one of:
@@ -138,19 +188,26 @@ python3 edif_convertor.py ../my_design.json my_design.edf
 ```
 SVCG/
 ├── src/
-│   ├── main.py             # Entry point
-│   ├── main_window.py      # GTK window, event handlers, undo/redo
-│   ├── drawing_area.py     # GTK DrawingArea, zoom, grid
-│   ├── blocks.py           # Block model and drawing
-│   ├── pins.py             # Pin/bus model and drawing
-│   ├── wire.py             # Wire model, A* routing, Manhattan fallback
-│   ├── astar.py            # A* pathfinding on numpy grid
-│   ├── menu.py             # GTK menu/toolbar actions
-│   ├── context_menu.py     # Right-click context menus
-│   ├── vhdl_export.py      # Full-schematic VHDL generator
-│   └── vhdl/               # VHDL templates (one .vhd per block type)
+│   ├── main.py                 # Entry point
+│   ├── main_window.py          # GTK window + top-level __init__
+│   ├── project_manager.py      # Mixin: save/load/undo/redo
+│   ├── event_handler.py        # Mixin: mouse/keyboard events, drawing, wire routing
+│   ├── vhdl_viewer.py          # Mixin: per-block VHDL template dialog
+│   ├── component_library.py    # Mixin: save/load sub-circuit components
+│   ├── drawing_area.py         # GTK DrawingArea, zoom, grid
+│   ├── blocks.py               # Block model and drawing
+│   ├── pins.py                 # Pin/bus model and drawing
+│   ├── wire.py                 # Wire model, A* routing, Manhattan fallback
+│   ├── astar.py                # A* pathfinding on numpy grid
+│   ├── menu.py                 # GTK menu/toolbar actions
+│   ├── context_menu.py         # Right-click context menus
+│   ├── vhdl_export.py          # Full-schematic VHDL generator
+│   ├── testbench_gen.py        # VHDL testbench generator + GHDL/GTKWave launcher
+│   ├── yosys_importer.py       # Yosys JSON netlist importer
+│   ├── vhdl/                   # VHDL templates (one .vhd per block type)
+│   └── components/             # User-saved component sub-circuits (JSON)
 └── src/experimental/
-    └── edif_convertor.py   # JSON -> EDIF netlist converter
+    └── edif_convertor.py       # JSON -> EDIF netlist converter
 ```
 
 ---

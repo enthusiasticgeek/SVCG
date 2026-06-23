@@ -22,6 +22,7 @@ class ProjectManagerMixin:
             return json.dumps(elements, indent=4)
         except Exception as e:
             print(f"Error in elements_to_json: {e}")
+            return "[]"
 
     def update_json(self):
         try:
@@ -49,7 +50,7 @@ class ProjectManagerMixin:
                 data = json.loads(self.undo_stack.pop())
                 self.blocks = [Block.from_dict(d, self) for d in data if d.get("block_type")]
                 self.pins   = [Pin.from_dict(d, self)   for d in data if d.get("pin_type")]
-                self.wires  = [Wire.from_dict(d, self)  for d in data if d.get("start_point") or d.get("end_point")]
+                self.wires  = [Wire.from_dict(d, self)  for d in data if d.get("start_point") is not None]
                 self.drawing_area.queue_draw()
                 self.update_json()
                 self.update_undo_redo_buttons()
@@ -63,7 +64,7 @@ class ProjectManagerMixin:
                 data = json.loads(self.redo_stack.pop())
                 self.blocks = [Block.from_dict(d, self) for d in data if d.get("block_type")]
                 self.pins   = [Pin.from_dict(d, self)   for d in data if d.get("pin_type")]
-                self.wires  = [Wire.from_dict(d, self)  for d in data if d.get("start_point") or d.get("end_point")]
+                self.wires  = [Wire.from_dict(d, self)  for d in data if d.get("start_point") is not None]
                 self.drawing_area.queue_draw()
                 self.update_json()
                 self.update_undo_redo_buttons()
@@ -112,7 +113,7 @@ class ProjectManagerMixin:
             if data:
                 self.blocks = [Block.from_dict(d, self) for d in data if d.get("block_type")]
                 self.pins   = [Pin.from_dict(d, self)   for d in data if d.get("pin_type")]
-                self.wires  = [Wire.from_dict(d, self)  for d in data if d.get("start_point") or d.get("end_point")]
+                self.wires  = [Wire.from_dict(d, self)  for d in data if d.get("start_point") is not None]
                 self.drawing_area.queue_draw()
                 self.current_file_path = file_path
                 self.set_dirty(False)
