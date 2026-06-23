@@ -26,18 +26,31 @@ class VhdlViewerMixin:
             if not self.selected_block:
                 return
             block = self.selected_block
+            lang = getattr(self, "hdl_language", "vhdl")
 
             if block.block_type == "CUSTOM":
-                from vhdl_export import generate_custom_vhd
                 cd = getattr(block, "custom_data", None) or {}
-                vhdl_code = generate_custom_vhd(
-                    cd.get("entity_name", "CUSTOM"),
-                    cd.get("input_names", []),
-                    cd.get("output_names", []),
-                    cd.get("vhdl", ""),
-                )
-                self.show_vhdl_code_dialog(vhdl_code,
-                    title=f"VHDL — {cd.get('entity_name','CUSTOM')} (Custom RTL)")
+                ename = cd.get("entity_name", "CUSTOM")
+                if lang == "verilog":
+                    from vhdl_export import generate_custom_v
+                    code = generate_custom_v(
+                        ename,
+                        cd.get("input_names", []),
+                        cd.get("output_names", []),
+                        cd.get("vhdl", ""),
+                    )
+                    self.show_vhdl_code_dialog(code,
+                        title=f"Verilog — {ename} (Custom RTL)")
+                else:
+                    from vhdl_export import generate_custom_vhd
+                    code = generate_custom_vhd(
+                        ename,
+                        cd.get("input_names", []),
+                        cd.get("output_names", []),
+                        cd.get("vhdl", ""),
+                    )
+                    self.show_vhdl_code_dialog(code,
+                        title=f"VHDL — {ename} (Custom RTL)")
                 return
 
             block_type = block.block_type.lower()

@@ -21,7 +21,7 @@ import os
 
 class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, ComponentLibraryMixin, Gtk.Window):
     def __init__(self):
-        super().__init__(title="Simple VHDL Code Generator (SVCG)")
+        super().__init__(title="Simple VHDL/Verilog Code Generator (SVCG)")
         self.set_default_size(1000, 600)
 
         self.current_file_path = None
@@ -31,6 +31,7 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
 
         self.clipboard_block = None
         self.clipboard_pin = None
+        self.hdl_language = "vhdl"   # "vhdl" | "verilog"
 
         self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.add(self.vbox)
@@ -57,6 +58,17 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
         self.mouse_label = Gtk.Label()
         self.mouse_label.set_markup(f"<span color='green'>Cursor: (0,0)</span>")
         self.left_pane.pack_start(self.mouse_label, False, False, 0)
+
+        # HDL language selector
+        hdl_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        hdl_row.pack_start(Gtk.Label(label="HDL:"), False, False, 0)
+        self._hdl_combo = Gtk.ComboBoxText()
+        self._hdl_combo.append("vhdl",    "VHDL")
+        self._hdl_combo.append("verilog", "Verilog")
+        self._hdl_combo.set_active_id("vhdl")
+        self._hdl_combo.connect("changed", self._on_hdl_language_changed)
+        hdl_row.pack_start(self._hdl_combo, True, True, 0)
+        self.left_pane.pack_start(hdl_row, False, False, 0)
 
         self.expander_basic_ios = Gtk.Expander(label="Clk/Vdd/Gnd")
         self.left_pane.pack_start(self.expander_basic_ios, False, False, 0)
@@ -267,9 +279,14 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
     # Window-level state
     # ------------------------------------------------------------------
 
+    def _on_hdl_language_changed(self, combo):
+        self.hdl_language = combo.get_active_id() or "vhdl"
+        self.set_dirty(getattr(self, "dirty", False))
+
     def set_dirty(self, dirty):
         self.dirty = dirty
-        title = "Simple VHDL Code Generator (SVCG)"
+        lang = getattr(self, "hdl_language", "vhdl").upper()
+        title = f"Simple VHDL/Verilog Code Generator (SVCG) [{lang}]"
         if self.current_file_path:
             title += f" — {os.path.basename(self.current_file_path)}"
         if dirty:
@@ -735,7 +752,7 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
 
     def on_add_custom_rtl_block(self, widget):
         from custom_block_dialog import CustomBlockDialog
-        dialog = CustomBlockDialog(self)
+        dialog = CustomBlockDialog(self, language=self.hdl_language)
         response = dialog.run()
         if response != Gtk.ResponseType.OK:
             dialog.destroy()
@@ -761,7 +778,7 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
             return
         from custom_block_dialog import CustomBlockDialog
         block = self.selected_block
-        dialog = CustomBlockDialog(self, existing=block.custom_data)
+        dialog = CustomBlockDialog(self, existing=block.custom_data, language=self.hdl_language)
         response = dialog.run()
         if response != Gtk.ResponseType.OK:
             dialog.destroy()

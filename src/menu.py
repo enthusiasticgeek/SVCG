@@ -5,7 +5,9 @@ import re
 import tempfile
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
-from vhdl_export import generate_vhdl, check_vhdl_syntax, generate_custom_vhd
+from vhdl_export import (generate_vhdl, generate_verilog,
+                          check_vhdl_syntax, check_verilog_syntax,
+                          generate_custom_vhd, generate_custom_v)
 from testbench_gen import generate_testbench, run_ghdl_simulation, launch_gtkwave
 from yosys_importer import import_yosys_json
 
@@ -48,7 +50,7 @@ class MenuBar:
 
         file_menu.append(open_item)
         file_menu.append(Gtk.SeparatorMenuItem())
-        file_menu.append(_mi("Generate VHDL...",             self.on_generate_vhdl))
+        file_menu.append(_mi("Generate HDL (VHDL/Verilog)...", self.on_generate_vhdl))
         file_menu.append(_mi("Generate Testbench + Simulate...", self.on_generate_testbench))
         file_menu.append(_mi("Import Yosys Netlist...",      self.on_import_yosys))
         file_menu.append(_mi("Save Selection as Component...", self.on_save_component))
@@ -111,14 +113,18 @@ class MenuBar:
             self._show_error("Nothing to export", "Add some blocks and IO pins to the canvas first.")
             return
 
-        # Ask for entity name
+        lang = getattr(mw, "hdl_language", "vhdl")
+        lang_upper = lang.upper()
+
+        # Ask for top-level module/entity name
         name_dialog = Gtk.MessageDialog(
             transient_for=mw, flags=0,
             message_type=Gtk.MessageType.QUESTION,
             buttons=Gtk.ButtonsType.OK_CANCEL,
-            text="Generate VHDL",
+            text=f"Generate {lang_upper}",
         )
-        name_dialog.format_secondary_text("Enter top-level entity name:")
+        name_dialog.format_secondary_text(
+            f"Enter top-level {'module' if lang == 'verilog' else 'entity'} name:")
         entry = Gtk.Entry()
         default_name = "SCHEMATIC"
         if mw.current_file_path:
@@ -135,28 +141,33 @@ class MenuBar:
         if resp != Gtk.ResponseType.OK:
             return
 
-        # Generate VHDL
+        # Generate HDL
         try:
-            vhdl_text = generate_vhdl(entity_name, mw.blocks, mw.pins, mw.wires)
+            if lang == "verilog":
+                hdl_text = generate_verilog(entity_name, mw.blocks, mw.pins, mw.wires)
+            else:
+                hdl_text = generate_vhdl(entity_name, mw.blocks, mw.pins, mw.wires)
         except Exception as exc:
-            self._show_error("VHDL generation failed", str(exc))
+            self._show_error(f"{lang_upper} generation failed", str(exc))
             return
 
         # Save file dialog
+        ext      = ".v"   if lang == "verilog" else ".vhd"
+        flt_name = "Verilog files (*.v)" if lang == "verilog" else "VHDL files (*.vhd, *.vhdl)"
         save_dialog = Gtk.FileChooserDialog(
-            title="Save VHDL File",
-            parent=mw,
+            title=f"Save {lang_upper} File", parent=mw,
             action=Gtk.FileChooserAction.SAVE,
         )
         save_dialog.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
             Gtk.STOCK_SAVE,   Gtk.ResponseType.ACCEPT,
         )
-        save_dialog.set_current_name(f"{entity_name.lower()}.vhd")
+        save_dialog.set_current_name(f"{entity_name.lower()}{ext}")
         flt = Gtk.FileFilter()
-        flt.set_name("VHDL files (*.vhd, *.vhdl)")
-        flt.add_pattern("*.vhd")
-        flt.add_pattern("*.vhdl")
+        flt.set_name(flt_name)
+        flt.add_pattern(f"*{ext}")
+        if lang == "vhdl":
+            flt.add_pattern("*.vhdl")
         save_dialog.add_filter(flt)
         if mw.current_file_path:
             save_dialog.set_current_folder(os.path.dirname(mw.current_file_path))
@@ -164,28 +175,37 @@ class MenuBar:
         resp = save_dialog.run()
         if resp == Gtk.ResponseType.ACCEPT:
             path = save_dialog.get_filename()
-            if not path.lower().endswith((".vhd", ".vhdl")):
-                path += ".vhd"
+            if lang == "verilog":
+                if not path.lower().endswith(".v"):
+                    path += ".v"
+            else:
+                if not path.lower().endswith((".vhd", ".vhdl")):
+                    path += ".vhd"
             save_dialog.destroy()
             try:
                 with open(path, "w") as f:
-                    f.write(vhdl_text)
+                    f.write(hdl_text)
             except IOError as exc:
                 self._show_error("Could not write file", str(exc))
                 return
 
-            # GHDL syntax check (optional)
-            ghdl_available, ghdl_ok, ghdl_out = check_vhdl_syntax(path)
-            if ghdl_available:
-                ghdl_banner = "GHDL: syntax OK" if ghdl_ok else "GHDL errors:\n" + (ghdl_out or "(no output)")
+            # Syntax check (GHDL for VHDL, iverilog for Verilog)
+            if lang == "verilog":
+                chk_avail, chk_ok, chk_out = check_verilog_syntax(path)
+                tool_name = "iverilog"
             else:
-                ghdl_banner = "(ghdl not found on PATH -- install ghdl to enable syntax check)"
+                chk_avail, chk_ok, chk_out = check_vhdl_syntax(path)
+                tool_name = "ghdl"
+
+            if chk_avail:
+                chk_banner = f"{tool_name}: syntax OK" if chk_ok else f"{tool_name} errors:\n" + (chk_out or "(no output)")
+            else:
+                chk_banner = f"({tool_name} not found on PATH — install it to enable syntax check)"
 
             # Preview dialog
             preview = Gtk.Dialog(
-                title=f"Generated VHDL -- {os.path.basename(path)}",
-                transient_for=mw,
-                flags=0,
+                title=f"Generated {lang_upper} — {os.path.basename(path)}",
+                transient_for=mw, flags=0,
             )
             preview.add_button("Close", Gtk.ResponseType.CLOSE)
             preview.set_default_size(700, 500)
@@ -194,20 +214,20 @@ class MenuBar:
             tv = Gtk.TextView()
             tv.set_editable(False)
             tv.set_monospace(True)
-            tv.get_buffer().set_text(vhdl_text)
+            tv.get_buffer().set_text(hdl_text)
             sw.add(tv)
             preview.get_content_area().pack_start(sw, True, True, 0)
-            ghdl_label = Gtk.Label(label=ghdl_banner)
-            ghdl_label.set_halign(Gtk.Align.START)
-            ghdl_label.set_margin_start(6)
-            ghdl_label.set_margin_bottom(4)
-            if ghdl_available and not ghdl_ok:
-                ghdl_label.set_markup(
-                    "<span color='red'>" + ghdl_banner.replace("&", "&amp;").replace("<", "&lt;") + "</span>"
+            chk_label = Gtk.Label(label=chk_banner)
+            chk_label.set_halign(Gtk.Align.START)
+            chk_label.set_margin_start(6)
+            chk_label.set_margin_bottom(4)
+            if chk_avail and not chk_ok:
+                chk_label.set_markup(
+                    "<span color='red'>" + chk_banner.replace("&", "&amp;").replace("<", "&lt;") + "</span>"
                 )
-            elif ghdl_available and ghdl_ok:
-                ghdl_label.set_markup("<span color='green'>" + ghdl_banner + "</span>")
-            preview.get_content_area().pack_start(ghdl_label, False, False, 0)
+            elif chk_avail and chk_ok:
+                chk_label.set_markup(f"<span color='green'>{chk_banner}</span>")
+            preview.get_content_area().pack_start(chk_label, False, False, 0)
             preview.show_all()
             preview.run()
             preview.destroy()

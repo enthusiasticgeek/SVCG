@@ -164,6 +164,8 @@ class EventHandlerMixin:
                         self.selected_block = None
                         self.selected_pin = None
                         self.selected_wire = None
+                        for w in self.wires:
+                            w.set_selected(False)
                         for block in self.blocks:
                             if block.contains_pin(cx, cy):
                                 self.wire_start_point = block.contains_pin(cx, cy)
@@ -190,7 +192,7 @@ class EventHandlerMixin:
                             for wire in self.wires:
                                 if wire.contains_point(cx, cy):
                                     self.selected_wire = wire
-                                    wire.set_selected(True)
+                                    # don't set orange yet — wait for actual drag motion
                                     self._wire_mid_drag_wire   = wire
                                     self._wire_mid_drag_origin = (cx, cy)
                                     break
@@ -363,6 +365,8 @@ class EventHandlerMixin:
                     print("Invalid wire connection: both ends must be on valid connection points.")
                     self.dragging_wire = False
 
+            for w in self.wires:
+                w.set_selected(False)
             self._wire_mid_drag_wire   = None
             self._wire_mid_drag_origin = None
 
@@ -390,6 +394,7 @@ class EventHandlerMixin:
             if wdrag and self.drag_started:
                 ox, oy = getattr(self, '_wire_mid_drag_origin', (self.mouse_x, self.mouse_y))
                 if abs(self.mouse_x - ox) + abs(self.mouse_y - oy) >= self.grid_size:
+                    wdrag.set_selected(True)   # go orange only once dragging begins
                     wdrag.update_waypoint([self.mouse_x, self.mouse_y])
 
             self.drawing_area.queue_draw()

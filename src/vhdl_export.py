@@ -98,13 +98,35 @@ _VHDL_RESERVED = frozenset({
     "xnor","xor",
 })
 
+# Verilog-2001 / SystemVerilog reserved words that would cause syntax errors
+# if used as port/signal identifiers in generated Verilog
+_VERILOG_RESERVED = frozenset({
+    "always","and","assign","automatic","begin","buf","bufif0","bufif1",
+    "case","casex","casez","cell","cmos","config","deassign","default",
+    "defparam","design","disable","edge","else","end","endcase","endconfig",
+    "endfunction","endgenerate","endmodule","endprimitive","endspecify",
+    "endtable","endtask","event","for","force","forever","fork","function",
+    "generate","genvar","highz0","highz1","if","ifnone","incdir","include",
+    "initial","inout","input","instance","integer","join","large","liblist",
+    "library","localparam","macromodule","medium","module","nand","negedge",
+    "nmos","nor","noshowcancelled","not","notif0","notif1","or","output",
+    "parameter","pmos","posedge","primitive","pull0","pull1","pulldown",
+    "pullup","pulsestyle_onevent","pulsestyle_ondetect","rcmos","real",
+    "realtime","reg","release","repeat","rnmos","rpmos","rtran","rtranif0",
+    "rtranif1","scalared","showcancelled","signed","small","specify",
+    "specparam","strong0","strong1","supply0","supply1","table","task",
+    "time","tran","tranif0","tranif1","tri","tri0","tri1","triand","trior",
+    "trireg","unsigned","use","uwire","vectored","wait","wand","weak0",
+    "weak1","while","wire","wor","xnor","xor",
+})
+
 
 def _sanitize(name):
-    """Make a valid VHDL identifier from an arbitrary string."""
+    """Make a valid VHDL and Verilog identifier from an arbitrary string."""
     n = re.sub(r"[^A-Za-z0-9_]", "_", str(name))
-    if n and n[0].isdigit():
+    if n and not n[0].isalpha():  # leading digit or underscore — invalid in both VHDL and Verilog
         n = "sig_" + n
-    if n.lower() in _VHDL_RESERVED:
+    if n.lower() in _VHDL_RESERVED or n.lower() in _VERILOG_RESERVED:
         n = "sig_" + n
     return n or "sig_unknown"
 
@@ -112,6 +134,48 @@ def _sanitize(name):
 def _vhdl_port_name(block_pin_label):
     """Map block pin label to VHDL port name (Q' -> Q_bar)."""
     return "Q_bar" if block_pin_label == "Q'" else block_pin_label
+
+
+def check_verilog_syntax(v_path):
+    """
+    Run 'iverilog -t null <file>' if iverilog is on PATH.
+    Returns (available, success, output_text).
+
+    Structural netlists reference external library modules that iverilog
+    cannot elaborate.  "Unknown module type" and "modules were missing"
+    lines are elaboration-only issues, not syntax errors — filter them out
+    so that a syntactically valid structural file still reports success.
+    """
+    iverilog = shutil.which("iverilog")
+    if not iverilog:
+        return False, False, ""
+    try:
+        result = subprocess.run(
+            [iverilog, "-g2012", "-t", "null", v_path],
+            capture_output=True, text=True, timeout=15,
+        )
+        output = (result.stdout + result.stderr).strip()
+
+        if result.returncode != 0:
+            _elab_patterns = (
+                "unknown module type",
+                "these modules were missing",
+                "referenced",
+                "error(s) during elaboration",
+            )
+            real_errors = [
+                ln for ln in output.splitlines()
+                if ln.strip()
+                and not ln.strip().strip("*") == ""   # bare *** delimiters
+                and not any(p in ln.lower() for p in _elab_patterns)
+            ]
+            if not real_errors:
+                note = "OK (elaboration skipped — external library modules not resolved)"
+                return True, True, note
+
+        return True, result.returncode == 0, output
+    except Exception as exc:
+        return True, False, str(exc)
 
 
 def generate_custom_vhd(entity_name, input_names, output_names, user_arch_text):
@@ -128,7 +192,8 @@ def generate_custom_vhd(entity_name, input_names, output_names, user_arch_text):
         "",
         "entity %s is" % entity_name,
     ]
-    all_ports = [(n, "in") for n in input_names] + [(n, "out") for n in output_names]
+    all_ports = ([((_sanitize(n)), "in")  for n in input_names] +
+                 [((_sanitize(n)), "out") for n in output_names])
     if all_ports:
         lines.append("  port (")
         for idx, (pname, pdir) in enumerate(all_ports):
@@ -150,6 +215,133 @@ def generate_custom_vhd(entity_name, input_names, output_names, user_arch_text):
             "end architecture rtl;",
             "",
         ]
+    return "\n".join(lines)
+
+
+def generate_custom_v(module_name, input_names, output_names, user_body_text):
+    """
+    Build a complete Verilog source file for a Custom RTL block.
+
+    The module header (port list) is generated; `user_body_text` is the
+    user-written module body (signal/reg declarations + combinational/sequential
+    logic, without the `module` header and without `endmodule`).
+    If empty a stub is produced.
+    """
+    all_ports = (
+        [(_sanitize(n), "input")      for n in input_names] +
+        [(_sanitize(n), "output reg") for n in output_names]
+    )
+    lines = [f"module {module_name} ("]
+    if all_ports:
+        for idx, (pname, pdir) in enumerate(all_ports):
+            sep = "," if idx < len(all_ports) - 1 else ""
+            lines.append(f"    {pdir} {pname}{sep}")
+    lines += [");", ""]
+
+    body = (user_body_text or "").strip()
+    if body:
+        lines.append(body)
+        lines.append("")
+    else:
+        lines += [
+            f"// TODO: implement {module_name}",
+            "",
+        ]
+    lines += ["endmodule", ""]
+    return "\n".join(lines)
+
+
+def generate_verilog(module_name, blocks, pins, wires):
+    """
+    Returns a Verilog (SystemVerilog-2012 compatible) structural netlist string.
+
+    Parameters match generate_vhdl() exactly so callers can switch between them.
+    """
+    indent = "    "
+
+    wire_by_id = {w.id: w for w in wires}
+    wire_to_port = {}
+    port_list = []   # (name, direction_str)  direction_str = "input" / "output" / "inout"
+    seen_port_names = set()
+
+    _vdir = {
+        "in":    "input  wire",
+        "out":   "output wire",
+        "inout": "inout  wire",
+    }
+
+    for pin in pins:
+        ptype = pin.pin_type
+        is_bus = "bus" in ptype.lower()
+        direction = PIN_DIRECTION.get(ptype, "in")
+        base = _sanitize(pin.text)
+
+        if is_bus:
+            for i, wire_list in enumerate(pin.wires):
+                pname = "%s_%d" % (base, i) if pin.num_pins > 1 else base
+                if pname not in seen_port_names:
+                    seen_port_names.add(pname)
+                    port_list.append((pname, direction))
+                for wid in wire_list:
+                    wire_to_port[wid] = pname
+        else:
+            pname = base
+            if pname not in seen_port_names:
+                seen_port_names.add(pname)
+                port_list.append((pname, direction))
+            for wire_list in pin.wires:
+                for wid in wire_list:
+                    wire_to_port[wid] = pname
+
+    def resolve(wire_id):
+        if not wire_id:
+            return "1'bz"
+        if wire_id in wire_to_port:
+            return wire_to_port[wire_id]
+        w = wire_by_id.get(wire_id)
+        return _sanitize(w.text) if w else "1'bz"
+
+    internal_signals = {}
+    for w in wires:
+        if w.id not in wire_to_port:
+            sig = _sanitize(w.text)
+            internal_signals[sig] = True
+
+    lines = [f"module {module_name} ("]
+    for idx, (pname, direction) in enumerate(port_list):
+        sep = "," if idx < len(port_list) - 1 else ""
+        lines.append(f"{indent}{_vdir.get(direction, 'input wire')} {pname}{sep}")
+    lines += [");", ""]
+
+    for sig in internal_signals:
+        lines.append(f"{indent}wire {sig};")
+    if internal_signals:
+        lines.append("")
+
+    for idx, block in enumerate(blocks):
+        if block.block_type == "CUSTOM":
+            cd = getattr(block, "custom_data", None) or {}
+            entity = cd.get("entity_name", "CUSTOM_BLOCK")
+        else:
+            entity = ENTITY_MAP.get(block.block_type, block.block_type)
+        inst = "%s_%d" % (_sanitize(block.text), idx)
+        lines.append(f"{indent}{entity} {inst} (")
+
+        pm = []
+        for pname, wire_list in zip(block.input_names, block.input_wires):
+            wid = wire_list[0] if wire_list else None
+            pm.append((_vhdl_port_name(pname), resolve(wid)))
+        for pname, wire_list in zip(block.output_names, block.output_wires):
+            wid = wire_list[0] if wire_list else None
+            pm.append((_vhdl_port_name(pname), resolve(wid)))
+
+        for j, (vname, sig) in enumerate(pm):
+            sep = "," if j < len(pm) - 1 else ""
+            lines.append(f"{indent}{indent}.{vname}({sig}){sep}")
+        lines.append(f"{indent});")
+        lines.append("")
+
+    lines += ["endmodule", ""]
     return "\n".join(lines)
 
 
