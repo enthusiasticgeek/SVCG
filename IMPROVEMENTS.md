@@ -91,8 +91,8 @@ A* search is now clipped to a padded bounding box (25-cell margin) around start/
 
 ## P4 — New Features (after P1–P3 are stable)
 
-### 4.1 Component library panel
-Allow saving a selected sub-circuit as a named reusable component. Drag from library to instantiate.
+### 4.1 Component library panel ✅
+`File > Save Selection as Component...` saves any Shift+click multi-select (blocks, pins, internal wires) as a named JSON file in `src/components/`. A "Components" expander in the left panel lists all saved components; clicking one instantiates it on the canvas at a new position with fresh UUIDs and remapped wire IDs. A Refresh button rescans the directory. Implemented in `src/component_library.py` (`ComponentLibraryMixin`) inherited by `BlocksWindow`.
 
 ### 4.2 Simulation integration
 Connect to an open-source HDL simulator (GHDL or Icarus Verilog via a Verilog export path). Add waveform viewer widget.

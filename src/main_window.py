@@ -14,11 +14,12 @@ from wire import Wire
 from project_manager import ProjectManagerMixin
 from event_handler import EventHandlerMixin
 from vhdl_viewer import VhdlViewerMixin
+from component_library import ComponentLibraryMixin
 import random
 import os
 
 
-class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Gtk.Window):
+class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, ComponentLibraryMixin, Gtk.Window):
     def __init__(self):
         super().__init__(title="Simple VHDL Code Generator (SVCG)")
         self.set_default_size(1000, 600)
@@ -175,6 +176,20 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Gtk.
             button.set_tooltip_text("Right click top left area of the generated block for more options!")
             self.arithmetic_box.pack_start(button, False, False, 0)
 
+        # Components library panel
+        self.expander_components = Gtk.Expander(label="Components")
+        self.left_pane.pack_start(self.expander_components, False, False, 0)
+
+        comp_outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        self.expander_components.add(comp_outer)
+
+        refresh_btn = Gtk.Button(label="Refresh")
+        refresh_btn.connect("clicked", lambda w: self.refresh_component_panel())
+        comp_outer.pack_start(refresh_btn, False, False, 0)
+
+        self.comp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        comp_outer.pack_start(self.comp_box, False, False, 0)
+
         self.expander_ops = Gtk.Expander(label="Edit Operations")
         self.left_pane.pack_start(self.expander_ops, False, False, 0)
 
@@ -221,6 +236,7 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Gtk.
         self.redo_stack = []
 
         self.update_undo_redo_buttons()
+        self.refresh_component_panel()
         self.drawing_area.grab_focus()
 
         self.dirty = False

@@ -46,6 +46,7 @@ class MenuBar:
         file_menu.append(open_item)
         file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Generate VHDL...",             self.on_generate_vhdl))
+        file_menu.append(_mi("Save Selection as Component...", self.on_save_component))
         file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Export as SVG...",             self.on_export_svg))
         file_menu.append(_mi("Export as PNG...",             self.on_export_png))
@@ -290,6 +291,9 @@ class MenuBar:
         if confirm_response != Gtk.ResponseType.YES:
             return
         self.on_load_json_file(widget)
+
+    def on_save_component(self, widget):
+        self.main_window.on_save_component(widget)
 
     def on_export_svg(self, widget):
         self.main_window.on_export_svg(widget)
