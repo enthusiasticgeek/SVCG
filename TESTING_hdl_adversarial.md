@@ -1,8 +1,8 @@
 # SVCG HDL Adversarial Test Report (VHDL + Verilog)
 
-**Date:** 2026-06-23 13:36  
+**Date:** 2026-06-23 13:41  
 **Platform:** Windows 11 / MSYS2 MinGW64  
-**Result: 74/74 passed, 0 skipped**
+**Result: 92/92 passed, 0 skipped**
 
 | # | ID | Test | Result | Notes |
 |---|-----|------|--------|-------|
@@ -80,5 +80,23 @@
 | 72 | T72 | T72 Custom Verilog: Verilog reserved port name 'module' sanitized to sig_module | PASS |  |
 | 73 | T73 | T73 GHDL: custom VHDL with formerly-reserved port name passes syntax check | PASS |  |
 | 74 | T74 | T74 iverilog: custom Verilog with formerly-reserved port name passes syntax check | PASS |  |
+| 75 | T75 | T75 Testbench entity name is entity_name_tb | PASS |  |
+| 76 | T76 | T76 CLK port generates 100 MHz clock process | PASS |  |
+| 77 | T77 | T77 Active-low signal 'nrst' initialised to '1' in testbench | PASS |  |
+| 78 | T78 | T78 Active-low signal pulsed LOW then HIGH in stimulus | PASS |  |
+| 79 | T79 | T79 Regular input pulsed HIGH then LOW in stimulus | PASS |  |
+| 80 | T80 | T80 Port-less entity produces valid testbench skeleton | PASS |  |
+| 81 | T81 | T81 Output ports not driven in testbench stimulus process | PASS |  |
+| 82 | T82 | T82 Multiple CLK ports each generate their own clock process | PASS |  |
+| 83 | T83 | T83 Clock port detection is case-insensitive (sys_CLK, Clk_in) | PASS |  |
+| 84 | T84 | T84 Active-low suffix patterns _n / _b / _bar all detected | PASS |  |
+| 85 | T85 | T85 Active-low prefix patterns n_ / nrst / nreset all detected | PASS |  |
+| 86 | T86 | T86 UUT instantiation label is 'uut' | PASS |  |
+| 87 | T87 | T87 Every VHDL port map uses named association (=>) | PASS |  |
+| 88 | T88 | T88 Every Verilog instance uses .portname(signal) dot notation | PASS |  |
+| 89 | T89 | T89 Two AND instances → one VHDL component decl + two port maps | PASS |  |
+| 90 | T90 | T90 VHDL architecture has one 'begin' and ends with 'end Structural;' | PASS |  |
+| 91 | T91 | T91 Canvas with no IO pins yields empty port list in both HDLs | PASS |  |
+| 92 | T92 | T92 Testbench contains 'Simulation complete' report statement | PASS |  |
 
-_74/74 passed, 0 skipped._
+_92/92 passed, 0 skipped._

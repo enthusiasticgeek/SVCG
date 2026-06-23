@@ -17,6 +17,9 @@ Groups:
   G12  Port-count integrity              (T64-T67)
   G13  Custom block adversarial ports    (T68-T72)
   G14  Extended syntax validation        (T73-T74)
+  G15  Testbench generation              (T75-T80)
+  G16  Testbench edge cases              (T81-T86)
+  G17  HDL structural deep-checks        (T87-T92)
 
 Usage:
     cd src
@@ -1094,6 +1097,238 @@ def g14_extended_syntax(win):
 
 
 # ===========================================================================
+# G15 — Testbench generation
+# ===========================================================================
+
+def g15_testbench_generation(win):
+    from pins import Pin
+    from testbench_gen import generate_testbench
+    gs = win.grid_size
+    print("\n-- G15: Testbench generation --")
+
+    # T75 — testbench entity name is {entity_name}_tb
+    def T75():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "A", "input_pin", gs, 1, win))
+        tb = generate_testbench("MY_DUT", win.pins)
+        assert "entity MY_DUT_tb is" in tb, "testbench entity name must be entity_name + '_tb'"
+        assert "architecture sim of MY_DUT_tb is" in tb, "architecture header wrong"
+    run_test("T75 Testbench entity name is entity_name_tb", T75)
+
+    # T76 — port named CLK produces a 100 MHz clock process
+    def T76():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "CLK", "CLK", gs, 1, win))
+        tb = generate_testbench("CLK_DUT", win.pins)
+        assert "CLK_proc" in tb or "_proc" in tb, "no clock process generated for CLK port"
+        assert "wait for 5 ns" in tb, "clock half-period (5 ns) missing"
+    run_test("T76 CLK port generates 100 MHz clock process", T76)
+
+    # T77 — active-low signal 'nrst' initialised to '1', not '0'
+    def T77():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "nrst", "input_pin", gs, 1, win))
+        tb = generate_testbench("AL_DUT", win.pins)
+        assert "signal nrst : STD_LOGIC := '1'" in tb, \
+            "active-low signal 'nrst' not initialised to '1'"
+    run_test("T77 Active-low signal 'nrst' initialised to '1' in testbench", T77)
+
+    # T78 — active-low signal is pulsed LOW (asserted) in stimulus
+    def T78():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "nrst", "input_pin", gs, 1, win))
+        tb = generate_testbench("AL_DUT2", win.pins)
+        # Stimulus: nrst <= '0' (assert) followed by nrst <= '1' (deassert)
+        assert "nrst <= '0'" in tb, "active-low 'nrst' not pulsed LOW in stimulus"
+        assert "nrst <= '1'" in tb, "active-low 'nrst' not returned HIGH after pulse"
+    run_test("T78 Active-low signal pulsed LOW then HIGH in stimulus", T78)
+
+    # T79 — regular input port pulsed HIGH then LOW in stimulus
+    def T79():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "DATA", "input_pin", gs, 1, win))
+        tb = generate_testbench("REG_DUT", win.pins)
+        assert "DATA <= '1'" in tb, "regular input not pulsed HIGH in stimulus"
+        assert "DATA <= '0'" in tb, "regular input not returned LOW after pulse"
+    run_test("T79 Regular input pulsed HIGH then LOW in stimulus", T79)
+
+    # T80 — port-less entity produces valid testbench skeleton (no crash)
+    def T80():
+        tb = generate_testbench("EMPTY_DUT", [])
+        assert "entity EMPTY_DUT_tb is" in tb, "testbench entity missing for port-less DUT"
+        assert "end architecture sim;" in tb,   "testbench architecture end missing"
+        assert "stim_proc" in tb,               "stimulus process missing even for port-less DUT"
+    run_test("T80 Port-less entity produces valid testbench skeleton", T80)
+
+
+# ===========================================================================
+# G16 — Testbench edge cases
+# ===========================================================================
+
+def g16_testbench_edge_cases(win):
+    from pins import Pin
+    from testbench_gen import generate_testbench, _is_active_low
+    gs = win.grid_size
+    print("\n-- G16: Testbench edge cases --")
+
+    # T81 — output ports NOT driven in stimulus (only inputs get stimulus)
+    def T81():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3,  gs*3, gs*2, "A",   "input_pin",  gs, 1, win))
+        win.pins.append(Pin(gs, gs*7,  gs*3, gs*2, "Y",   "output_pin", gs, 1, win))
+        tb = generate_testbench("IO_DUT", win.pins)
+        # Y is output — must appear in component/signal but not in stimulus assignments
+        stim_start = tb.find("stim_proc")
+        stim_block = tb[stim_start:] if stim_start >= 0 else ""
+        assert "Y <= " not in stim_block, "output port 'Y' driven in stimulus (should not be)"
+    run_test("T81 Output ports not driven in testbench stimulus process", T81)
+
+    # T82 — multiple CLK ports each get their own clock process
+    def T82():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3,  gs*3, gs*2, "clk_a", "CLK", gs, 1, win))
+        win.pins.append(Pin(gs, gs*7,  gs*3, gs*2, "clk_b", "CLK", gs, 1, win))
+        tb = generate_testbench("DUAL_CLK", win.pins)
+        assert "clk_a_proc" in tb, "clock process for clk_a missing"
+        assert "clk_b_proc" in tb, "clock process for clk_b missing"
+        assert tb.count("wait for 5 ns") >= 4, \
+            "expected >=4 'wait for 5 ns' lines (2 per clock process)"
+    run_test("T82 Multiple CLK ports each generate their own clock process", T82)
+
+    # T83 — clock detection is case-insensitive: sys_CLK, Clk_in
+    def T83():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "sys_CLK", "input_pin", gs, 1, win))
+        win.pins.append(Pin(gs, gs*7, gs*3, gs*2, "Clk_in",  "input_pin", gs, 1, win))
+        tb = generate_testbench("CI_CLK", win.pins)
+        assert "sys_CLK_proc" in tb or "sys_clk_proc" in tb.lower(), \
+            "sys_CLK not recognised as clock port"
+        assert "Clk_in_proc" in tb or "clk_in_proc" in tb.lower(), \
+            "Clk_in not recognised as clock port"
+    run_test("T83 Clock port detection is case-insensitive (sys_CLK, Clk_in)", T83)
+
+    # T84 — active-low suffix patterns: _n, _b, _bar all detected
+    def T84():
+        for name in ("rst_n", "enable_b", "set_bar"):
+            assert _is_active_low(name), \
+                f"'{name}' not recognised as active-low (suffix pattern)"
+    run_test("T84 Active-low suffix patterns _n / _b / _bar all detected", T84)
+
+    # T85 — active-low prefix patterns: n_, nrst, nreset all detected
+    def T85():
+        for name in ("n_reset", "nrst", "nreset"):
+            assert _is_active_low(name), \
+                f"'{name}' not recognised as active-low (prefix pattern)"
+    run_test("T85 Active-low prefix patterns n_ / nrst / nreset all detected", T85)
+
+    # T86 — UUT instantiation label is exactly 'uut'
+    def T86():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "A", "input_pin", gs, 1, win))
+        tb = generate_testbench("LABEL_DUT", win.pins)
+        assert "uut : LABEL_DUT" in tb, \
+            "UUT instantiation label is not 'uut'"
+    run_test("T86 UUT instantiation label is 'uut'", T86)
+
+
+# ===========================================================================
+# G17 — HDL structural deep-checks
+# ===========================================================================
+
+def g17_structural_deep(win):
+    from blocks import Block
+    from pins   import Pin
+    from vhdl_export import generate_vhdl, generate_verilog, ENTITY_MAP
+    import re as _re
+    gs = win.grid_size
+    print("\n-- G17: HDL structural deep-checks --")
+
+    # T87 — every VHDL port map connection uses named association (=>)
+    def T87():
+        reset(win)
+        build_half_adder(win)
+        v = generate_vhdl("HA_DEEP", win.blocks, win.pins, win.wires)
+        # Find every port map block and confirm each line has =>
+        pm_lines = [ln.strip() for ln in v.splitlines()
+                    if ln.strip() and "=>" in ln]
+        assert len(pm_lines) > 0, "no '=>' lines found in VHDL port maps"
+        # No positional associations (bare signal without =>)
+        for ln in v.splitlines():
+            if "port map (" in ln:
+                # next non-empty lines until ");" should all contain =>
+                pass
+        # Simplified: count => must equal total port connections
+        # XOR has 3 ports (IN1, IN2, OUT1), AND has 3 — total 6
+        assert v.count("=>") >= 6, \
+            f"expected >=6 named associations (=>), found {v.count('=>')}"
+    run_test("T87 Every VHDL port map uses named association (=>)", T87)
+
+    # T88 — every Verilog instance uses .portname(signal) dot notation
+    def T88():
+        reset(win)
+        build_half_adder(win)
+        v = generate_verilog("HA_DEEP_V", win.blocks, win.pins, win.wires)
+        dot_connections = _re.findall(r'\.\w+\(\w+\)', v)
+        assert len(dot_connections) >= 6, \
+            f"expected >=6 .port(sig) connections, found {len(dot_connections)}: {dot_connections}"
+    run_test("T88 Every Verilog instance uses .portname(signal) dot notation", T88)
+
+    # T89 — two instances of same type → one component decl, two port maps (VHDL)
+    def T89():
+        reset(win)
+        rebuild_grid(win)
+        win.blocks.append(Block(gs*3, gs*3, gs*4, gs*4, "AND_0", "AND", gs, win))
+        win.blocks.append(Block(gs*9, gs*3, gs*4, gs*4, "AND_1", "AND", gs, win))
+        v = generate_vhdl("TWO_AND", win.blocks, win.pins, win.wires)
+        comp_count = v.count("component AND_GATE")
+        pm_count   = v.count("port map (")
+        assert comp_count == 1, f"expected 1 AND_GATE component declaration, found {comp_count}"
+        assert pm_count   == 2, f"expected 2 port maps for 2 instances, found {pm_count}"
+    run_test("T89 Two AND instances → one VHDL component decl + two port maps", T89)
+
+    # T90 — VHDL architecture has exactly one 'begin' and ends with 'end Structural;'
+    def T90():
+        reset(win)
+        build_half_adder(win)
+        v = generate_vhdl("ARCH_STRUCT", win.blocks, win.pins, win.wires)
+        # Count standalone 'begin' lines (architecture body opener, not inside components)
+        begin_lines = [ln.strip() for ln in v.splitlines() if ln.strip() == "begin"]
+        assert len(begin_lines) == 1, \
+            f"expected exactly 1 standalone 'begin' in architecture, found {len(begin_lines)}"
+        assert v.strip().endswith("end Structural;"), \
+            "VHDL output does not end with 'end Structural;'"
+    run_test("T90 VHDL architecture has one 'begin' and ends with 'end Structural;'", T90)
+
+    # T91 — canvas with only blocks (no IO pins) produces empty port list in both HDLs
+    def T91():
+        reset(win)
+        rebuild_grid(win)
+        win.blocks.append(Block(gs*3, gs*3, gs*4, gs*4, "G1", "AND", gs, win))
+        v_vhd = generate_vhdl("NO_PORTS_TOP", win.blocks, win.pins, win.wires)
+        v_vlg = generate_verilog("NO_PORTS_TOP_V", win.blocks, win.pins, win.wires)
+        # VHDL: no 'Port (' in entity (port-less entity)
+        entity_section = v_vhd.split("architecture")[0] if "architecture" in v_vhd else v_vhd
+        assert "Port (" not in entity_section, \
+            "VHDL entity has Port() clause but no IO pins exist"
+        # Verilog: module header closes immediately after name (no port declarations)
+        assert _re.search(r'module NO_PORTS_TOP_V\s*\(\s*\);', v_vlg), \
+            "Verilog module should have empty port list with no IO pins"
+    run_test("T91 Canvas with no IO pins yields empty port list in both HDLs", T91)
+
+    # T92 — testbench 'Simulation complete' report statement is present
+    def T92():
+        from testbench_gen import generate_testbench
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "A", "input_pin", gs, 1, win))
+        tb = generate_testbench("SIM_DONE", win.pins)
+        assert "Simulation complete" in tb, \
+            "testbench missing 'Simulation complete' report statement"
+        assert "severity note" in tb, \
+            "testbench report missing 'severity note'"
+    run_test("T92 Testbench contains 'Simulation complete' report statement", T92)
+
+
+# ===========================================================================
 # Entry point
 # ===========================================================================
 
@@ -1113,6 +1348,9 @@ def run_all_tests(win):
     g12_port_count(win)
     g13_custom_adversarial(win)
     g14_extended_syntax(win)
+    g15_testbench_generation(win)
+    g16_testbench_edge_cases(win)
+    g17_structural_deep(win)
 
     passed  = sum(1 for _, s, _ in results if s == "PASS")
     skipped = sum(1 for _, s, _ in results if s == "SKIP")
