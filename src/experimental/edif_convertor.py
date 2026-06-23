@@ -17,7 +17,7 @@ def generate_edif_netlist(json_file_path, edif_file_path):
         # Extract blocks, pins, and wires
         blocks = [item for item in data if item.get("block_type")]
         pins = [item for item in data if item.get("pin_type")]
-        wires = [item for item in data if item.get("start_point") or item.get("end_point")]
+        wires = [item for item in data if item.get("start_point") is not None]
 
         # Add EDIF header
         edif_netlist.append("(edif netlist_name (edifVersion 2 0 0) (edifLevel 0) (keywordMap (keywordLevel 0))")
@@ -79,28 +79,39 @@ def generate_edif_netlist(json_file_path, edif_file_path):
 def generate_edif_ports(component):
     ports = []
     if "input_points" in component:
-        for i, point in enumerate(component["input_points"]):
+        for i in range(len(component["input_points"])):
             ports.append(f"(port {component['input_names'][i]} (direction INPUT))")
     if "output_points" in component:
-        for i, point in enumerate(component["output_points"]):
+        for i in range(len(component["output_points"])):
             ports.append(f"(port {component['output_names'][i]} (direction OUTPUT))")
     if "connection_points" in component:
-        for i, point in enumerate(component["connection_points"]):
-            ports.append(f"(port {component['name']} (direction INOUT))")
+        num_pins = component.get("num_pins", 1)
+        name = component["name"]
+        for i in range(len(component["connection_points"])):
+            port_name = f"{name}_{i}" if num_pins > 1 else name
+            ports.append(f"(port {port_name} (direction INOUT))")
     return "\n          ".join(ports)
 
 def generate_edif_net_connections(wire, blocks, pins):
     connections = []
+    wid = wire["id"]
     for block in blocks:
-        if wire["id"] in [item for sublist in block["input_wires"] for item in sublist]:
-            index = [item for sublist in block["input_wires"] for item in sublist].index(wire["id"])
-            connections.append(f"(portRef {block['input_names'][index]} (instanceRef {block['id']}))")
-        if wire["id"] in [item for sublist in block["output_wires"] for item in sublist]:
-            index = [item for sublist in block["output_wires"] for item in sublist].index(wire["id"])
-            connections.append(f"(portRef {block['output_names'][index]} (instanceRef {block['id']}))")
+        for port_idx, sublist in enumerate(block.get("input_wires", [])):
+            # sublist may be None in JSON files saved by older versions
+            if sublist and wid in sublist:
+                connections.append(
+                    f"(portRef {block['input_names'][port_idx]} (instanceRef {block['id']}))")
+        for port_idx, sublist in enumerate(block.get("output_wires", [])):
+            if sublist and wid in sublist:
+                connections.append(
+                    f"(portRef {block['output_names'][port_idx]} (instanceRef {block['id']}))")
     for pin in pins:
-        if wire["id"] in [item for sublist in pin["wires"] for item in sublist]:
-            connections.append(f"(portRef {pin['name']} (instanceRef {pin['id']}))")
+        num_pins = pin.get("num_pins", 1)
+        for port_idx, sublist in enumerate(pin.get("wires", [])):
+            if sublist and wid in sublist:
+                port_name = f"{pin['name']}_{port_idx}" if num_pins > 1 else pin["name"]
+                connections.append(
+                    f"(portRef {port_name} (instanceRef {pin['id']}))")
     return "\n          ".join(connections)
 
 if __name__ == "__main__":

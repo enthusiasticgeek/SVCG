@@ -23,6 +23,7 @@ Groups:
   G18  Custom block structural correctness (T93-T96)
   G19  Language-aware code storage       (T97-T100)
   G20  Active-low CLK + misc testbench   (T101-T106)
+  G21  EDIF export                       (T107-T114)
 
 Usage:
     cd src
@@ -1546,6 +1547,131 @@ def g20_al_clk_and_misc(win):
 
 
 # ===========================================================================
+# G21 — EDIF export
+# ===========================================================================
+
+def g21_edif_export(win):
+    print("\n--- G21: EDIF export ---")
+    import sys as _sys
+    _sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "experimental"))
+    from edif_convertor import generate_edif_ports, generate_edif_net_connections
+
+    # Minimal block dict matching blocks.to_dict() structure
+    def _block(bid, inames, onames, iwires, owires):
+        ipts = [[0, i*10] for i in range(len(inames))]
+        opts = [[100, i*10] for i in range(len(onames))]
+        return {
+            "id": bid, "name": bid, "block_type": "AND",
+            "input_points": ipts, "output_points": opts,
+            "input_names": inames, "output_names": onames,
+            "input_wires": iwires, "output_wires": owires,
+        }
+
+    def _pin(pid, pname, num_pins, wires):
+        return {
+            "id": pid, "name": pname, "pin_type": "input_pin",
+            "connection_points": [[0, 0]] * num_pins,
+            "wires": wires, "num_pins": num_pins,
+        }
+
+    def _wire(wid, sp, ep):
+        return {"id": wid, "start_point": sp, "end_point": ep}
+
+    # T107 — generate_edif_ports on block returns all port names
+    def T107():
+        b = _block("b1", ["A", "B"], ["Y"], [["w1"], ["w2"]], [["w3"]])
+        out = generate_edif_ports(b)
+        assert "(port A (direction INPUT))" in out
+        assert "(port B (direction INPUT))" in out
+        assert "(port Y (direction OUTPUT))" in out
+    run_test("T107 generate_edif_ports lists all block ports", T107)
+
+    # T108 — correct port name via port-index (not flat index) for multi-wire port
+    def T108():
+        # port 0 = "A" with wire "w1"; port 1 = "B" with wires "w2" AND "w3"
+        b = _block("b1", ["A", "B"], ["Y"], [["w1"], ["w2", "w3"]], [[]])
+        wire = _wire("w3", [0, 0], [1, 1])
+        conn = generate_edif_net_connections(wire, [b], [])
+        assert "portRef B" in conn, f"Expected 'portRef B', got: {conn}"
+        assert "instanceRef b1" in conn
+    run_test("T108 net connection uses port-index not flat-index", T108)
+
+    # T109 — None sublists (old JSON backward-compat) don't crash
+    def T109():
+        b = {
+            "id": "b1", "name": "b1", "block_type": "AND",
+            "input_points": [[0, 0], [0, 10]], "output_points": [[100, 0]],
+            "input_names": ["A", "B"], "output_names": ["Y"],
+            "input_wires": [None, ["w1"]], "output_wires": [None],
+        }
+        wire = _wire("w1", [0, 10], [50, 50])
+        conn = generate_edif_net_connections(wire, [b], [])
+        assert "portRef B" in conn
+    run_test("T109 None sublists in input_wires don't crash", T109)
+
+    # T110 — disconnected port (empty sublist) not in net connections
+    def T110():
+        b = _block("b1", ["A", "B"], ["Y"], [[], ["w1"]], [[]])
+        wire = _wire("w1", [0, 0], [1, 1])
+        conn = generate_edif_net_connections(wire, [b], [])
+        assert "portRef A" not in conn, "Disconnected port A must not appear"
+        assert "portRef B" in conn
+    run_test("T110 disconnected (empty) port excluded from net connections", T110)
+
+    # T111 — bus pin (num_pins > 1) gets unique numbered port names
+    def T111():
+        p = _pin("p1", "D", 4, [["w0"], ["w1"], ["w2"], ["w3"]])
+        out = generate_edif_ports(p)
+        assert "(port D_0 (direction INOUT))" in out
+        assert "(port D_1 (direction INOUT))" in out
+        assert "(port D_3 (direction INOUT))" in out
+    run_test("T111 bus pin ports get unique numbered names", T111)
+
+    # T112 — single-bit pin uses bare name (no index suffix)
+    def T112():
+        p = _pin("p1", "CLK", 1, [["w1"]])
+        out = generate_edif_ports(p)
+        assert "(port CLK (direction INOUT))" in out
+        assert "CLK_0" not in out
+    run_test("T112 single-bit pin uses bare port name without index", T112)
+
+    # T113 — net connection resolves through pin wires correctly
+    def T113():
+        p = _pin("p1", "A", 1, [["w1"]])
+        wire = _wire("w1", [0, 0], [1, 1])
+        conn = generate_edif_net_connections(wire, [], [p])
+        assert "portRef A" in conn
+        assert "instanceRef p1" in conn
+    run_test("T113 net connection resolves pin wire correctly", T113)
+
+    # T114 — full round-trip: write JSON, run generate_edif_netlist, file created
+    def T114():
+        import tempfile, json as _json
+        from edif_convertor import generate_edif_netlist
+        b = _block("b1", ["A", "B"], ["Y"], [["w1"], ["w2"]], [["w3"]])
+        b.update({"x": 0, "y": 0, "width": 50, "height": 50, "rotation": 0,
+                  "border_color": [0,0,0,1], "fill_color": [1,1,1,1],
+                  "text_color": [0,0,0,1], "timestamp": 0, "grid_size": 10})
+        p = _pin("p1", "A", 1, [["w1"]])
+        p.update({"x": 0, "y": 0, "width": 20, "height": 20, "rotation": 0,
+                  "border_color": [0,0,0,1], "fill_color": [1,1,1,1],
+                  "text_color": [0,0,0,1], "timestamp": 0, "grid_size": 10})
+        w = _wire("w1", [0, 0], [50, 0])
+        data = [b, p, w]
+        with tempfile.TemporaryDirectory() as td:
+            jf = os.path.join(td, "test.json")
+            ef = os.path.join(td, "test.edf")
+            with open(jf, "w") as fh:
+                _json.dump(data, fh)
+            generate_edif_netlist(jf, ef)
+            assert os.path.exists(ef), "EDIF output file not created"
+            content = open(ef).read()
+            assert "edif" in content
+            assert "w1" in content
+    run_test("T114 full EDIF round-trip produces output file", T114)
+
+
+# ===========================================================================
 # Entry point
 # ===========================================================================
 
@@ -1571,6 +1697,7 @@ def run_all_tests(win):
     g18_custom_structural(win)
     g19_language_aware_code(win)
     g20_al_clk_and_misc(win)
+    g21_edif_export(win)
 
     passed  = sum(1 for _, s, _ in results if s == "PASS")
     skipped = sum(1 for _, s, _ in results if s == "SKIP")

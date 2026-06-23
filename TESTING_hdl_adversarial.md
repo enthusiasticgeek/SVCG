@@ -1,8 +1,8 @@
 # SVCG HDL Adversarial Test Report (VHDL + Verilog)
 
-**Date:** 2026-06-23 16:18  
+**Date:** 2026-06-23 16:23  
 **Platform:** Windows 11 / MSYS2 MinGW64  
-**Result: 106/106 passed, 0 skipped**
+**Result: 114/114 passed, 0 skipped**
 
 | # | ID | Test | Result | Notes |
 |---|-----|------|--------|-------|
@@ -112,5 +112,13 @@
 | 104 | T104 | T104 Inout port in testbench: in port map but not in stimulus | PASS |  |
 | 105 | T105 | T105 VDD pin exported as 'in' direction in VHDL entity | PASS |  |
 | 106 | T106 | T106 GND pin exported as 'input wire' in Verilog module | PASS |  |
+| 107 | T107 | T107 generate_edif_ports lists all block ports | PASS |  |
+| 108 | T108 | T108 net connection uses port-index not flat-index | PASS |  |
+| 109 | T109 | T109 None sublists in input_wires don't crash | PASS |  |
+| 110 | T110 | T110 disconnected (empty) port excluded from net connections | PASS |  |
+| 111 | T111 | T111 bus pin ports get unique numbered names | PASS |  |
+| 112 | T112 | T112 single-bit pin uses bare port name without index | PASS |  |
+| 113 | T113 | T113 net connection resolves pin wire correctly | PASS |  |
+| 114 | T114 | T114 full EDIF round-trip produces output file | PASS |  |
 
-_106/106 passed, 0 skipped._
+_114/114 passed, 0 skipped._
