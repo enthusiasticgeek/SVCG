@@ -2,6 +2,10 @@
 
 A GTK3-based Python desktop application for visually designing digital circuits and generating VHDL. Place logic blocks on a schematic canvas, wire them together, and export a complete structural VHDL file.
 
+![SVCG — JK flip-flop schematic](SVCG1.png)
+
+*JK flip-flop with J, K, CLK inputs, PRE (preset), CLR (reset), Q and Q̄ outputs. Selected wire shown in orange; drag the mid-point handle to reroute.*
+
 ---
 
 ## Features

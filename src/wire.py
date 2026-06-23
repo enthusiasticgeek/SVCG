@@ -17,6 +17,7 @@ class Wire:
         self.grid_size = grid_size
         self.parent_window = parent_window
         self.wire_type = wire_type
+        self.waypoint = None   # optional grid-coord [gx, gy] for manual rerouting
         self.path = self.calculate_path()
         self.selected = False  # Attribute to track selection state
 
@@ -31,10 +32,31 @@ class Wire:
         self.end_point = new_end_point
         self.path = self.calculate_path()
 
+    def update_waypoint(self, canvas_pt):
+        """Snap canvas_pt to the grid and re-route through it with two Manhattan legs."""
+        gs = self.grid_size
+        self.waypoint = [round(canvas_pt[0] / gs), round(canvas_pt[1] / gs)]
+        self.path = self._path_via_waypoint()
+
+    def clear_waypoint(self):
+        """Remove the manual waypoint and revert to A* routing."""
+        self.waypoint = None
+        self.path = self.calculate_path()
+
+    def _path_via_waypoint(self):
+        sc = (int(self.start_point[0] / self.grid_size), int(self.start_point[1] / self.grid_size))
+        ec = (int(self.end_point[0]   / self.grid_size), int(self.end_point[1]   / self.grid_size))
+        wc = tuple(self.waypoint)
+        leg1 = self._manhattan_path(sc, wc)
+        leg2 = self._manhattan_path(wc, ec)
+        return leg1 + (leg2[1:] if len(leg2) > 1 else leg2)
+
     def calculate_path(self):
         if self.start_point is None or self.end_point is None:
             print("Start or end point is None. Cannot calculate path.")
             return []
+        if self.waypoint:
+            return self._path_via_waypoint()
         self.path = self.calculate_path_astar()
         return self.path
  
@@ -119,8 +141,9 @@ class Wire:
     
 
     def draw(self, cr):
-        cr.set_source_rgb(0, 0, 1)
-        cr.set_line_width(2)
+        color = (1.0, 0.45, 0.0) if self.selected else (0.0, 0.0, 1.0)
+        cr.set_source_rgb(*color)
+        cr.set_line_width(3 if self.selected else 2)
 
         if self.path:
             cr.move_to(self.path[0][0] * self.grid_size, self.path[0][1] * self.grid_size)
@@ -128,8 +151,23 @@ class Wire:
                 cr.line_to(x * self.grid_size, y * self.grid_size)
             cr.stroke()
 
-            fill_color = (0, 0, 1)
-            cr.set_source_rgb(*fill_color)
+            # Drag handle: small circle at path midpoint when selected
+            if self.selected and len(self.path) >= 2:
+                mid = self.path[len(self.path) // 2]
+                mx, my = mid[0] * self.grid_size, mid[1] * self.grid_size
+                cr.set_source_rgb(1.0, 0.45, 0.0)
+                cr.arc(mx, my, 5, 0, 6.2832)
+                cr.fill()
+
+            # Waypoint dot
+            if self.waypoint:
+                wx = self.waypoint[0] * self.grid_size
+                wy = self.waypoint[1] * self.grid_size
+                cr.set_source_rgb(1.0, 0.2, 0.0)
+                cr.rectangle(wx - 4, wy - 4, 8, 8)
+                cr.fill()
+
+            cr.set_source_rgb(*color)
             cr.set_font_size(8)
             cr.move_to(self.path[0][0] * self.grid_size + self.text_pos_x, self.path[0][1] * self.grid_size + self.text_pos_y)
             cr.show_text(self.text)
@@ -160,7 +198,7 @@ class Wire:
     
     def to_dict(self):
         return {
-            "id": self.id,  # Include the ID in the JSON
+            "id": self.id,
             "name": self.text,
             "start_point": self.start_point,
             "end_point": self.end_point,
@@ -168,6 +206,7 @@ class Wire:
             "grid_size": self.grid_size,
             "path": self.path,
             "text": self.text,
+            "waypoint": self.waypoint,
         }
 
     @staticmethod
@@ -180,8 +219,11 @@ class Wire:
             wire_dict["grid_size"],
             parent_window
         )
-        wire.id = wire_dict["id"] 
-        #wire.id = wire_dict["id"] #wire_dict.get("id", f"wire_{str(uuid.uuid4().int)[:10]}")  # Ensure the ID is set
+        wire.id = wire_dict["id"]
         wire.text = wire_dict["text"]
-        wire.path = wire_dict["path"]
+        wire.waypoint = wire_dict.get("waypoint")
+        if wire.waypoint:
+            wire.path = wire._path_via_waypoint()
+        else:
+            wire.path = wire_dict["path"]
         return wire

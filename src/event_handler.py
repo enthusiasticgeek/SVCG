@@ -191,6 +191,8 @@ class EventHandlerMixin:
                                 if wire.contains_point(cx, cy):
                                     self.selected_wire = wire
                                     wire.set_selected(True)
+                                    self._wire_mid_drag_wire   = wire
+                                    self._wire_mid_drag_origin = (cx, cy)
                                     break
                 elif event.button == 3:
                     for block in self.blocks:
@@ -361,6 +363,9 @@ class EventHandlerMixin:
                     print("Invalid wire connection: both ends must be on valid connection points.")
                     self.dragging_wire = False
 
+            self._wire_mid_drag_wire   = None
+            self._wire_mid_drag_origin = None
+
             self.drawing_area.queue_draw()
             self.update_json()
             self.push_undo()
@@ -379,6 +384,14 @@ class EventHandlerMixin:
                 block.drag(self.mouse_x, self.mouse_y, width, height)
             for pin in self.pins:
                 pin.drag(self.mouse_x, self.mouse_y, width, height)
+
+            # Wire midpoint drag: only when no block/pin is being moved
+            wdrag = getattr(self, '_wire_mid_drag_wire', None)
+            if wdrag and self.drag_started:
+                ox, oy = getattr(self, '_wire_mid_drag_origin', (self.mouse_x, self.mouse_y))
+                if abs(self.mouse_x - ox) + abs(self.mouse_y - oy) >= self.grid_size:
+                    wdrag.update_waypoint([self.mouse_x, self.mouse_y])
+
             self.drawing_area.queue_draw()
             self.update_json()
             self.drawing_area.grab_focus()

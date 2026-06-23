@@ -452,66 +452,34 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
         except Exception as e:
             print(f"Error in on_change_text_color: {e}")
 
+    def _do_rotate(self, angle):
+        """Rotate the selected block or pin by angle degrees, rewiring attached wires."""
+        if self.selected_block:
+            self.selected_block.rotate(angle)
+        elif self.selected_pin:
+            self.selected_pin.rotate(angle)
+        else:
+            return
+        self.update_points()
+        self.drawing_area.queue_draw()
+        self.update_json()
+        self.push_undo()
+
     def on_rotate_90(self, widget):
         try:
-            if self.selected_block and self.block_has_no_wires_connected(self.selected_block):
-                self.selected_block.rotate(90)
-                self.update_points()
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.push_undo()
-            elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
-                self.selected_pin.rotate(90)
-                self.update_points()
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.push_undo()
-            elif (self.selected_block and not self.block_has_no_wires_connected(self.selected_block)) or \
-                 (self.selected_pin and not self.pin_has_no_wires_connected(self.selected_pin)):
-                self.show_error_message("Cannot rotate block/pin",
-                                        "The block/pin has wires connected. Disconnect wires and try again!")
+            self._do_rotate(90)
         except Exception as e:
             print(f"Error in on_rotate_90: {e}")
 
     def on_rotate_180(self, widget):
         try:
-            if self.selected_block and self.block_has_no_wires_connected(self.selected_block):
-                self.selected_block.rotate(180)
-                self.update_points()
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.push_undo()
-            elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
-                self.selected_pin.rotate(180)
-                self.update_points()
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.push_undo()
-            elif (self.selected_block and not self.block_has_no_wires_connected(self.selected_block)) or \
-                 (self.selected_pin and not self.pin_has_no_wires_connected(self.selected_pin)):
-                self.show_error_message("Cannot rotate block/pin",
-                                        "The block/pin has wires connected. Disconnect wires and try again!")
+            self._do_rotate(180)
         except Exception as e:
             print(f"Error in on_rotate_180: {e}")
 
     def on_rotate_270(self, widget):
         try:
-            if self.selected_block and self.block_has_no_wires_connected(self.selected_block):
-                self.selected_block.rotate(270)
-                self.update_points()
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.push_undo()
-            elif self.selected_pin and self.pin_has_no_wires_connected(self.selected_pin):
-                self.selected_pin.rotate(270)
-                self.update_points()
-                self.drawing_area.queue_draw()
-                self.update_json()
-                self.push_undo()
-            elif (self.selected_block and not self.block_has_no_wires_connected(self.selected_block)) or \
-                 (self.selected_pin and not self.pin_has_no_wires_connected(self.selected_pin)):
-                self.show_error_message("Cannot rotate block/pin",
-                                        "The block/pin has wires connected. Disconnect wires and try again!")
+            self._do_rotate(270)
         except Exception as e:
             print(f"Error in on_rotate_270: {e}")
 

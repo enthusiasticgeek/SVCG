@@ -1,6 +1,10 @@
 # SVCG User Manual
 ### Simple VHDL Code Generator — Student Edition
 
+![SVCG — JK flip-flop schematic](SVCG1.png)
+
+*JK flip-flop with all ports connected. J, K, CLK inputs enter from above; PRE (preset) from the left; CLR (reset) from the right; Q and Q̄ outputs exit below. The orange wire (CLR) is selected — drag the mid-point circle to reroute it.*
+
 ---
 
 ## 1. Window Layout
