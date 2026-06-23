@@ -390,7 +390,11 @@ class CustomBlockDialog(Gtk.Dialog):
             self._entity_entry.set_text(existing.get("entity_name", ""))
             self._inputs_entry.set_text(", ".join(existing.get("input_names", [])))
             self._outputs_entry.set_text(", ".join(existing.get("output_names", [])))
-            self._vhdl_view.get_buffer().set_text(existing.get("vhdl", ""))
+            if self._language == "verilog":
+                code = existing.get("verilog_body", existing.get("vhdl", ""))
+            else:
+                code = existing.get("vhdl_body", existing.get("vhdl", ""))
+            self._vhdl_view.get_buffer().set_text(code)
         else:
             tmpl = _ARCH_TEMPLATE_VERILOG if self._language == "verilog" else _ARCH_TEMPLATE_VHDL
             self._vhdl_view.get_buffer().set_text(tmpl)
@@ -591,15 +595,20 @@ class CustomBlockDialog(Gtk.Dialog):
     # ------------------------------------------------------------------
 
     def get_data(self):
-        """Return a custom_data dict with entity_name, input_names, output_names, vhdl."""
+        """Return a custom_data dict with entity_name, input_names, output_names, and code bodies."""
         entity    = self._entity_entry.get_text().strip() or "MY_BLOCK"
         in_names  = [s.strip() for s in self._inputs_entry.get_text().split(",")  if s.strip()]
         out_names = [s.strip() for s in self._outputs_entry.get_text().split(",") if s.strip()]
         buf = self._vhdl_view.get_buffer()
-        vhdl = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), True)
-        return {
+        code = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), True)
+        data = {
             "entity_name":  entity,
             "input_names":  in_names,
             "output_names": out_names,
-            "vhdl":         vhdl,
+            "vhdl":         code,   # backward-compat key — always present
         }
+        if self._language == "verilog":
+            data["verilog_body"] = code
+        else:
+            data["vhdl_body"]    = code
+        return data

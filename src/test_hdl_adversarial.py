@@ -20,6 +20,9 @@ Groups:
   G15  Testbench generation              (T75-T80)
   G16  Testbench edge cases              (T81-T86)
   G17  HDL structural deep-checks        (T87-T92)
+  G18  Custom block structural correctness (T93-T96)
+  G19  Language-aware code storage       (T97-T100)
+  G20  Active-low CLK + misc testbench   (T101-T106)
 
 Usage:
     cd src
@@ -1329,6 +1332,220 @@ def g17_structural_deep(win):
 
 
 # ===========================================================================
+# G18 — Custom block structural correctness (after fixes)
+# ===========================================================================
+
+def g18_custom_structural(win):
+    from blocks import Block
+    from vhdl_export import generate_vhdl, generate_verilog
+    gs = win.grid_size
+    print("\n-- G18: Custom block structural correctness --")
+
+    def make_custom_block(entity_name, in_names, out_names):
+        reset(win)
+        rebuild_grid(win)
+        b = Block(gs*5, gs*5, gs*6, gs*4, entity_name, "CUSTOM", gs, win)
+        b.custom_data = {
+            "entity_name":  entity_name,
+            "input_names":  in_names,
+            "output_names": out_names,
+            "vhdl":         "",
+        }
+        b.input_names  = list(in_names)
+        b.output_names = list(out_names)
+        b.input_wires  = [None] * len(in_names)
+        b.output_wires = [None] * len(out_names)
+        win.blocks.append(b)
+
+    # T93 — VHDL structural: reserved custom entity name sanitized in component decl
+    def T93():
+        make_custom_block("signal", ["a"], ["b"])
+        v = generate_vhdl("TOP93", win.blocks, win.pins, win.wires)
+        assert "component signal" not in v, \
+            "'component signal' found — VHDL reserved entity name not sanitized"
+        assert "component sig_signal" in v, \
+            "sanitized component 'sig_signal' missing from VHDL structural output"
+    run_test("T93 VHDL structural: reserved custom entity name sanitized in component decl", T93)
+
+    # T94 — Verilog structural: reserved custom entity name sanitized in instantiation
+    def T94():
+        make_custom_block("module", ["a"], ["b"])
+        v = generate_verilog("TOP94", win.blocks, win.pins, win.wires)
+        assert "module sig_module " in v or "sig_module" in v, \
+            "sanitized entity 'sig_module' missing from Verilog structural output"
+    run_test("T94 Verilog structural: reserved custom entity name sanitized in instantiation", T94)
+
+    # T95 — VHDL structural: custom block reserved port name consistent in component decl and port map
+    def T95():
+        make_custom_block("MY_COMP", ["wire", "clk"], ["out1"])
+        v = generate_vhdl("TOP95", win.blocks, win.pins, win.wires)
+        # component decl and port map must both use "sig_wire", not "wire"
+        import re as _re
+        assert not _re.search(r'\bwire\s*:', v), \
+            "'wire :' appears in VHDL — reserved port name 'wire' not sanitized in component decl"
+        assert "sig_wire" in v, \
+            "sanitized port 'sig_wire' missing from VHDL structural output"
+    run_test("T95 VHDL structural: reserved custom port name consistent in decl and port map", T95)
+
+    # T96 — Verilog structural: custom block reserved port name sanitized in instantiation
+    def T96():
+        make_custom_block("MY_COMP_V", ["wire", "clk"], ["out1"])
+        v = generate_verilog("TOP96", win.blocks, win.pins, win.wires)
+        import re as _re
+        assert not _re.search(r'\.wire\b', v), \
+            "'.wire' (bare keyword as port) in Verilog structural instantiation"
+        assert ".sig_wire" in v, \
+            "sanitized port '.sig_wire' missing from Verilog structural output"
+    run_test("T96 Verilog structural: reserved custom port name sanitized in instantiation", T96)
+
+
+# ===========================================================================
+# G19 — Language-aware custom block code storage
+# ===========================================================================
+
+def g19_language_aware_code(win):
+    print("\n-- G19: Language-aware custom block code storage --")
+
+    # T97 — get_data() with language=verilog returns "verilog_body" key
+    def T97():
+        from custom_block_dialog import CustomBlockDialog
+        dlg = CustomBlockDialog(win, language="verilog")
+        buf = dlg._vhdl_view.get_buffer()
+        buf.set_text("assign q = a & b;")
+        data = dlg.get_data()
+        dlg.destroy()
+        assert "verilog_body" in data, "get_data() missing 'verilog_body' key for verilog language"
+        assert data["verilog_body"] == "assign q = a & b;", \
+            "verilog_body content mismatch"
+        assert "vhdl" in data, "'vhdl' backward-compat key missing"
+    run_test("T97 get_data() with language=verilog returns 'verilog_body' key", T97)
+
+    # T98 — get_data() with language=vhdl returns "vhdl_body" key
+    def T98():
+        from custom_block_dialog import CustomBlockDialog
+        dlg = CustomBlockDialog(win, language="vhdl")
+        buf = dlg._vhdl_view.get_buffer()
+        buf.set_text("q <= a and b;")
+        data = dlg.get_data()
+        dlg.destroy()
+        assert "vhdl_body" in data, "get_data() missing 'vhdl_body' key for vhdl language"
+        assert data["vhdl_body"] == "q <= a and b;", "vhdl_body content mismatch"
+        assert "vhdl" in data, "'vhdl' backward-compat key missing"
+    run_test("T98 get_data() with language=vhdl returns 'vhdl_body' key", T98)
+
+    # T99 — verilog_body takes priority over vhdl key when loading in verilog mode
+    def T99():
+        cd = {
+            "entity_name": "X", "input_names": [], "output_names": [],
+            "vhdl": "VHDL_OLD_CODE",
+            "verilog_body": "VERILOG_NEW_CODE",
+        }
+        loaded = cd.get("verilog_body", cd.get("vhdl", ""))
+        assert loaded == "VERILOG_NEW_CODE", \
+            "verilog_body not taking priority over vhdl key when loading in verilog mode"
+    run_test("T99 verilog_body takes priority over vhdl key in verilog mode", T99)
+
+    # T100 — vhdl_body takes priority over vhdl key when loading in vhdl mode
+    def T100():
+        cd = {
+            "entity_name": "X", "input_names": [], "output_names": [],
+            "vhdl": "OLD_VHDL_CODE",
+            "vhdl_body": "NEW_VHDL_CODE",
+        }
+        loaded = cd.get("vhdl_body", cd.get("vhdl", ""))
+        assert loaded == "NEW_VHDL_CODE", \
+            "vhdl_body not taking priority over vhdl key when loading in vhdl mode"
+    run_test("T100 vhdl_body takes priority over vhdl key in vhdl mode", T100)
+
+
+# ===========================================================================
+# G20 — Active-low CLK polarity + additional testbench coverage
+# ===========================================================================
+
+def g20_al_clk_and_misc(win):
+    from pins import Pin
+    from testbench_gen import generate_testbench
+    gs = win.grid_size
+    print("\n-- G20: Active-low CLK polarity + misc testbench --")
+
+    # T101 — active-low CLK (clk_n) starts at '1' in testbench (not '0')
+    def T101():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "clk_n", "CLK", gs, 1, win))
+        tb = generate_testbench("AL_CLK_DUT", win.pins)
+        assert "signal clk_n : STD_LOGIC := '1'" in tb, \
+            "active-low CLK 'clk_n' not initialized to '1'"
+    run_test("T101 Active-low CLK 'clk_n' signal initialised to '1'", T101)
+
+    # T102 — active-low CLK clock process pulses '0' (active state), not '1'
+    def T102():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "clk_n", "CLK", gs, 1, win))
+        tb = generate_testbench("AL_CLK_DUT2", win.pins)
+        # Clock process: first line is inactive='1', second line is active='0'
+        proc_start = tb.find("clk_n_proc")
+        proc_body  = tb[proc_start:proc_start + 200] if proc_start >= 0 else ""
+        assert "clk_n <= '1'; wait for 5 ns;" in proc_body, \
+            "active-low CLK process does not start with inactive state '1'"
+        assert "clk_n <= '0'; wait for 5 ns;" in proc_body, \
+            "active-low CLK process does not pulse to active state '0'"
+        # Verify order: '1' appears before '0' in the process
+        idx1 = proc_body.find("clk_n <= '1'")
+        idx0 = proc_body.find("clk_n <= '0'")
+        assert idx1 < idx0, "active-low CLK should start '1' (inactive) before going '0' (active)"
+    run_test("T102 Active-low CLK clock process: starts '1', pulses '0'", T102)
+
+    # T103 — regular CLK (active-high) still starts '0' and pulses '1' (regression)
+    def T103():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "clk", "CLK", gs, 1, win))
+        tb = generate_testbench("REG_CLK_DUT", win.pins)
+        proc_start = tb.find("clk_proc")
+        proc_body  = tb[proc_start:proc_start + 200] if proc_start >= 0 else ""
+        idx0 = proc_body.find("clk <= '0'")
+        idx1 = proc_body.find("clk <= '1'")
+        assert idx0 >= 0 and idx1 >= 0, "regular CLK process missing '0' or '1' assignments"
+        assert idx0 < idx1, "regular CLK should start '0' (inactive) before going '1' (active)"
+    run_test("T103 Regular CLK (active-high) still starts '0' and pulses '1'", T103)
+
+    # T104 — inout port appears in component and UUT port map but not in stimulus
+    def T104():
+        reset(win)
+        win.pins.append(Pin(gs, gs*3,  gs*3, gs*2, "BUS_IO", "input_output_pin", gs, 1, win))
+        win.pins.append(Pin(gs, gs*7,  gs*3, gs*2, "D_IN",   "input_pin",        gs, 1, win))
+        tb = generate_testbench("INOUT_DUT", win.pins)
+        assert "BUS_IO" in tb, "inout port 'BUS_IO' missing from testbench entirely"
+        assert "BUS_IO => BUS_IO" in tb, "inout port not in UUT port map"
+        stim_start = tb.find("stim_proc")
+        stim_body  = tb[stim_start:] if stim_start >= 0 else ""
+        assert "BUS_IO <= " not in stim_body, \
+            "inout port 'BUS_IO' driven in stimulus (should not be)"
+    run_test("T104 Inout port in testbench: in port map but not in stimulus", T104)
+
+    # T105 — VDD pin exported as 'in' STD_LOGIC in VHDL entity
+    def T105():
+        from vhdl_export import generate_vhdl
+        reset(win)
+        rebuild_grid(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "VDD", "VDD_5V", gs, 1, win))
+        v = generate_vhdl("VDD_TEST", win.blocks, win.pins, win.wires)
+        assert "VDD" in v,          "VDD pin missing from VHDL entity"
+        assert "VDD : in" in v,     "VDD pin not exported with 'in' direction in VHDL"
+    run_test("T105 VDD pin exported as 'in' direction in VHDL entity", T105)
+
+    # T106 — GND pin exported as 'in' direction in Verilog module
+    def T106():
+        from vhdl_export import generate_verilog
+        reset(win)
+        rebuild_grid(win)
+        win.pins.append(Pin(gs, gs*3, gs*3, gs*2, "GND", "GND", gs, 1, win))
+        v = generate_verilog("GND_TEST", win.blocks, win.pins, win.wires)
+        assert "GND" in v,              "GND pin missing from Verilog module"
+        assert "input  wire GND" in v,  "GND pin not exported as 'input wire' in Verilog"
+    run_test("T106 GND pin exported as 'input wire' in Verilog module", T106)
+
+
+# ===========================================================================
 # Entry point
 # ===========================================================================
 
@@ -1351,6 +1568,9 @@ def run_all_tests(win):
     g15_testbench_generation(win)
     g16_testbench_edge_cases(win)
     g17_structural_deep(win)
+    g18_custom_structural(win)
+    g19_language_aware_code(win)
+    g20_al_clk_and_misc(win)
 
     passed  = sum(1 for _, s, _ in results if s == "PASS")
     skipped = sum(1 for _, s, _ in results if s == "SKIP")

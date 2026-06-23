@@ -37,7 +37,7 @@ class VhdlViewerMixin:
                         ename,
                         cd.get("input_names", []),
                         cd.get("output_names", []),
-                        cd.get("vhdl", ""),
+                        cd.get("verilog_body", cd.get("vhdl", "")),
                     )
                     self.show_vhdl_code_dialog(code,
                         title=f"Verilog — {ename} (Custom RTL)")
@@ -47,7 +47,7 @@ class VhdlViewerMixin:
                         ename,
                         cd.get("input_names", []),
                         cd.get("output_names", []),
-                        cd.get("vhdl", ""),
+                        cd.get("vhdl_body", cd.get("vhdl", "")),
                     )
                     self.show_vhdl_code_dialog(code,
                         title=f"VHDL — {ename} (Custom RTL)")

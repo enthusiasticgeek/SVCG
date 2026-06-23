@@ -96,13 +96,18 @@ def generate_testbench(entity_name, pins):
     lines += [f"{ind});", ""]
 
     # Clock processes (100 MHz, 10 ns period)
+    # Active-low clocks start inactive ('1') and pulse active ('0').
     for cname in clk_ports:
+        if _is_active_low(cname):
+            lo, hi = "'1'", "'0'"   # inactive first, then active (falling-edge clock)
+        else:
+            lo, hi = "'0'", "'1'"   # inactive first, then active (rising-edge clock)
         lines += [
             f"{ind}-- 100 MHz clock (10 ns period)",
             f"{ind}{cname}_proc : process",
             f"{ind}begin",
-            f"{ind}{ind}{cname} <= '0'; wait for 5 ns;",
-            f"{ind}{ind}{cname} <= '1'; wait for 5 ns;",
+            f"{ind}{ind}{cname} <= {lo}; wait for 5 ns;",
+            f"{ind}{ind}{cname} <= {hi}; wait for 5 ns;",
             f"{ind}end process;",
             "",
         ]

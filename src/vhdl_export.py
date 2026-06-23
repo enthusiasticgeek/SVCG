@@ -321,7 +321,7 @@ def generate_verilog(module_name, blocks, pins, wires):
     for idx, block in enumerate(blocks):
         if block.block_type == "CUSTOM":
             cd = getattr(block, "custom_data", None) or {}
-            entity = cd.get("entity_name", "CUSTOM_BLOCK")
+            entity = _sanitize(cd.get("entity_name", "CUSTOM_BLOCK"))
         else:
             entity = ENTITY_MAP.get(block.block_type, block.block_type)
         inst = "%s_%d" % (_sanitize(block.text), idx)
@@ -330,10 +330,10 @@ def generate_verilog(module_name, blocks, pins, wires):
         pm = []
         for pname, wire_list in zip(block.input_names, block.input_wires):
             wid = wire_list[0] if wire_list else None
-            pm.append((_vhdl_port_name(pname), resolve(wid)))
+            pm.append((_sanitize(_vhdl_port_name(pname)), resolve(wid)))
         for pname, wire_list in zip(block.output_names, block.output_wires):
             wid = wire_list[0] if wire_list else None
-            pm.append((_vhdl_port_name(pname), resolve(wid)))
+            pm.append((_sanitize(_vhdl_port_name(pname)), resolve(wid)))
 
         for j, (vname, sig) in enumerate(pm):
             sep = "," if j < len(pm) - 1 else ""
@@ -414,7 +414,7 @@ def generate_vhdl(entity_name, blocks, pins, wires):
     for block in blocks:
         if block.block_type == "CUSTOM":
             cd = getattr(block, "custom_data", None) or {}
-            ename = cd.get("entity_name", "CUSTOM_BLOCK")
+            ename = _sanitize(cd.get("entity_name", "CUSTOM_BLOCK"))
             if ename not in seen_custom:
                 seen_custom[ename] = block
         elif block.block_type not in seen_btypes:
@@ -470,7 +470,8 @@ def generate_vhdl(entity_name, blocks, pins, wires):
         cd = getattr(proto, "custom_data", None) or {}
         in_names  = cd.get("input_names",  [])
         out_names = cd.get("output_names", [])
-        all_ports = [(n, "in") for n in in_names] + [(n, "out") for n in out_names]
+        all_ports = ([(_sanitize(n), "in")  for n in in_names] +
+                     [(_sanitize(n), "out") for n in out_names])
         lines.append("%scomponent %s" % (indent, ename))
         if all_ports:
             lines.append("%s%sPort (" % (indent, indent))
@@ -496,7 +497,7 @@ def generate_vhdl(entity_name, blocks, pins, wires):
     for idx, block in enumerate(blocks):
         if block.block_type == "CUSTOM":
             cd = getattr(block, "custom_data", None) or {}
-            entity = cd.get("entity_name", "CUSTOM_BLOCK")
+            entity = _sanitize(cd.get("entity_name", "CUSTOM_BLOCK"))
         else:
             entity = ENTITY_MAP.get(block.block_type, block.block_type)
         inst = "%s_%d" % (_sanitize(block.text), idx)
@@ -506,10 +507,10 @@ def generate_vhdl(entity_name, blocks, pins, wires):
         pm = []
         for pname, wire_list in zip(block.input_names, block.input_wires):
             wid = wire_list[0] if wire_list else None
-            pm.append((_vhdl_port_name(pname), resolve(wid)))
+            pm.append((_sanitize(_vhdl_port_name(pname)), resolve(wid)))
         for pname, wire_list in zip(block.output_names, block.output_wires):
             wid = wire_list[0] if wire_list else None
-            pm.append((_vhdl_port_name(pname), resolve(wid)))
+            pm.append((_sanitize(_vhdl_port_name(pname)), resolve(wid)))
 
         for j, (vname, sig) in enumerate(pm):
             comma = "," if j < len(pm) - 1 else ""

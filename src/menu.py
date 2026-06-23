@@ -328,7 +328,7 @@ class MenuBar:
                         ename,
                         cd.get("input_names", []),
                         cd.get("output_names", []),
-                        cd.get("vhdl", ""),
+                        cd.get("vhdl_body", cd.get("vhdl", "")),
                     )
                     custom_vhds.append((ename, vhd))
 

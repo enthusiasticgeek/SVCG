@@ -1,8 +1,8 @@
 # SVCG HDL Adversarial Test Report (VHDL + Verilog)
 
-**Date:** 2026-06-23 13:41  
+**Date:** 2026-06-23 16:18  
 **Platform:** Windows 11 / MSYS2 MinGW64  
-**Result: 92/92 passed, 0 skipped**
+**Result: 106/106 passed, 0 skipped**
 
 | # | ID | Test | Result | Notes |
 |---|-----|------|--------|-------|
@@ -98,5 +98,19 @@
 | 90 | T90 | T90 VHDL architecture has one 'begin' and ends with 'end Structural;' | PASS |  |
 | 91 | T91 | T91 Canvas with no IO pins yields empty port list in both HDLs | PASS |  |
 | 92 | T92 | T92 Testbench contains 'Simulation complete' report statement | PASS |  |
+| 93 | T93 | T93 VHDL structural: reserved custom entity name sanitized in component decl | PASS |  |
+| 94 | T94 | T94 Verilog structural: reserved custom entity name sanitized in instantiation | PASS |  |
+| 95 | T95 | T95 VHDL structural: reserved custom port name consistent in decl and port map | PASS |  |
+| 96 | T96 | T96 Verilog structural: reserved custom port name sanitized in instantiation | PASS |  |
+| 97 | T97 | T97 get_data() with language=verilog returns 'verilog_body' key | PASS |  |
+| 98 | T98 | T98 get_data() with language=vhdl returns 'vhdl_body' key | PASS |  |
+| 99 | T99 | T99 verilog_body takes priority over vhdl key in verilog mode | PASS |  |
+| 100 | T100 | T100 vhdl_body takes priority over vhdl key in vhdl mode | PASS |  |
+| 101 | T101 | T101 Active-low CLK 'clk_n' signal initialised to '1' | PASS |  |
+| 102 | T102 | T102 Active-low CLK clock process: starts '1', pulses '0' | PASS |  |
+| 103 | T103 | T103 Regular CLK (active-high) still starts '0' and pulses '1' | PASS |  |
+| 104 | T104 | T104 Inout port in testbench: in port map but not in stimulus | PASS |  |
+| 105 | T105 | T105 VDD pin exported as 'in' direction in VHDL entity | PASS |  |
+| 106 | T106 | T106 GND pin exported as 'input wire' in Verilog module | PASS |  |
 
-_92/92 passed, 0 skipped._
+_106/106 passed, 0 skipped._
