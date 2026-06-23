@@ -94,11 +94,20 @@ A* search is now clipped to a padded bounding box (25-cell margin) around start/
 ### 4.1 Component library panel ✅
 `File > Save Selection as Component...` saves any Shift+click multi-select (blocks, pins, internal wires) as a named JSON file in `src/components/`. A "Components" expander in the left panel lists all saved components; clicking one instantiates it on the canvas at a new position with fresh UUIDs and remapped wire IDs. A Refresh button rescans the directory. Implemented in `src/component_library.py` (`ComponentLibraryMixin`) inherited by `BlocksWindow`.
 
-### 4.2 Simulation integration
-Connect to an open-source HDL simulator (GHDL or Icarus Verilog via a Verilog export path). Add waveform viewer widget.
+### 4.2 Simulation integration ✅
+`File > Generate Testbench + Simulate...` generates:
+- A structural VHDL entity file (`<name>.vhd`) from the schematic
+- A simulation testbench (`<name>_tb.vhd`) with clock process (100 MHz) and stimulus for each input port
 
-### 4.3 Netlist import
-Import EDIF or JSON netlists from third-party tools and auto-place blocks on the canvas.
+If GHDL is on PATH, it runs `ghdl -a / -e / -r --vcd` automatically and shows the result inline. A "Launch GTKWave" button appears if simulation produced a `.vcd` waveform file. Implemented in `src/testbench_gen.py` (`generate_testbench`, `run_ghdl_simulation`, `launch_gtkwave`) wired into `menu.py`.
+
+### 4.3 Netlist import ✅
+`File > Import Yosys Netlist...` imports a Yosys synthesis JSON (`yosys -p "synth -flatten; write_json out.json" design.v`):
+- Maps 20+ standard cell types (`$_AND_`, `$_OR_`, `$_NOT_`, `$_MUX_`, `$_DFF_P_`, etc.) to SVCG block types
+- Auto-places cells in columns by topological depth (driven-by-input cells on the left)
+- Creates IO pins for module ports and wires for each net bit
+- Shows import summary with any unsupported cell warnings
+Implemented in `src/yosys_importer.py` wired into `menu.py`.
 
 ### 4.4 Dark mode / theme support ✅
 `File > Toggle Dark Mode` flips `gtk-application-prefer-dark-theme` (darkens menus/toolbar/buttons) and repaints the canvas with a dark background, dim green grid dots, and light gray axis labels. Toggle is persistent within a session. Implemented via `self.dark_mode` flag in `main_window.py`, `on_toggle_dark_mode` in `menu.py`, and updated `on_draw` in `event_handler.py`.

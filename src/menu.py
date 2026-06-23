@@ -2,9 +2,12 @@
 import gi
 import os
 import re
+import tempfile
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
 from vhdl_export import generate_vhdl, check_vhdl_syntax
+from testbench_gen import generate_testbench, run_ghdl_simulation, launch_gtkwave
+from yosys_importer import import_yosys_json
 
 
 def _mi(label, handler):
@@ -46,6 +49,8 @@ class MenuBar:
         file_menu.append(open_item)
         file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Generate VHDL...",             self.on_generate_vhdl))
+        file_menu.append(_mi("Generate Testbench + Simulate...", self.on_generate_testbench))
+        file_menu.append(_mi("Import Yosys Netlist...",      self.on_import_yosys))
         file_menu.append(_mi("Save Selection as Component...", self.on_save_component))
         file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Export as SVG...",             self.on_export_svg))
@@ -208,6 +213,184 @@ class MenuBar:
             preview.destroy()
         else:
             save_dialog.destroy()
+
+    # ------------------------------------------------------------------
+    # Testbench generation + simulation (P4.2)
+    # ------------------------------------------------------------------
+
+    def on_generate_testbench(self, widget):
+        mw = self.main_window
+        if not mw.pins:
+            self._show_error("Nothing to export", "Add IO pins to define the entity ports first.")
+            return
+
+        # Ask for entity name
+        name_dialog = Gtk.MessageDialog(
+            transient_for=mw, flags=0,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text="Generate Testbench",
+        )
+        name_dialog.format_secondary_text("Enter top-level entity name:")
+        entry = Gtk.Entry()
+        default_name = "SCHEMATIC"
+        if mw.current_file_path:
+            base = os.path.splitext(os.path.basename(mw.current_file_path))[0]
+            default_name = re.sub(r"[^A-Za-z0-9_]", "_", base).upper() or "SCHEMATIC"
+        entry.set_text(default_name)
+        entry.set_activates_default(True)
+        name_dialog.get_content_area().pack_end(entry, False, False, 6)
+        name_dialog.set_default_response(Gtk.ResponseType.OK)
+        name_dialog.show_all()
+        resp = name_dialog.run()
+        entity_name = entry.get_text().strip() or default_name
+        name_dialog.destroy()
+        if resp != Gtk.ResponseType.OK:
+            return
+
+        # Generate entity + testbench text
+        try:
+            entity_vhdl = generate_vhdl(entity_name, mw.blocks, mw.pins, mw.wires)
+            tb_vhdl     = generate_testbench(entity_name, mw.pins)
+        except Exception as exc:
+            self._show_error("Generation failed", str(exc))
+            return
+
+        # File chooser for testbench save path
+        save_dialog = Gtk.FileChooserDialog(
+            title="Save Testbench File",
+            parent=mw,
+            action=Gtk.FileChooserAction.SAVE,
+        )
+        save_dialog.add_buttons(
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_SAVE,   Gtk.ResponseType.ACCEPT,
+        )
+        save_dialog.set_current_name(f"{entity_name.lower()}_tb.vhd")
+        flt = Gtk.FileFilter()
+        flt.set_name("VHDL files (*.vhd, *.vhdl)")
+        flt.add_pattern("*.vhd")
+        flt.add_pattern("*.vhdl")
+        save_dialog.add_filter(flt)
+        if mw.current_file_path:
+            save_dialog.set_current_folder(os.path.dirname(mw.current_file_path))
+        resp = save_dialog.run()
+        if resp != Gtk.ResponseType.ACCEPT:
+            save_dialog.destroy()
+            return
+        tb_path = save_dialog.get_filename()
+        save_dialog.destroy()
+        if not tb_path.lower().endswith((".vhd", ".vhdl")):
+            tb_path += ".vhd"
+
+        workdir = os.path.dirname(tb_path)
+        entity_path = os.path.join(workdir, f"{entity_name.lower()}.vhd")
+
+        try:
+            with open(entity_path, "w") as f:
+                f.write(entity_vhdl)
+            with open(tb_path, "w") as f:
+                f.write(tb_vhdl)
+        except IOError as exc:
+            self._show_error("Could not write file", str(exc))
+            return
+
+        # Try GHDL simulation
+        tb_entity = f"{entity_name.lower()}_tb"
+        sim_ok, sim_log, vcd_path = run_ghdl_simulation(
+            entity_path, tb_path, tb_entity, workdir
+        )
+
+        # Preview dialog
+        preview = Gtk.Dialog(
+            title=f"Testbench — {os.path.basename(tb_path)}",
+            transient_for=mw, flags=0,
+        )
+        if vcd_path:
+            preview.add_button("Launch GTKWave", Gtk.ResponseType.APPLY)
+        preview.add_button("Close", Gtk.ResponseType.CLOSE)
+        preview.set_default_size(700, 500)
+
+        sw = Gtk.ScrolledWindow()
+        sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        tv = Gtk.TextView()
+        tv.set_editable(False)
+        tv.set_monospace(True)
+        tv.get_buffer().set_text(tb_vhdl)
+        sw.add(tv)
+        preview.get_content_area().pack_start(sw, True, True, 0)
+
+        if sim_log:
+            sim_label = Gtk.Label(label=sim_log[:500])
+            sim_label.set_halign(Gtk.Align.START)
+            sim_label.set_margin_start(6)
+            sim_label.set_margin_bottom(4)
+            sim_label.set_line_wrap(True)
+            if not sim_ok:
+                sim_label.set_markup(
+                    "<span color='red'>" +
+                    sim_log[:500].replace("&", "&amp;").replace("<", "&lt;") +
+                    "</span>"
+                )
+            else:
+                sim_label.set_markup("<span color='green'>" + sim_log[:200] + "</span>")
+            preview.get_content_area().pack_start(sim_label, False, False, 0)
+
+        preview.show_all()
+        while True:
+            resp = preview.run()
+            if resp == Gtk.ResponseType.APPLY and vcd_path:
+                if not launch_gtkwave(vcd_path):
+                    self._show_error("GTKWave not found",
+                                     "Install GTKWave and ensure it is on PATH.")
+            else:
+                break
+        preview.destroy()
+
+    # ------------------------------------------------------------------
+    # Yosys JSON netlist import (P4.3)
+    # ------------------------------------------------------------------
+
+    def on_import_yosys(self, widget):
+        mw = self.main_window
+        dialog = Gtk.FileChooserDialog(
+            title="Import Yosys Netlist",
+            parent=mw,
+            action=Gtk.FileChooserAction.OPEN,
+        )
+        dialog.add_buttons(
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_OPEN,   Gtk.ResponseType.ACCEPT,
+        )
+        flt = Gtk.FileFilter()
+        flt.set_name("JSON files (*.json)")
+        flt.add_pattern("*.json")
+        dialog.add_filter(flt)
+        resp = dialog.run()
+        if resp != Gtk.ResponseType.ACCEPT:
+            dialog.destroy()
+            return
+        path = dialog.get_filename()
+        dialog.destroy()
+
+        try:
+            n_cells, n_wires, warnings = import_yosys_json(path, mw)
+        except Exception as exc:
+            self._show_error("Import failed", str(exc))
+            return
+
+        msg = f"Imported {n_cells} cells and {n_wires} wires."
+        if warnings:
+            msg += "\n\nWarnings:\n" + "\n".join(warnings[:10])
+        info = Gtk.MessageDialog(
+            transient_for=mw, flags=0,
+            message_type=Gtk.MessageType.INFO if not warnings else Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.OK,
+            text="Yosys Import Complete",
+        )
+        info.format_secondary_text(msg)
+        info.run()
+        info.destroy()
 
     def _show_error(self, title, message):
         d = Gtk.MessageDialog(

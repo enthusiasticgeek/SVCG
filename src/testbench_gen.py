@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""
+testbench_gen.py -- VHDL testbench generator + GHDL/GTKWave simulation launcher
+"""
+import os
+import shutil
+import subprocess
+
+from vhdl_export import PIN_DIRECTION, _sanitize
+
+
+def generate_testbench(entity_name, pins):
+    """
+    Return a VHDL simulation testbench string for the given entity.
+
+    Parameters
+    ----------
+    entity_name : str   Top-level entity name (must match the entity file)
+    pins        : list  Pin objects from BlocksWindow.pins
+    """
+    # Build ordered port list
+    port_list = []  # [(signal_name, direction)]
+    seen = set()
+    for pin in pins:
+        ptype  = pin.pin_type
+        direction = PIN_DIRECTION.get(ptype, "in")
+        base   = _sanitize(pin.text)
+        is_bus = "bus" in ptype.lower()
+        if is_bus:
+            for i in range(pin.num_pins):
+                pname = f"{base}_{i}" if pin.num_pins > 1 else base
+                if pname not in seen:
+                    seen.add(pname)
+                    port_list.append((pname, direction))
+        else:
+            if base not in seen:
+                seen.add(base)
+                port_list.append((base, direction))
+
+    clk_ports      = [p for p, d in port_list if d == "in"  and "clk" in p.lower()]
+    input_ports    = [(p, d) for p, d in port_list if d == "in"]
+    non_clk_inputs = [(p, d) for p, d in input_ports if p not in clk_ports]
+
+    ind = "    "
+    lines = [
+        "library IEEE;",
+        "use IEEE.STD_LOGIC_1164.ALL;",
+        "",
+        f"entity {entity_name}_tb is",
+        "end entity;",
+        "",
+        f"architecture sim of {entity_name}_tb is",
+        "",
+    ]
+
+    # Component declaration
+    if port_list:
+        lines.append(f"{ind}component {entity_name}")
+        lines.append(f"{ind}{ind}port (")
+        for idx, (pname, direction) in enumerate(port_list):
+            sep = ";" if idx < len(port_list) - 1 else ""
+            lines.append(f"{ind}{ind}{ind}{pname} : {direction}  STD_LOGIC{sep}")
+        lines.append(f"{ind}{ind});")
+        lines.append(f"{ind}end component;")
+        lines.append("")
+
+    # Signal declarations
+    for pname, direction in port_list:
+        init = " := '0'" if direction == "in" else ""
+        lines.append(f"{ind}signal {pname} : STD_LOGIC{init};")
+    lines.append("")
+
+    lines += ["begin", ""]
+
+    # UUT instantiation
+    lines.append(f"{ind}uut : {entity_name} port map (")
+    for idx, (pname, _) in enumerate(port_list):
+        sep = "," if idx < len(port_list) - 1 else ""
+        lines.append(f"{ind}{ind}{pname} => {pname}{sep}")
+    lines += [f"{ind});", ""]
+
+    # Clock processes
+    for cname in clk_ports:
+        lines += [
+            f"{ind}-- 100 MHz clock (10 ns period)",
+            f"{ind}{cname}_proc : process",
+            f"{ind}begin",
+            f"{ind}{ind}{cname} <= '0'; wait for 5 ns;",
+            f"{ind}{ind}{cname} <= '1'; wait for 5 ns;",
+            f"{ind}end process;",
+            "",
+        ]
+
+    # Stimulus process
+    lines += [
+        f"{ind}stim_proc : process",
+        f"{ind}begin",
+        f"{ind}{ind}wait for 20 ns;",
+    ]
+    for pname, _ in non_clk_inputs:
+        lines += [
+            f"{ind}{ind}{pname} <= '1'; wait for 10 ns;",
+            f"{ind}{ind}{pname} <= '0'; wait for 10 ns;",
+        ]
+    lines += [
+        f"{ind}{ind}report \"Simulation complete\" severity note;",
+        f"{ind}{ind}wait;",
+        f"{ind}end process;",
+        "",
+        f"end architecture sim;",
+        "",
+    ]
+
+    return "\n".join(lines)
+
+
+def run_ghdl_simulation(entity_vhd, tb_vhd, tb_entity_name, workdir, stop_time="1us"):
+    """
+    Run full GHDL simulation: analyse both files, elaborate, run with --vcd.
+
+    Returns
+    -------
+    success  : bool
+    log      : str   Combined stdout/stderr from all steps
+    vcd_path : str|None  Path to generated .vcd file, or None on failure
+    """
+    ghdl = shutil.which("ghdl")
+    if not ghdl:
+        return False, "ghdl not found on PATH — install GHDL to use simulation.", None
+
+    vcd_path = os.path.join(workdir, f"{tb_entity_name}.vcd")
+    log_parts = []
+
+    steps = [
+        ("analyse entity",    [ghdl, "-a", "--std=08", entity_vhd]),
+        ("analyse testbench", [ghdl, "-a", "--std=08", tb_vhd]),
+        ("elaborate",         [ghdl, "-e", "--std=08", tb_entity_name]),
+        ("run",               [ghdl, "-r", "--std=08", tb_entity_name,
+                               f"--vcd={vcd_path}", f"--stop-time={stop_time}"]),
+    ]
+    for label, cmd in steps:
+        try:
+            r = subprocess.run(cmd, cwd=workdir, capture_output=True, text=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            return False, "\n".join(log_parts) + f"\n[{label}] timed out", None
+        out = (r.stdout + r.stderr).strip()
+        if out:
+            log_parts.append(f"[{label}]\n{out}")
+        if r.returncode != 0:
+            return False, "\n".join(log_parts) or f"{label} failed", None
+
+    vcd = vcd_path if os.path.exists(vcd_path) else None
+    return True, "\n".join(log_parts) or "Simulation complete.", vcd
+
+
+def launch_gtkwave(vcd_path):
+    """Launch GTKWave non-blocking with the given VCD file. Returns True if found."""
+    gtkwave = shutil.which("gtkwave")
+    if gtkwave:
+        subprocess.Popen([gtkwave, vcd_path])
+        return True
+    return False
