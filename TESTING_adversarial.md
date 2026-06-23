@@ -1,8 +1,8 @@
 # SVCG Adversarial Test Report (Student Scenarios)
 
-**Date:** 2026-06-22 23:42  
+**Date:** 2026-06-23 08:02  
 **Platform:** Windows 11 / MSYS2 MinGW64  
-**Result: 59/60 passed, 1 skipped**
+**Result: 60/60 passed, 0 skipped**
 
 | # | ID | Test | Result | Notes |
 |---|-----|------|--------|-------|
@@ -20,7 +20,7 @@
 | 12 | TC-06 | TC-06 DFF VHDL port names | PASS |  |
 | 13 | TC-06 | TC-06 DFF testbench clock process | PASS |  |
 | 14 | TC-06 | TC-06 DFF testbench D stimulus | PASS |  |
-| 15 | TC-06 | TC-06 DFF VHDL GHDL syntax check | SKIP | ghdl not on PATH |
+| 15 | TC-06 | TC-06 DFF VHDL GHDL syntax check | PASS |  |
 | 16 | TC-07 | TC-07 JKFF Q_bar rename in VHDL | PASS |  |
 | 17 | TC-08 | TC-08 SRFF VHDL generation no crash | PASS |  |
 | 18 | TC-09 | TC-09 Port names match pin text exactly | PASS |  |
@@ -67,4 +67,4 @@
 | 59 | TC-48 | TC-48 Yosys empty JSON returns gracefully | PASS |  |
 | 60 | TC-49 | TC-49 Yosys multi-driver net no crash | PASS |  |
 
-_59/60 passed, 1 skipped._
+_60/60 passed, 0 skipped._

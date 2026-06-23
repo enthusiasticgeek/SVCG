@@ -889,8 +889,10 @@ def tg06_components(win):
             f.write("{bad json!!")
             bad = f.name
         try:
+            win._headless = True
             win.instantiate_component(bad)
         finally:
+            win._headless = False
             os.unlink(bad)
         assert len(win.blocks) == n_before, "Canvas modified despite malformed JSON"
     run_test("TC-32 Malformed component JSON no crash", t32)

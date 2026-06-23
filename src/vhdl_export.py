@@ -202,8 +202,9 @@ def generate_vhdl(entity_name, blocks, pins, wires):
         for j, (pname, pdir) in enumerate(all_ports):
             vname = _vhdl_port_name(pname)
             comma = ";" if j < len(all_ports) - 1 else ""
-            lines.append("%s%s%s%s : %s  STD_LOGIC%s" % (
-                indent, indent, indent, vname, pdir, comma))
+            default = " := '0'" if pdir == "in" else ""
+            lines.append("%s%s%s%s : %s  STD_LOGIC%s%s" % (
+                indent, indent, indent, vname, pdir, default, comma))
         lines.append("%s%s);" % (indent, indent))
         lines.append("%send component;" % indent)
         lines.append("")

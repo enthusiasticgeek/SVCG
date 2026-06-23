@@ -86,7 +86,8 @@ class ComponentLibraryMixin:
             with open(path) as f:
                 comp = json.load(f)
         except Exception as e:
-            self.show_error_message("Load failed", str(e))
+            if not getattr(self, '_headless', False):
+                self.show_error_message("Load failed", str(e))
             return
 
         block_dicts = comp.get("blocks", [])
