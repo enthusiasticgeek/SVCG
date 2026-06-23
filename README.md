@@ -265,11 +265,37 @@ The Custom RTL dialog has a **AI Backend** dropdown:
 `File > Generate Testbench + Simulate...` does the following in one step:
 
 1. Generates a structural VHDL entity from the schematic.
-2. Generates a simulation testbench with a 100 MHz clock process and stimulus for every input port.
+2. Generates a simulation testbench (see details below).
 3. If [GHDL](https://github.com/ghdl/ghdl) is on `PATH`, runs `ghdl -a / -e / -r --vcd` and shows the log inline.
 4. A **Launch GTKWave** button appears if simulation produced a `.vcd` waveform file.
 
 > Simulation currently uses VHDL regardless of the HDL language selector (GHDL is a VHDL simulator).
+
+### Auto-generated testbench
+
+The testbench (`entity_name_tb`) is fully auto-generated from the schematic's IO pins:
+
+**Clock detection** — any input port whose name contains `clk` (case-insensitive, e.g. `CLK`, `sys_clk`, `Clk_in`) gets a dedicated **100 MHz clock process** (5 ns low / 5 ns high, repeating forever).
+
+**Active-low signal detection** — ports matching any of the following patterns are initialised to `'1'` (inactive) and pulsed `'0'` (asserted) in the stimulus rather than pulsed high:
+
+| Pattern | Examples |
+|---------|---------|
+| Exact names | `pre`, `clr`, `nrst`, `n_rst`, `rst_n`, `reset_n`, `set_n`, `clr_n`, `preset_n`, `clear_n` |
+| Starts with `n_` | `n_reset`, `n_enable` |
+| Starts with `nr` | `nrst`, `nreset` |
+| Ends with `_n` | `rst_n`, `oe_n` |
+| Ends with `_b` | `cs_b` |
+| Ends with `_bar` | `set_bar` |
+
+**Stimulus process** — for every non-clock input port:
+- Active-low: assert `'0'` for 20 ns, then deassert `'1'` for 20 ns.
+- Regular: drive `'1'` for 20 ns, then `'0'` for 20 ns.
+- Ends with `report "Simulation complete" severity note; wait;`.
+
+**Output / inout ports** — appear in the component declaration and UUT `port map` but are never driven by the stimulus.
+
+**Stop time** — simulation runs for 2 µs by default.
 
 ---
 
