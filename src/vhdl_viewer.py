@@ -23,24 +23,40 @@ class VhdlViewerMixin:
 
     def on_view_vhdl_code(self, widget):
         try:
-            if self.selected_block:
-                block_type = self.selected_block.block_type.lower()
-                src_dir = os.path.dirname(os.path.abspath(__file__))
-                vhdl_file_path = os.path.join(src_dir, "vhdl", f"{block_type}.vhd")
-                if os.path.exists(vhdl_file_path):
-                    with open(vhdl_file_path, "r") as f:
-                        vhdl_code = f.read()
-                    self.show_vhdl_code_dialog(vhdl_code)
-                else:
-                    self.show_error_message(
-                        "VHDL Code Not Found",
-                        f"No VHDL template found for block type '{block_type}'.",
-                    )
+            if not self.selected_block:
+                return
+            block = self.selected_block
+
+            if block.block_type == "CUSTOM":
+                from vhdl_export import generate_custom_vhd
+                cd = getattr(block, "custom_data", None) or {}
+                vhdl_code = generate_custom_vhd(
+                    cd.get("entity_name", "CUSTOM"),
+                    cd.get("input_names", []),
+                    cd.get("output_names", []),
+                    cd.get("vhdl", ""),
+                )
+                self.show_vhdl_code_dialog(vhdl_code,
+                    title=f"VHDL — {cd.get('entity_name','CUSTOM')} (Custom RTL)")
+                return
+
+            block_type = block.block_type.lower()
+            src_dir = os.path.dirname(os.path.abspath(__file__))
+            vhdl_file_path = os.path.join(src_dir, "vhdl", f"{block_type}.vhd")
+            if os.path.exists(vhdl_file_path):
+                with open(vhdl_file_path, "r") as f:
+                    vhdl_code = f.read()
+                self.show_vhdl_code_dialog(vhdl_code)
+            else:
+                self.show_error_message(
+                    "VHDL Code Not Found",
+                    f"No VHDL template found for block type '{block_type}'.",
+                )
         except Exception as e:
             print(f"Error in on_view_vhdl_code: {e}")
 
-    def show_vhdl_code_dialog(self, vhdl_code):
-        dialog = Gtk.Dialog(title="VHDL Code", parent=self, flags=0)
+    def show_vhdl_code_dialog(self, vhdl_code, title="VHDL Code"):
+        dialog = Gtk.Dialog(title=title, parent=self, flags=0)
         dialog.set_default_size(600, 400)
         sw = Gtk.ScrolledWindow()
         sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)

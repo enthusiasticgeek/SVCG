@@ -1066,9 +1066,31 @@ class Block:
         cr.move_to(x, y)
         cr.show_text(text)
 
-    def contains_point(self, x, y, tolerance = 10):
-        return (self.x - tolerance <= int(x) <= self.x + self.width + tolerance and
-                self.y - tolerance <= int(y) <= self.y + self.height + tolerance)
+    def _render_size(self):
+        """Return (render_width, render_height) — actual drawn extent, which can exceed self.width/height for multi-cell blocks."""
+        bt = self.block_type
+        if bt in ("JKFF", "SRFF", "DFF", "TFF", "FA", "FA_GC", "FA_WC", "HA"):
+            return self.width * 2, self.height * 2
+        if bt == "DFF_PIPELINE":
+            return self.width * 2, self.height * 2
+        if bt == "MUX_2X1":
+            return self.width * 2, self.height * 2
+        if bt == "MUX_4X1":
+            return self.width * 3, self.height * 4
+        if bt == "MUX_8X1":
+            return self.width * 5, self.height * 8
+        if bt == "TRISTATEBUF_2":
+            return self.width * 3, self.height * 2
+        if bt == "TRISTATEBUF_4":
+            return self.width * 3, self.height * 4
+        if bt == "TRISTATEBUF_8":
+            return self.width * 5, self.height * 8
+        return self.width, self.height
+
+    def contains_point(self, x, y, tolerance=10):
+        rw, rh = self._render_size()
+        return (self.x - tolerance <= int(x) <= self.x + rw + tolerance and
+                self.y - tolerance <= int(y) <= self.y + rh + tolerance)
 
     def contains_pin(self, x, y, tolerance = 10):
         self.update_points()
