@@ -5,7 +5,7 @@ import re
 import tempfile
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
-from vhdl_export import generate_vhdl, check_vhdl_syntax
+from vhdl_export import generate_vhdl, check_vhdl_syntax, generate_custom_vhd
 from testbench_gen import generate_testbench, run_ghdl_simulation, launch_gtkwave
 from yosys_importer import import_yosys_json
 
@@ -295,10 +295,28 @@ class MenuBar:
             self._show_error("Could not write file", str(exc))
             return
 
+        # Collect custom RTL block VHDs for GHDL
+        custom_vhds = []
+        seen_custom = set()
+        for block in mw.blocks:
+            if block.block_type == "CUSTOM":
+                cd = getattr(block, "custom_data", None) or {}
+                ename = cd.get("entity_name", "CUSTOM_BLOCK")
+                if ename not in seen_custom:
+                    seen_custom.add(ename)
+                    vhd = generate_custom_vhd(
+                        ename,
+                        cd.get("input_names", []),
+                        cd.get("output_names", []),
+                        cd.get("vhdl", ""),
+                    )
+                    custom_vhds.append((ename, vhd))
+
         # Try GHDL simulation
         tb_entity = f"{entity_name.lower()}_tb"
         sim_ok, sim_log, vcd_path = run_ghdl_simulation(
-            entity_path, tb_path, tb_entity, workdir
+            entity_path, tb_path, tb_entity, workdir,
+            custom_vhds=custom_vhds if custom_vhds else None,
         )
 
         # Preview dialog

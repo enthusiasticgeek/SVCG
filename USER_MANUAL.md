@@ -284,7 +284,59 @@ What happens:
 
 ---
 
-## 11. Per-Block VHDL Templates
+## 11. Custom RTL Blocks
+
+Custom RTL blocks let you define any behavioral or structural component inline — without needing a pre-built `.vhd` template file. This is the key feature for combining structural schematics with full RTL behavior (counters, FSMs, pipelined stages, etc.).
+
+**Add a block:** Expand **Custom RTL** in the left panel → click **Add Custom RTL Block**.
+
+A dialog opens with three fields:
+
+| Field | Description |
+|-------|-------------|
+| Entity Name | VHDL entity identifier (e.g. `MY_COUNTER`) |
+| Input Ports | Comma-separated input signal names (e.g. `clk, rst, load`) |
+| Output Ports | Comma-separated output signal names (e.g. `q, carry`) |
+
+Below the fields is an **Architecture** text editor. Write a complete VHDL `architecture` block here — the entity declaration is generated automatically from the port fields above.
+
+Example — 4-bit counter with synchronous reset:
+
+```vhdl
+architecture rtl of MY_COUNTER is
+    signal count : std_logic_vector(3 downto 0) := (others => '0');
+begin
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                count <= (others => '0');
+            else
+                count <= std_logic_vector(unsigned(count) + 1);
+            end if;
+        end if;
+    end process;
+    q <= count(0);
+    carry <= count(3);
+end architecture rtl;
+```
+
+> **Note:** You need to add `use IEEE.NUMERIC_STD.ALL;` in the architecture if you use `unsigned`. SVCG adds `STD_LOGIC_1164` automatically; add extra `use` clauses inside your architecture text.
+
+**Edit a block:** Right-click the block → **Edit RTL…** to reopen the dialog.
+
+**Visual style:** Custom RTL blocks have a dashed blue border and a small `[RTL]` badge. Input ports appear on the left edge, output ports on the right — labels are drawn inside the block body.
+
+**Simulation:** When you run **File → Generate Testbench + Simulate…**, SVCG:
+1. Writes the generated entity declaration + your architecture text to `custom_<EntityName>.vhd` in the work directory.
+2. Compiles that file with GHDL before elaborating the top-level design.
+3. Runs the testbench and produces a `.vcd` waveform, same as for built-in blocks.
+
+If your architecture text is empty, a stub `-- TODO: implement …` is generated so GHDL can still elaborate without errors.
+
+---
+
+## 13. Per-Block VHDL Templates
 
 To see the VHDL template used for any individual gate or flip-flop:
 
@@ -294,7 +346,7 @@ A dialog shows the component's structural VHDL template (from `src/vhdl/<type>.v
 
 ---
 
-## 12. Component Library
+## 14. Component Library
 
 Save any sub-circuit as a reusable component:
 
@@ -307,7 +359,7 @@ Components are stored as JSON in `src/components/`. Click **Refresh** to pick up
 
 ---
 
-## 13. SVG / PNG Export
+## 15. SVG / PNG Export
 
 **File → Export as SVG…** or **File → Export as PNG…**
 
@@ -317,7 +369,7 @@ Components are stored as JSON in `src/components/`. Click **Refresh** to pick up
 
 ---
 
-## 14. Yosys Netlist Import
+## 16. Yosys Netlist Import
 
 Import a synthesis netlist produced by [Yosys](https://github.com/YosysHQ/yosys):
 
@@ -333,7 +385,7 @@ Unsupported cell types are skipped with a warning in the status bar.
 
 ---
 
-## 15. Common Mistakes
+## 17. Common Mistakes
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
@@ -346,7 +398,7 @@ Unsupported cell types are skipped with a warning in the status bar.
 
 ---
 
-## 16. Workflow Cheat-Sheet
+## 18. Workflow Cheat-Sheet
 
 ```
 1. Add IO pins (Input/Output Pin) → rename them

@@ -38,6 +38,7 @@ class Block:
         self.input_wires = [[] for _ in self.input_points]  # List to store wire IDs for input points
         self.output_wires = [[] for _ in self.output_points]  # List to store wire IDs for output points
         self.parent_window = parent_window  # Add the parent_window attribute
+        self.custom_data = None  # populated for CUSTOM RTL blocks
         self.update_points()
         self.init_wires()
 
@@ -112,7 +113,12 @@ class Block:
     }
 
     def init_wires(self):
-        n_in, n_out = self._WIRE_COUNTS.get(self.block_type, (0, 0))
+        if self.block_type == "CUSTOM":
+            cd = self.custom_data or {}
+            n_in  = len(cd.get("input_names",  []))
+            n_out = len(cd.get("output_names", []))
+        else:
+            n_in, n_out = self._WIRE_COUNTS.get(self.block_type, (0, 0))
         self.input_wires  = [[] for _ in range(n_in)]
         self.output_wires = [[] for _ in range(n_out)]
 
@@ -200,8 +206,25 @@ class Block:
             self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height*2)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height*2))]
             self.input_names = ["A", "B"]
             self.output_names = ["CO","SO"]
-                 
-             
+        elif self.block_type == "CUSTOM":
+            cd = self.custom_data or {}
+            in_names  = cd.get("input_names",  [])
+            out_names = cd.get("output_names", [])
+            n_in  = len(in_names)
+            n_out = len(out_names)
+            self.input_points = []
+            for i in range(n_in):
+                t = (i + 1) / (n_in + 1)
+                self.input_points.append(
+                    self.rotate_point(int(self.x), int(self.y + t * self.height)))
+            self.output_points = []
+            for i in range(n_out):
+                t = (i + 1) / (n_out + 1)
+                self.output_points.append(
+                    self.rotate_point(int(self.x + self.width), int(self.y + t * self.height)))
+            self.input_names  = list(in_names)
+            self.output_names = list(out_names)
+
         # Initialize connections for new points
         #self.input_connections = {point: None for point in self.input_points}
         #self.output_connections = {point: None for point in self.output_points}
@@ -263,37 +286,46 @@ class Block:
             self.draw_fa(cr)
         elif self.block_type == "HA":
             self.draw_ha(cr)
+        elif self.block_type == "CUSTOM":
+            self.draw_custom_rtl_block(cr)
         else:
             self.draw_default_block(cr)
         cr.stroke()
         cr.restore()
 
-        
         cr.save()
-        # Draw input and output points
-        cr.set_source_rgb(0, 0.6, 0)  # Green color for points
+        # Draw connection dots (green)
+        cr.set_source_rgb(0, 0.6, 0)
         for point in self.input_points + self.output_points:
             cr.arc(point[0], point[1], 4, 0, 2 * math.pi)
-            #cr.stroke()
             cr.fill()
 
-        # Draw names text for input points
-        cr.set_source_rgb(0, 0.6, 0)  # Green color for points
-        for point, name in zip(self.input_points, self.input_names):
-            cr.set_source_rgb(*self.text_color)
-            cr.set_font_size(8)
-            cr.move_to(point[0] - 10, point[1] + 10)
-            cr.show_text(name)
-            cr.stroke()
-        
-        # Draw names text for output points
-        cr.set_source_rgb(0, 0.6, 0)  # Green color for points
-        for point, name in zip(self.output_points, self.output_names):
-            cr.set_source_rgb(*self.text_color)
-            cr.set_font_size(8)
-            cr.move_to(point[0] + 10, point[1] + 10)
-            cr.show_text(name)
-            cr.stroke()
+        cr.set_font_size(8)
+        if self.block_type == "CUSTOM":
+            # Labels drawn inside the block — inputs just right of left edge, outputs just left of right edge
+            for point, name in zip(self.input_points, self.input_names):
+                cr.set_source_rgb(*self.text_color)
+                cr.move_to(point[0] + 6, point[1] + 3)
+                cr.show_text(name)
+                cr.stroke()
+            for point, name in zip(self.output_points, self.output_names):
+                cr.set_source_rgb(*self.text_color)
+                te = cr.text_extents(name)
+                cr.move_to(point[0] - te.width - 6, point[1] + 3)
+                cr.show_text(name)
+                cr.stroke()
+        else:
+            # Default: input labels to the upper-left of the dot, output labels to the upper-right
+            for point, name in zip(self.input_points, self.input_names):
+                cr.set_source_rgb(*self.text_color)
+                cr.move_to(point[0] - 10, point[1] + 10)
+                cr.show_text(name)
+                cr.stroke()
+            for point, name in zip(self.output_points, self.output_names):
+                cr.set_source_rgb(*self.text_color)
+                cr.move_to(point[0] + 10, point[1] + 10)
+                cr.show_text(name)
+                cr.stroke()
         cr.restore()
 
     def draw_default_block(self, cr):
@@ -995,6 +1027,39 @@ class Block:
         cr.move_to(10, 10)
         cr.show_text(self.text)
 
+    def draw_custom_rtl_block(self, cr):
+        fill_color = (1, 1, 0) if self.selected else (0.88, 0.94, 1.0)
+        cd = self.custom_data or {}
+        entity_name = cd.get("entity_name", self.text)
+
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.fill()
+
+        # Dashed blue border to distinguish RTL blocks from structural components
+        cr.set_source_rgb(0.15, 0.35, 0.75)
+        cr.set_line_width(1.5)
+        cr.set_dash([5, 3])
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.stroke()
+        cr.set_dash([])
+        cr.set_line_width(1)
+
+        # "[RTL]" badge top-right
+        cr.set_source_rgb(0.15, 0.35, 0.75)
+        cr.set_font_size(7)
+        cr.move_to(self.width - 26, 10)
+        cr.show_text("[RTL]")
+
+        # Entity name centred
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(9)
+        te = cr.text_extents(entity_name)
+        cx = max(4, (self.width - te.width) / 2)
+        cy = self.height / 2 + 4
+        cr.move_to(cx, cy)
+        cr.show_text(entity_name)
+
     def draw_text(self, cr, text, x, y):
         cr.set_source_rgb(*self.text_color)
         cr.set_font_size(8)  # Reduced font size
@@ -1138,8 +1203,8 @@ class Block:
     """
 
     def to_dict(self):
-        return {
-            "id": self.id,  # Include the ID in the JSON
+        d = {
+            "id": self.id,
             "name": self.text,
             "block_type": self.block_type,
             "x": self.x,
@@ -1149,16 +1214,19 @@ class Block:
             "rotation": self.rotation,
             "input_points": self.input_points,
             "output_points": self.output_points,
-            "input_wires": self.input_wires,  # Include input wires in the JSON
-            "output_wires": self.output_wires,  # Include output wires in the JSON
+            "input_wires": self.input_wires,
+            "output_wires": self.output_wires,
             "border_color": self.border_color,
             "fill_color": self.fill_color,
             "text_color": self.text_color,
             "timestamp": self.timestamp,
             "input_names": self.input_names,
             "output_names": self.output_names,
-            "grid_size": self.grid_size  # Include grid_size in the JSON
+            "grid_size": self.grid_size,
         }
+        if self.custom_data is not None:
+            d["custom_data"] = self.custom_data
+        return d
     
     
     @classmethod
@@ -1184,8 +1252,15 @@ class Block:
         block.output_names = data["output_names"]
         #block.input_wires = data.get("input_wires", [None] * len(block.input_points))  # Set the input wires list
         #block.output_wires = data.get("output_wires", [None] * len(block.output_points))  # Set the output wires list
-        block.input_wires = data.get("input_wires", [[] for _ in block.input_points])  # Set the input wires list
-        block.output_wires = data.get("output_wires", [[] for _ in block.output_points])  # Set the output wires list
+        block.input_wires = data.get("input_wires", [[] for _ in block.input_points])
+        block.output_wires = data.get("output_wires", [[] for _ in block.output_points])
+        if "custom_data" in data:
+            block.custom_data = data["custom_data"]
+            block.update_points()
+            block.init_wires()
+            # Re-apply wire lists from JSON after re-init (JSON is authoritative)
+            block.input_wires  = data.get("input_wires",  [[] for _ in block.input_points])
+            block.output_wires = data.get("output_wires", [[] for _ in block.output_points])
         return block
     
   

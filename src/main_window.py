@@ -176,6 +176,18 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
             button.set_tooltip_text("Right click top left area of the generated block for more options!")
             self.arithmetic_box.pack_start(button, False, False, 0)
 
+        # Custom RTL blocks panel
+        self.expander_custom_rtl = Gtk.Expander(label="Custom RTL")
+        self.left_pane.pack_start(self.expander_custom_rtl, False, False, 0)
+
+        self.custom_rtl_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.expander_custom_rtl.add(self.custom_rtl_box)
+
+        add_custom_btn = Gtk.Button(label="Add Custom RTL Block")
+        add_custom_btn.set_tooltip_text("Define a behavioral RTL block with custom VHDL")
+        add_custom_btn.connect("clicked", self.on_add_custom_rtl_block)
+        self.custom_rtl_box.pack_start(add_custom_btn, False, False, 0)
+
         # Components library panel
         self.expander_components = Gtk.Expander(label="Components")
         self.left_pane.pack_start(self.expander_components, False, False, 0)
@@ -497,6 +509,10 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
                     nb.fill_color = block.fill_color
                     nb.text_color = block.text_color
                     nb.rotation = block.rotation
+                    if block.block_type == "CUSTOM":
+                        nb.custom_data = block.custom_data
+                        nb.update_points()
+                        nb.init_wires()
                     self.blocks.append(nb)
                     new_blocks.append(nb)
                 for pin in list(self.selected_pins):
@@ -531,6 +547,10 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
                 new_block.fill_color = self.selected_block.fill_color
                 new_block.text_color = self.selected_block.text_color
                 new_block.rotation = self.selected_block.rotation
+                if self.selected_block.block_type == "CUSTOM":
+                    new_block.custom_data = self.selected_block.custom_data
+                    new_block.update_points()
+                    new_block.init_wires()
                 self.blocks.append(new_block)
                 self.drawing_area.queue_draw()
                 self.update_json()
@@ -688,6 +708,10 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
                 new_block.fill_color = self.clipboard_block.fill_color
                 new_block.text_color = self.clipboard_block.text_color
                 new_block.rotation = self.clipboard_block.rotation
+                if self.clipboard_block.block_type == "CUSTOM":
+                    new_block.custom_data = self.clipboard_block.custom_data
+                    new_block.update_points()
+                    new_block.init_wires()
                 self.blocks.append(new_block)
                 self.drawing_area.queue_draw()
                 self.update_json()
@@ -708,6 +732,51 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
                 self.update_json()
         except Exception as e:
             print(f"Error in on_paste_block: {e}")
+
+    def on_add_custom_rtl_block(self, widget):
+        from custom_block_dialog import CustomBlockDialog
+        dialog = CustomBlockDialog(self)
+        response = dialog.run()
+        if response != Gtk.ResponseType.OK:
+            dialog.destroy()
+            return
+        cd = dialog.get_data()
+        dialog.destroy()
+        self.push_undo()
+        n_ports = max(len(cd["input_names"]), len(cd["output_names"]), 1)
+        w = self.grid_size * 6
+        h = self.grid_size * max(n_ports + 2, 4)
+        x = round(random.randint(40, 400) // self.grid_size) * self.grid_size
+        y = round(random.randint(40, 400) // self.grid_size) * self.grid_size
+        new_block = Block(x, y, w, h, cd["entity_name"], "CUSTOM", self.grid_size, self)
+        new_block.custom_data = cd
+        new_block.update_points()
+        new_block.init_wires()
+        self.blocks.append(new_block)
+        self.drawing_area.queue_draw()
+        self.update_json()
+
+    def on_edit_custom_rtl_block(self, widget):
+        if not self.selected_block or self.selected_block.block_type != "CUSTOM":
+            return
+        from custom_block_dialog import CustomBlockDialog
+        block = self.selected_block
+        dialog = CustomBlockDialog(self, existing=block.custom_data)
+        response = dialog.run()
+        if response != Gtk.ResponseType.OK:
+            dialog.destroy()
+            return
+        cd = dialog.get_data()
+        dialog.destroy()
+        self.push_undo()
+        block.custom_data = cd
+        block.text = cd["entity_name"]
+        n_ports = max(len(cd["input_names"]), len(cd["output_names"]), 1)
+        block.height = self.grid_size * max(n_ports + 2, 4)
+        block.update_points()
+        block.init_wires()
+        self.drawing_area.queue_draw()
+        self.update_json()
 
     def on_connect_pin(self, widget):
         try:

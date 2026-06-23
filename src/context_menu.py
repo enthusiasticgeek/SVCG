@@ -7,6 +7,7 @@ class ContextMenu:
     def __init__(self, parent_window):
         self.parent_window = parent_window
         self.context_menu = Gtk.Menu()
+        self._edit_rtl_item = None  # set in __init__ body below
 
         change_border_color_item = Gtk.MenuItem(label="Change Border Color")
         change_fill_color_item = Gtk.MenuItem(label="Change Fill Color")
@@ -18,6 +19,7 @@ class ContextMenu:
         copy_item = Gtk.MenuItem(label="Copy (CTRL + c)")
         delete_item = Gtk.MenuItem(label="Delete (CTRL + d)")
         view_vhdl_item = Gtk.MenuItem(label="View VHDL Code")
+        self._edit_rtl_item = Gtk.MenuItem(label="Edit RTL...")
 
         change_border_color_item.connect("activate", self.on_change_border_color)
         change_fill_color_item.connect("activate", self.on_change_fill_color)
@@ -29,6 +31,7 @@ class ContextMenu:
         copy_item.connect("activate", self.on_copy_block)
         delete_item.connect("activate", self.on_delete_block)
         view_vhdl_item.connect("activate", self.on_view_vhdl_code)
+        self._edit_rtl_item.connect("activate", self.on_edit_rtl)
 
         self.context_menu.append(change_border_color_item)
         self.context_menu.append(change_fill_color_item)
@@ -40,9 +43,12 @@ class ContextMenu:
         self.context_menu.append(copy_item)
         self.context_menu.append(delete_item)
         self.context_menu.append(view_vhdl_item)
+        self.context_menu.append(self._edit_rtl_item)
         self.context_menu.show_all()
 
     def popup(self, event):
+        blk = self.parent_window.selected_block
+        self._edit_rtl_item.set_visible(blk is not None and blk.block_type == "CUSTOM")
         self.context_menu.popup(None, None, None, None, event.button, event.time)
 
     def on_change_border_color(self, widget):
@@ -74,6 +80,9 @@ class ContextMenu:
 
     def on_view_vhdl_code(self, widget):
         self.parent_window.on_view_vhdl_code(widget)
+
+    def on_edit_rtl(self, widget):
+        self.parent_window.on_edit_custom_rtl_block(widget)
 
     def set_view_vhdl_code_sensitive(self, sensitive):
         for item in self.context_menu.get_children():

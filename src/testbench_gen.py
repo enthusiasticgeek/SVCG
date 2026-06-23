@@ -142,7 +142,8 @@ def generate_testbench(entity_name, pins):
     return "\n".join(lines)
 
 
-def run_ghdl_simulation(entity_vhd, tb_vhd, tb_entity_name, workdir, stop_time="2us"):
+def run_ghdl_simulation(entity_vhd, tb_vhd, tb_entity_name, workdir, stop_time="2us",
+                        custom_vhds=None):
     """
     Run full GHDL simulation: analyse component library + entity + testbench,
     elaborate, run with --vcd.
@@ -173,13 +174,21 @@ def run_ghdl_simulation(entity_vhd, tb_vhd, tb_entity_name, workdir, stop_time="
         return True, None
 
     # ── Step 1: compile SVCG component library (src/vhdl/*.vhd) ──────────
-    # These provide the behavioral implementations (JKFF, AND_GATE, etc.)
-    # that the structural top-level entity references as components.
     vhdl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vhdl")
     for vhd in sorted(glob.glob(os.path.join(vhdl_dir, "*.vhd"))):
         ok, err = _run(f"analyse {os.path.basename(vhd)}",
                        [ghdl, "-a", "--std=08", vhd], fatal=False)
-        # Non-fatal: skip components not needed for this design
+
+    # ── Step 1b: compile custom RTL block VHDs ────────────────────────────
+    if custom_vhds:
+        for ename, vhd_text in custom_vhds:
+            vhd_file = os.path.join(workdir, f"custom_{ename}.vhd")
+            with open(vhd_file, "w") as fh:
+                fh.write(vhd_text)
+            ok, err = _run(f"analyse custom_{ename}.vhd",
+                           [ghdl, "-a", "--std=08", vhd_file], fatal=True)
+            if not ok:
+                return False, err, None
 
     # ── Step 2: analyse top-level entity + testbench ─────────────────────
     for label, path, fatal in [

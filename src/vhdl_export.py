@@ -95,6 +95,45 @@ def _vhdl_port_name(block_pin_label):
     return "Q_bar" if block_pin_label == "Q'" else block_pin_label
 
 
+def generate_custom_vhd(entity_name, input_names, output_names, user_arch_text):
+    """
+    Build a complete VHDL source file for a Custom RTL block.
+
+    The entity declaration is generated from the port lists; `user_arch_text`
+    is the user-written architecture body (must start with 'architecture ...').
+    If it is empty a stub architecture is produced so GHDL can still elaborate.
+    """
+    lines = [
+        "library IEEE;",
+        "use IEEE.STD_LOGIC_1164.ALL;",
+        "",
+        "entity %s is" % entity_name,
+    ]
+    all_ports = [(n, "in") for n in input_names] + [(n, "out") for n in output_names]
+    if all_ports:
+        lines.append("  port (")
+        for idx, (pname, pdir) in enumerate(all_ports):
+            default = " := '0'" if pdir == "in" else ""
+            sep = ";" if idx < len(all_ports) - 1 else ""
+            lines.append("    %s : %s  STD_LOGIC%s%s" % (pname, pdir, default, sep))
+        lines.append("  );")
+    lines += ["end %s;" % entity_name, ""]
+
+    body = (user_arch_text or "").strip()
+    if body:
+        lines.append(body)
+        lines.append("")
+    else:
+        lines += [
+            "architecture rtl of %s is" % entity_name,
+            "begin",
+            "  -- TODO: implement %s" % entity_name,
+            "end architecture rtl;",
+            "",
+        ]
+    return "\n".join(lines)
+
+
 def generate_vhdl(entity_name, blocks, pins, wires):
     """
     Returns a VHDL source string for the schematic.
@@ -158,10 +197,16 @@ def generate_vhdl(entity_name, blocks, pins, wires):
             sig = _sanitize(w.text)
             internal_signals[sig] = True
 
-    # Unique component types
+    # Unique component types (non-custom) and unique custom entities
     seen_btypes = {}
+    seen_custom = {}  # entity_name -> Block
     for block in blocks:
-        if block.block_type not in seen_btypes:
+        if block.block_type == "CUSTOM":
+            cd = getattr(block, "custom_data", None) or {}
+            ename = cd.get("entity_name", "CUSTOM_BLOCK")
+            if ename not in seen_custom:
+                seen_custom[ename] = block
+        elif block.block_type not in seen_btypes:
             seen_btypes[block.block_type] = block
 
     # Library header
@@ -190,7 +235,7 @@ def generate_vhdl(entity_name, blocks, pins, wires):
     lines.append("architecture Structural of %s is" % entity_name)
     lines.append("")
 
-    # Component declarations
+    # Component declarations — standard library components
     for btype, proto in seen_btypes.items():
         entity = ENTITY_MAP.get(btype, btype)
         lines.append("%scomponent %s" % (indent, entity))
@@ -209,6 +254,24 @@ def generate_vhdl(entity_name, blocks, pins, wires):
         lines.append("%send component;" % indent)
         lines.append("")
 
+    # Component declarations — custom RTL blocks
+    for ename, proto in seen_custom.items():
+        cd = getattr(proto, "custom_data", None) or {}
+        in_names  = cd.get("input_names",  [])
+        out_names = cd.get("output_names", [])
+        all_ports = [(n, "in") for n in in_names] + [(n, "out") for n in out_names]
+        lines.append("%scomponent %s" % (indent, ename))
+        if all_ports:
+            lines.append("%s%sPort (" % (indent, indent))
+            for j, (pname, pdir) in enumerate(all_ports):
+                comma = ";" if j < len(all_ports) - 1 else ""
+                default = " := '0'" if pdir == "in" else ""
+                lines.append("%s%s%s%s : %s  STD_LOGIC%s%s" % (
+                    indent, indent, indent, pname, pdir, default, comma))
+            lines.append("%s%s);" % (indent, indent))
+        lines.append("%send component;" % indent)
+        lines.append("")
+
     # Internal signal declarations
     for sig in internal_signals:
         lines.append("%ssignal %s : STD_LOGIC;" % (indent, sig))
@@ -220,7 +283,11 @@ def generate_vhdl(entity_name, blocks, pins, wires):
 
     # Component instantiations
     for idx, block in enumerate(blocks):
-        entity = ENTITY_MAP.get(block.block_type, block.block_type)
+        if block.block_type == "CUSTOM":
+            cd = getattr(block, "custom_data", None) or {}
+            entity = cd.get("entity_name", "CUSTOM_BLOCK")
+        else:
+            entity = ENTITY_MAP.get(block.block_type, block.block_type)
         inst = "%s_%d" % (_sanitize(block.text), idx)
         lines.append("%s%s : %s" % (indent, inst, entity))
         lines.append("%s%sport map (" % (indent, indent))
