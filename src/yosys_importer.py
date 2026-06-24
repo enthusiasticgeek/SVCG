@@ -11,8 +11,14 @@ Then use File > Import Yosys Netlist... in SVCG.
 
 Supported cell types
 --------------------
-Standard-cell mapped ($_{AND,OR,NOT,NAND,NOR,XOR,XNOR,MUX,DFF}_ etc.)
-and Yosys internal ($and, $or, $not, $mux, $dff, etc.)
+Yosys primitives: $_{AND,OR,NOT,NAND,NOR,XOR,XNOR,BUF,AND3,OR3,NAND3,NOR3,
+  XOR3,AND4,OR4,NAND4,NOR4,MUX,DFF_P,DFF_N,DLATCH_P,DLATCH_N,SR,HA,FA}_
+Yosys internal: $and, $or, $not, $nand, $nor, $xor, $xnor, $mux, $dff,
+  $dffe, $sdff, $adff, $dlatch, $ha, $fa
+SVCG cell library names: AND_GATE, OR_GATE, …, BUF_GATE, AND3_GATE, …,
+  DLATCH, SRLATCH, DEC_2TO4, DEC_3TO8, ENC_4TO2, DEMUX_1TO4, DEMUX_1TO8,
+  RCA_4BIT, COMP_4BIT, SHREG_4BIT, CNT_4BIT, CNT_4BIT_UD, HA, FA, FA_GC, FA_WC,
+  MUX2x1, MUX4x1, MUX8x1, TristateBuffer{,4,8}, DFF, JKFF, SRFF, TFF, DFF_PIPELINE
 """
 import json
 import math
@@ -24,6 +30,7 @@ import random
 # ---------------------------------------------------------------------------
 
 YOSYS_TO_SVCG = {
+    # 2-input primitives
     "$_AND_":   "AND",   "$and":   "AND",
     "$_OR_":    "OR",    "$or":    "OR",
     "$_NOT_":   "NOT",   "$not":   "NOT",
@@ -31,33 +38,173 @@ YOSYS_TO_SVCG = {
     "$_NOR_":   "NOR",   "$nor":   "NOR",
     "$_XOR_":   "XOR",   "$xor":   "XOR",
     "$_XNOR_":  "XNOR",  "$xnor":  "XNOR",
+    "$_BUF_":   "BUF",
+    # 3-input gates (ABC9 tech-mapped)
+    "$_AND3_":  "AND3",  "$_OR3_":  "OR3",
+    "$_NAND3_": "NAND3", "$_NOR3_": "NOR3",
+    "$_XOR3_":  "XOR3",
+    # 4-input gates
+    "$_AND4_":  "AND4",  "$_OR4_":  "OR4",
+    "$_NAND4_": "NAND4", "$_NOR4_": "NOR4",
+    # Mux / FF
     "$_MUX_":   "MUX_2X1", "$mux": "MUX_2X1",
     "$_DFF_P_": "DFF",   "$_DFF_N_": "DFF",
     "$dff":     "DFF",   "$dffe":  "DFF",
     "$sdff":    "DFF",   "$adff":  "DFF",
-    "$dlatch":  "DFF",
+    # Latches (fixed: $dlatch is a D-latch, not a DFF)
+    "$dlatch":  "DLATCH", "$_DLATCH_P_": "DLATCH", "$_DLATCH_N_": "DLATCH",
+    "$_SR_":    "SRLATCH",
+    # Adders
     "$_HA_":    "HA",    "$ha":    "HA",
     "$_FA_":    "FA",    "$fa":    "FA",
+    # SVCG module names (when mapped through the SVCG Verilog cell library)
+    "AND_GATE":   "AND",   "OR_GATE":   "OR",   "NOT_GATE":  "NOT",
+    "NAND_GATE":  "NAND",  "NOR_GATE":  "NOR",  "XOR_GATE":  "XOR",
+    "XNOR_GATE":  "XNOR",  "BUF_GATE":  "BUF",
+    "AND3_GATE":  "AND3",  "OR3_GATE":  "OR3",  "NAND3_GATE":"NAND3",
+    "NOR3_GATE":  "NOR3",  "XOR3_GATE": "XOR3",
+    "AND4_GATE":  "AND4",  "OR4_GATE":  "OR4",  "NAND4_GATE":"NAND4",
+    "NOR4_GATE":  "NOR4",
+    "MUX2x1":     "MUX_2X1", "MUX4x1": "MUX_4X1", "MUX8x1": "MUX_8X1",
+    "DFF":        "DFF",   "JKFF":   "JKFF",  "SRFF":  "SRFF",
+    "TFF":        "TFF",   "DFF_PIPELINE": "DFF_PIPELINE",
+    "DLATCH":     "DLATCH", "SRLATCH": "SRLATCH",
+    "DEC_2TO4":   "DEC_2TO4", "DEC_3TO8": "DEC_3TO8", "ENC_4TO2": "ENC_4TO2",
+    "DEMUX_1TO4": "DEMUX_1TO4", "DEMUX_1TO8": "DEMUX_1TO8",
+    "RCA_4BIT":   "RCA_4BIT", "COMP_4BIT": "COMP_4BIT",
+    "SHREG_4BIT": "SHREG_4BIT", "CNT_4BIT": "CNT_4BIT", "CNT_4BIT_UD": "CNT_4BIT_UD",
+    "HA":         "HA",    "FA":    "FA",   "FA_GC": "FA_GC", "FA_WC": "FA_WC",
+    "TristateBuffer":  "TRISTATEBUF_2",
+    "TristateBuffer4": "TRISTATEBUF_4",
+    "TristateBuffer8": "TRISTATEBUF_8",
 }
 
 # Maps (svcg_block_type, yosys_port_name) -> ("in"|"out", pin_index)
+# Port names follow SVCG VHDL/Verilog templates; Yosys ABC alternatives (A/B/Y) also listed.
 PORT_MAP = {
-    ("AND",    "A"): ("in", 0), ("AND",    "B"): ("in", 1), ("AND",    "Y"): ("out", 0),
-    ("OR",     "A"): ("in", 0), ("OR",     "B"): ("in", 1), ("OR",     "Y"): ("out", 0),
-    ("NOT",    "A"): ("in", 0), ("NOT",    "Y"): ("out", 0),
-    ("NAND",   "A"): ("in", 0), ("NAND",   "B"): ("in", 1), ("NAND",   "Y"): ("out", 0),
-    ("NOR",    "A"): ("in", 0), ("NOR",    "B"): ("in", 1), ("NOR",    "Y"): ("out", 0),
-    ("XOR",    "A"): ("in", 0), ("XOR",    "B"): ("in", 1), ("XOR",    "Y"): ("out", 0),
-    ("XNOR",   "A"): ("in", 0), ("XNOR",   "B"): ("in", 1), ("XNOR",   "Y"): ("out", 0),
-    ("MUX_2X1","A"): ("in", 0), ("MUX_2X1","B"): ("in", 1), ("MUX_2X1","S"): ("in", 2),
-    ("MUX_2X1","Y"): ("out", 0),
-    # DFF standard ports
-    ("DFF", "D"): ("in", 0), ("DFF", "C"): ("in", 1), ("DFF", "CLK"): ("in", 1),
-    ("DFF", "EN"): ("in", 2), ("DFF", "Q"): ("out", 0),
-    ("HA",  "A"): ("in", 0), ("HA",  "B"): ("in", 1),
-    ("HA",  "CO"): ("out", 0), ("HA", "SUM"): ("out", 1), ("HA", "Y"): ("out", 1),
-    ("FA",  "A"): ("in", 0), ("FA",  "B"): ("in", 1), ("FA",  "CI"): ("in", 2),
-    ("FA",  "CO"): ("out", 0), ("FA", "SUM"): ("out", 1),
+    # ── 2-input gates ────────────────────────────────────────────────────────
+    ("AND",  "IN1"): ("in", 0), ("AND",  "IN2"): ("in", 1), ("AND",  "OUT1"): ("out", 0),
+    ("AND",  "A"):   ("in", 0), ("AND",  "B"):   ("in", 1), ("AND",  "Y"):    ("out", 0),
+    ("OR",   "IN1"): ("in", 0), ("OR",   "IN2"): ("in", 1), ("OR",   "OUT1"): ("out", 0),
+    ("OR",   "A"):   ("in", 0), ("OR",   "B"):   ("in", 1), ("OR",   "Y"):    ("out", 0),
+    ("NOT",  "IN1"): ("in", 0), ("NOT",  "OUT1"): ("out", 0),
+    ("NOT",  "A"):   ("in", 0), ("NOT",  "Y"):    ("out", 0),
+    ("NAND", "IN1"): ("in", 0), ("NAND", "IN2"): ("in", 1), ("NAND", "OUT1"): ("out", 0),
+    ("NAND", "A"):   ("in", 0), ("NAND", "B"):   ("in", 1), ("NAND", "Y"):    ("out", 0),
+    ("NOR",  "IN1"): ("in", 0), ("NOR",  "IN2"): ("in", 1), ("NOR",  "OUT1"): ("out", 0),
+    ("NOR",  "A"):   ("in", 0), ("NOR",  "B"):   ("in", 1), ("NOR",  "Y"):    ("out", 0),
+    ("XOR",  "IN1"): ("in", 0), ("XOR",  "IN2"): ("in", 1), ("XOR",  "OUT1"): ("out", 0),
+    ("XOR",  "A"):   ("in", 0), ("XOR",  "B"):   ("in", 1), ("XOR",  "Y"):    ("out", 0),
+    ("XNOR", "IN1"): ("in", 0), ("XNOR", "IN2"): ("in", 1), ("XNOR", "OUT1"): ("out", 0),
+    ("XNOR", "A"):   ("in", 0), ("XNOR", "B"):   ("in", 1), ("XNOR", "Y"):    ("out", 0),
+    # ── Buffer ────────────────────────────────────────────────────────────────
+    ("BUF", "IN1"): ("in", 0), ("BUF", "OUT1"): ("out", 0),
+    ("BUF", "A"):   ("in", 0), ("BUF", "Y"):    ("out", 0),
+    # ── 3-input gates ────────────────────────────────────────────────────────
+    ("AND3",  "IN1"): ("in", 0), ("AND3",  "IN2"): ("in", 1), ("AND3",  "IN3"): ("in", 2), ("AND3",  "OUT1"): ("out", 0),
+    ("AND3",  "A"):   ("in", 0), ("AND3",  "B"):   ("in", 1), ("AND3",  "C"):   ("in", 2), ("AND3",  "Y"):    ("out", 0),
+    ("OR3",   "IN1"): ("in", 0), ("OR3",   "IN2"): ("in", 1), ("OR3",   "IN3"): ("in", 2), ("OR3",   "OUT1"): ("out", 0),
+    ("OR3",   "A"):   ("in", 0), ("OR3",   "B"):   ("in", 1), ("OR3",   "C"):   ("in", 2), ("OR3",   "Y"):    ("out", 0),
+    ("NAND3", "IN1"): ("in", 0), ("NAND3", "IN2"): ("in", 1), ("NAND3", "IN3"): ("in", 2), ("NAND3", "OUT1"): ("out", 0),
+    ("NAND3", "A"):   ("in", 0), ("NAND3", "B"):   ("in", 1), ("NAND3", "C"):   ("in", 2), ("NAND3", "Y"):    ("out", 0),
+    ("NOR3",  "IN1"): ("in", 0), ("NOR3",  "IN2"): ("in", 1), ("NOR3",  "IN3"): ("in", 2), ("NOR3",  "OUT1"): ("out", 0),
+    ("NOR3",  "A"):   ("in", 0), ("NOR3",  "B"):   ("in", 1), ("NOR3",  "C"):   ("in", 2), ("NOR3",  "Y"):    ("out", 0),
+    ("XOR3",  "IN1"): ("in", 0), ("XOR3",  "IN2"): ("in", 1), ("XOR3",  "IN3"): ("in", 2), ("XOR3",  "OUT1"): ("out", 0),
+    ("XOR3",  "A"):   ("in", 0), ("XOR3",  "B"):   ("in", 1), ("XOR3",  "C"):   ("in", 2), ("XOR3",  "Y"):    ("out", 0),
+    # ── 4-input gates ────────────────────────────────────────────────────────
+    ("AND4",  "IN1"): ("in", 0), ("AND4",  "IN2"): ("in", 1), ("AND4",  "IN3"): ("in", 2), ("AND4",  "IN4"): ("in", 3), ("AND4",  "OUT1"): ("out", 0),
+    ("AND4",  "A"):   ("in", 0), ("AND4",  "B"):   ("in", 1), ("AND4",  "C"):   ("in", 2), ("AND4",  "D"):   ("in", 3), ("AND4",  "Y"):    ("out", 0),
+    ("OR4",   "IN1"): ("in", 0), ("OR4",   "IN2"): ("in", 1), ("OR4",   "IN3"): ("in", 2), ("OR4",   "IN4"): ("in", 3), ("OR4",   "OUT1"): ("out", 0),
+    ("OR4",   "A"):   ("in", 0), ("OR4",   "B"):   ("in", 1), ("OR4",   "C"):   ("in", 2), ("OR4",   "D"):   ("in", 3), ("OR4",   "Y"):    ("out", 0),
+    ("NAND4", "IN1"): ("in", 0), ("NAND4", "IN2"): ("in", 1), ("NAND4", "IN3"): ("in", 2), ("NAND4", "IN4"): ("in", 3), ("NAND4", "OUT1"): ("out", 0),
+    ("NAND4", "A"):   ("in", 0), ("NAND4", "B"):   ("in", 1), ("NAND4", "C"):   ("in", 2), ("NAND4", "D"):   ("in", 3), ("NAND4", "Y"):    ("out", 0),
+    ("NOR4",  "IN1"): ("in", 0), ("NOR4",  "IN2"): ("in", 1), ("NOR4",  "IN3"): ("in", 2), ("NOR4",  "IN4"): ("in", 3), ("NOR4",  "OUT1"): ("out", 0),
+    ("NOR4",  "A"):   ("in", 0), ("NOR4",  "B"):   ("in", 1), ("NOR4",  "C"):   ("in", 2), ("NOR4",  "D"):   ("in", 3), ("NOR4",  "Y"):    ("out", 0),
+    # ── Multiplexers ─────────────────────────────────────────────────────────
+    ("MUX_2X1","I0"): ("in", 0), ("MUX_2X1","I1"): ("in", 1), ("MUX_2X1","S0"): ("in", 2),
+    ("MUX_2X1","EN"): ("in", 3), ("MUX_2X1","O0"): ("out", 0),
+    ("MUX_2X1","A"):  ("in", 0), ("MUX_2X1","B"):  ("in", 1), ("MUX_2X1","S"):  ("in", 2),
+    ("MUX_2X1","Y"):  ("out", 0),
+    # ── Flip-flops ────────────────────────────────────────────────────────────
+    ("DFF", "D"):   ("in", 0), ("DFF", "CLK"): ("in", 1), ("DFF", "C"):  ("in", 1),
+    ("DFF", "PRE"): ("in", 2), ("DFF", "CLR"): ("in", 3), ("DFF", "EN"): ("in", 2),
+    ("DFF", "Q"):   ("out", 0), ("DFF", "Q_bar"): ("out", 1),
+    ("JKFF","J"):   ("in", 0), ("JKFF","CLK"): ("in", 1), ("JKFF","K"):   ("in", 2),
+    ("JKFF","PRE"): ("in", 3), ("JKFF","CLR"): ("in", 4),
+    ("JKFF","Q"):   ("out", 0), ("JKFF","Q_bar"): ("out", 1),
+    ("SRFF","S"):   ("in", 0), ("SRFF","CLK"): ("in", 1), ("SRFF","R"):   ("in", 2),
+    ("SRFF","PRE"): ("in", 3), ("SRFF","CLR"): ("in", 4),
+    ("SRFF","Q"):   ("out", 0), ("SRFF","Q_bar"): ("out", 1),
+    ("TFF", "T"):   ("in", 0), ("TFF", "CLK"): ("in", 1),
+    ("TFF", "PRE"): ("in", 2), ("TFF", "CLR"): ("in", 3),
+    ("TFF", "Q"):   ("out", 0), ("TFF", "Q_bar"): ("out", 1),
+    ("DFF_PIPELINE","D"): ("in", 0), ("DFF_PIPELINE","CLK"): ("in", 1),
+    ("DFF_PIPELINE","N_RST"): ("in", 2), ("DFF_PIPELINE","Q"): ("out", 0),
+    # ── Latches ───────────────────────────────────────────────────────────────
+    ("DLATCH","D"):  ("in", 0), ("DLATCH","EN"):    ("in", 1),
+    ("DLATCH","Q"):  ("out", 0), ("DLATCH","Q_bar"): ("out", 1),
+    ("SRLATCH","S"): ("in", 0), ("SRLATCH","R"):    ("in", 1),
+    ("SRLATCH","Q"): ("out", 0), ("SRLATCH","Q_bar"):("out", 1),
+    # ── Decoders / Encoders / Demux ───────────────────────────────────────────
+    ("DEC_2TO4","A"): ("in", 0), ("DEC_2TO4","B"): ("in", 1), ("DEC_2TO4","EN"): ("in", 2),
+    ("DEC_2TO4","Y0"): ("out", 0), ("DEC_2TO4","Y1"): ("out", 1),
+    ("DEC_2TO4","Y2"): ("out", 2), ("DEC_2TO4","Y3"): ("out", 3),
+    ("DEC_3TO8","A"): ("in", 0), ("DEC_3TO8","B"): ("in", 1), ("DEC_3TO8","C"): ("in", 2),
+    ("DEC_3TO8","EN"): ("in", 3),
+    ("DEC_3TO8","Y0"): ("out", 0), ("DEC_3TO8","Y1"): ("out", 1),
+    ("DEC_3TO8","Y2"): ("out", 2), ("DEC_3TO8","Y3"): ("out", 3),
+    ("DEC_3TO8","Y4"): ("out", 4), ("DEC_3TO8","Y5"): ("out", 5),
+    ("DEC_3TO8","Y6"): ("out", 6), ("DEC_3TO8","Y7"): ("out", 7),
+    ("ENC_4TO2","I0"): ("in", 0), ("ENC_4TO2","I1"): ("in", 1),
+    ("ENC_4TO2","I2"): ("in", 2), ("ENC_4TO2","I3"): ("in", 3),
+    ("ENC_4TO2","Y0"): ("out", 0), ("ENC_4TO2","Y1"): ("out", 1),
+    ("ENC_4TO2","VALID"): ("out", 2),
+    ("DEMUX_1TO4","I"): ("in", 0), ("DEMUX_1TO4","S0"): ("in", 1),
+    ("DEMUX_1TO4","S1"): ("in", 2), ("DEMUX_1TO4","EN"): ("in", 3),
+    ("DEMUX_1TO4","O0"): ("out", 0), ("DEMUX_1TO4","O1"): ("out", 1),
+    ("DEMUX_1TO4","O2"): ("out", 2), ("DEMUX_1TO4","O3"): ("out", 3),
+    ("DEMUX_1TO8","I"): ("in", 0), ("DEMUX_1TO8","S0"): ("in", 1),
+    ("DEMUX_1TO8","S1"): ("in", 2), ("DEMUX_1TO8","S2"): ("in", 3),
+    ("DEMUX_1TO8","EN"): ("in", 4),
+    ("DEMUX_1TO8","O0"): ("out", 0), ("DEMUX_1TO8","O1"): ("out", 1),
+    ("DEMUX_1TO8","O2"): ("out", 2), ("DEMUX_1TO8","O3"): ("out", 3),
+    ("DEMUX_1TO8","O4"): ("out", 4), ("DEMUX_1TO8","O5"): ("out", 5),
+    ("DEMUX_1TO8","O6"): ("out", 6), ("DEMUX_1TO8","O7"): ("out", 7),
+    # ── Arithmetic ───────────────────────────────────────────────────────────
+    ("HA",  "A"):   ("in", 0), ("HA",  "B"):   ("in", 1),
+    ("HA",  "SO"):  ("out", 0), ("HA", "CO"):  ("out", 1),
+    ("HA",  "SUM"): ("out", 0), ("HA", "Y"):   ("out", 0),
+    ("FA",  "A"):   ("in", 0), ("FA",  "B"):   ("in", 1), ("FA",  "SI"): ("in", 2), ("FA",  "CI"): ("in", 3),
+    ("FA",  "SO"):  ("out", 0), ("FA", "CO"):  ("out", 1),
+    ("FA_GC","A"):  ("in", 0), ("FA_GC","B"):  ("in", 1), ("FA_GC","SI"): ("in", 2), ("FA_GC","CI"): ("in", 3),
+    ("FA_GC","SO"): ("out", 0), ("FA_GC","CO"): ("out", 1),
+    ("FA_WC","A"):  ("in", 0), ("FA_WC","B"):  ("in", 1), ("FA_WC","SI"): ("in", 2), ("FA_WC","CI"): ("in", 3),
+    ("FA_WC","SO"): ("out", 0), ("FA_WC","CO"): ("out", 1),
+    ("RCA_4BIT","A0"): ("in", 0), ("RCA_4BIT","A1"): ("in", 1),
+    ("RCA_4BIT","A2"): ("in", 2), ("RCA_4BIT","A3"): ("in", 3),
+    ("RCA_4BIT","B0"): ("in", 4), ("RCA_4BIT","B1"): ("in", 5),
+    ("RCA_4BIT","B2"): ("in", 6), ("RCA_4BIT","B3"): ("in", 7),
+    ("RCA_4BIT","CIN"): ("in", 8),
+    ("RCA_4BIT","S0"): ("out", 0), ("RCA_4BIT","S1"): ("out", 1),
+    ("RCA_4BIT","S2"): ("out", 2), ("RCA_4BIT","S3"): ("out", 3),
+    ("RCA_4BIT","COUT"): ("out", 4),
+    ("COMP_4BIT","A0"): ("in", 0), ("COMP_4BIT","A1"): ("in", 1),
+    ("COMP_4BIT","A2"): ("in", 2), ("COMP_4BIT","A3"): ("in", 3),
+    ("COMP_4BIT","B0"): ("in", 4), ("COMP_4BIT","B1"): ("in", 5),
+    ("COMP_4BIT","B2"): ("in", 6), ("COMP_4BIT","B3"): ("in", 7),
+    ("COMP_4BIT","ALB"): ("out", 0), ("COMP_4BIT","AEB"): ("out", 1), ("COMP_4BIT","AGB"): ("out", 2),
+    # ── Sequential ───────────────────────────────────────────────────────────
+    ("SHREG_4BIT","SIN"): ("in", 0), ("SHREG_4BIT","CLK"): ("in", 1), ("SHREG_4BIT","RST"): ("in", 2),
+    ("SHREG_4BIT","Q0"): ("out", 0), ("SHREG_4BIT","Q1"): ("out", 1),
+    ("SHREG_4BIT","Q2"): ("out", 2), ("SHREG_4BIT","Q3"): ("out", 3),
+    ("CNT_4BIT","CLK"): ("in", 0), ("CNT_4BIT","RST"): ("in", 1), ("CNT_4BIT","EN"): ("in", 2),
+    ("CNT_4BIT","Q0"): ("out", 0), ("CNT_4BIT","Q1"): ("out", 1),
+    ("CNT_4BIT","Q2"): ("out", 2), ("CNT_4BIT","Q3"): ("out", 3), ("CNT_4BIT","TC"): ("out", 4),
+    ("CNT_4BIT_UD","CLK"): ("in", 0), ("CNT_4BIT_UD","RST"): ("in", 1),
+    ("CNT_4BIT_UD","EN"): ("in", 2), ("CNT_4BIT_UD","DIR"): ("in", 3),
+    ("CNT_4BIT_UD","Q0"): ("out", 0), ("CNT_4BIT_UD","Q1"): ("out", 1),
+    ("CNT_4BIT_UD","Q2"): ("out", 2), ("CNT_4BIT_UD","Q3"): ("out", 3),
+    ("CNT_4BIT_UD","TC"): ("out", 4),
 }
 
 

@@ -11,11 +11,16 @@ A GTK3-based Python desktop application for visually designing digital circuits 
 ## Features
 
 - **Visual schematic editor** — drag-and-drop blocks on a scrollable 5000×5000 canvas with zoom
-- **Logic gates** — AND, OR, NOT, NAND, NOR, XOR, XNOR
+- **Logic gates** — AND, OR, NOT, NAND, NOR, XOR, XNOR, BUF (44 library blocks total)
+  - 3-input: AND3, OR3, NAND3, NOR3, XOR3
+  - 4-input: AND4, OR4, NAND4, NOR4
 - **Flip-flops** — JK, SR, D (with pipeline variant), T
+- **Latches** — D latch (DLATCH), NOR SR latch (SRLATCH)
 - **Multiplexers** — 2×1, 4×1, 8×1 MUX
 - **Tristate buffers** — 2, 4, 8 channel
-- **Arithmetic** — Full Adder (standard, Gray Cell, White Cell), Half Adder
+- **Arithmetic** — Full Adder (standard, Gray Cell, White Cell), Half Adder, 4-bit ripple-carry adder (RCA_4BIT), 4-bit magnitude comparator (COMP_4BIT)
+- **Decoders / Encoders / Demux** — DEC_2TO4, DEC_3TO8, ENC_4TO2 (priority), DEMUX_1TO4, DEMUX_1TO8
+- **Sequential** — 4-bit SIPO shift register (SHREG_4BIT), 4-bit up counter (CNT_4BIT), 4-bit up/down counter (CNT_4BIT_UD)
 - **I/O primitives** — Input/Output/Bidirectional pins and buses, CLK, VDD (5V/3.3V/1.8V/1.2V), GND
 - **Wire routing** — A* pathfinding with Manhattan fallback when path is blocked
 - **Wire net names** — right-click a wire to set its net name; names appear on canvas and in generated HDL
@@ -24,8 +29,8 @@ A GTK3-based Python desktop application for visually designing digital circuits 
 - **HDL language selector** — `HDL: [VHDL ▾]` combo at top of left panel; switches all export and AI generation
 - **Custom RTL blocks** — define behavioral blocks inline with VHDL or Verilog; AI can generate the body
 - **AI code generation** — "Generate with AI" in the Custom RTL dialog; supports **Ollama (local, free)**, Anthropic, OpenAI, and any OpenAI-compatible endpoint (Cursor, LM Studio, …)
-- **VHDL/Verilog viewer** — right-click any block to see its HDL template
-- **Syntax checking** — GHDL for VHDL, iverilog for Verilog (optional; shown in the preview dialog)
+- **VHDL/Verilog viewer** — right-click any block → "View HDL Code" to see the block's VHDL or Verilog template with inline syntax check
+- **Syntax checking** — GHDL for VHDL, iverilog for Verilog (optional; shown in the preview dialog and the per-block viewer)
 - **Zoom** — Ctrl+scroll-wheel (0.2× – 4.0×)
 - **Multi-select** — Shift+click to select multiple blocks/pins/wires; group move, copy, delete
 - **Undo/Redo** — Ctrl+Z / Ctrl+R (depth-unlimited JSON snapshots)
@@ -35,12 +40,12 @@ A GTK3-based Python desktop application for visually designing digital circuits 
 - **Dirty flag** — window title shows `*` for unsaved changes; closing prompts Save/Discard/Cancel
 - **Status bar** — shows selected element, canvas counts, current filename, and active HDL language
 - **Save/Load** — JSON project files via File menu
-- **EDIF export** (experimental) — `src/experimental/edif_convertor.py`
+- **EDIF export** — `File > Export EDIF Netlist...` produces an EDIF 2.0.0 netlist
 - **Dark mode** — `File > Toggle Dark Mode`
 - **SVG/PNG export** — `File > Export as SVG...` / `Export as PNG...`
 - **Component library** — save/re-instantiate sub-circuits with fresh IDs
-- **Simulation** — GHDL-based testbench simulation with GTKWave waveform viewer
-- **Yosys import** — reads `yosys ... write_json` JSON and places mapped cells on the canvas
+- **Simulation** — VHDL testbench via GHDL + Verilog testbench via iverilog/vvp; GTKWave waveform viewer
+- **Yosys import** — reads `yosys ... write_json` JSON and places mapped cells on the canvas (44 cell types supported)
 
 ---
 

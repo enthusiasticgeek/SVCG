@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-testbench_gen.py -- VHDL testbench generator + GHDL/GTKWave simulation launcher
+testbench_gen.py -- VHDL/Verilog testbench generators + GHDL/iverilog simulation launchers
 """
 import glob
 import os
@@ -225,3 +225,186 @@ def launch_gtkwave(vcd_path):
         subprocess.Popen([gtkwave, vcd_path])
         return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Verilog testbench + iverilog simulation
+# ---------------------------------------------------------------------------
+
+def generate_verilog_testbench(module_name, pins):
+    """
+    Return a Verilog simulation testbench string for the given module.
+
+    Parameters
+    ----------
+    module_name : str   Top-level module name (must match the generated .v file)
+    pins        : list  Pin objects from BlocksWindow.pins
+    """
+    port_list = []
+    seen = set()
+    for pin in pins:
+        ptype     = pin.pin_type
+        direction = PIN_DIRECTION.get(ptype, "in")
+        base      = _sanitize(pin.text)
+        is_bus    = "bus" in ptype.lower()
+        if is_bus:
+            for i in range(pin.num_pins):
+                pname = f"{base}_{i}" if pin.num_pins > 1 else base
+                if pname not in seen:
+                    seen.add(pname)
+                    port_list.append((pname, direction))
+        else:
+            if base not in seen:
+                seen.add(base)
+                port_list.append((base, direction))
+
+    clk_ports      = [p for p, d in port_list if d == "in" and "clk" in p.lower()]
+    input_ports    = [(p, d) for p, d in port_list if d == "in"]
+    non_clk_inputs = [(p, d) for p, d in input_ports if p not in clk_ports]
+
+    lines = [
+        "`timescale 1ns/1ps",
+        f"// {module_name}_tb.v  Auto-generated testbench",
+        f"module {module_name}_tb;",
+        "",
+    ]
+
+    # Port declarations — inputs are reg, outputs are wire
+    for pname, direction in port_list:
+        if direction == "in":
+            init = " = 1'b1" if _is_active_low(pname) else " = 1'b0"
+            lines.append(f"    reg  {pname}{init};")
+        else:
+            lines.append(f"    wire {pname};")
+    lines.append("")
+
+    # UUT instantiation
+    lines.append(f"    {module_name} uut (")
+    for idx, (pname, _) in enumerate(port_list):
+        sep = "," if idx < len(port_list) - 1 else ""
+        lines.append(f"        .{pname}({pname}){sep}")
+    lines += ["    );", ""]
+
+    # VCD dump
+    lines += [
+        "    initial begin",
+        f"        $dumpfile(\"{module_name}_tb.vcd\");",
+        f"        $dumpvars(0, {module_name}_tb);",
+        "    end",
+        "",
+    ]
+
+    # Clock processes — 100 MHz (10 ns period)
+    for cname in clk_ports:
+        if _is_active_low(cname):
+            lines += [
+                f"    // 100 MHz clock (active-low, starts inactive)",
+                f"    always #5 {cname} = ~{cname};",
+                "",
+            ]
+        else:
+            lines += [
+                f"    // 100 MHz clock (10 ns period)",
+                f"    always #5 {cname} = ~{cname};",
+                "",
+            ]
+
+    # Stimulus
+    lines += [
+        "    initial begin",
+        "        // power-on hold",
+        "        #20;",
+    ]
+    for pname, _ in non_clk_inputs:
+        if _is_active_low(pname):
+            lines += [
+                f"        // assert {pname} (active-low)",
+                f"        {pname} = 1'b0; #20;",
+                f"        {pname} = 1'b1; #20;",
+            ]
+        else:
+            lines += [
+                f"        {pname} = 1'b1; #20;",
+                f"        {pname} = 1'b0; #20;",
+            ]
+    lines += [
+        "        $display(\"Simulation complete\");",
+        "        #10 $finish;",
+        "    end",
+        "",
+        "endmodule",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def run_iverilog_simulation(entity_v, tb_v, tb_module_name, workdir,
+                            stop_time="2us", custom_vs=None):
+    """
+    Run full iverilog/vvp simulation: compile library + entity + testbench,
+    run with VCD output.
+
+    Returns
+    -------
+    success  : bool
+    log      : str
+    vcd_path : str|None
+    """
+    iverilog = shutil.which("iverilog")
+    vvp      = shutil.which("vvp")
+    if not iverilog:
+        return False, "iverilog not found on PATH — install Icarus Verilog to use simulation.", None
+    if not vvp:
+        return False, "vvp not found on PATH — install Icarus Verilog to use simulation.", None
+
+    vcd_path = os.path.join(workdir, f"{tb_module_name}.vcd")
+    sim_bin  = os.path.join(workdir, f"{tb_module_name}.vvp")
+    log_parts = []
+
+    # Collect all source files to compile in one iverilog call
+    src_files = []
+
+    # 1. SVCG Verilog library (src/verilog/*.v)
+    v_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "verilog")
+    src_files.extend(sorted(glob.glob(os.path.join(v_dir, "*.v"))))
+
+    # 2. Custom RTL Verilog sources
+    if custom_vs:
+        for mod_name, v_text in custom_vs:
+            v_file = os.path.join(workdir, f"custom_{mod_name}.v")
+            with open(v_file, "w") as fh:
+                fh.write(v_text)
+            src_files.append(v_file)
+
+    # 3. Top-level entity + testbench
+    src_files += [entity_v, tb_v]
+
+    try:
+        r = subprocess.run(
+            [iverilog, "-g2012", "-o", sim_bin, "-D", f"STOP_TIME={stop_time}"]
+            + src_files,
+            cwd=workdir, capture_output=True, text=True, timeout=30,
+        )
+        out = (r.stdout + r.stderr).strip()
+        if out:
+            log_parts.append(f"[compile]\n{out}")
+        if r.returncode != 0:
+            return False, "\n".join(log_parts) or "iverilog compile failed", None
+    except subprocess.TimeoutExpired:
+        return False, "iverilog compile timed out", None
+
+    try:
+        r = subprocess.run(
+            [vvp, sim_bin],
+            cwd=workdir, capture_output=True, text=True, timeout=60,
+        )
+        out = (r.stdout + r.stderr).strip()
+        if out:
+            log_parts.append(f"[vvp]\n{out}")
+        if r.returncode != 0:
+            return False, "\n".join(log_parts) or "vvp run failed", None
+    except subprocess.TimeoutExpired:
+        return False, "vvp run timed out", None
+
+    vcd = vcd_path if os.path.exists(vcd_path) else None
+    return True, "\n".join(log_parts) or "Simulation complete.", vcd

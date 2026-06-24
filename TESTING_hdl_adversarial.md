@@ -1,8 +1,8 @@
 # SVCG HDL Adversarial Test Report (VHDL + Verilog)
 
-**Date:** 2026-06-24 08:27  
+**Date:** 2026-06-24 10:56  
 **Platform:** Windows 11 / MSYS2 MinGW64  
-**Result: 140/140 passed, 0 skipped**
+**Result: 156/156 passed, 0 skipped**
 
 | # | ID | Test | Result | Notes |
 |---|-----|------|--------|-------|
@@ -146,5 +146,21 @@
 | 138 | T138 | T138 and.v ports match VHDL port names (IN1/IN2/OUT1) | PASS |  |
 | 139 | T139 | T139 cnt_4bit_ud.v has DIR and TC ports | PASS |  |
 | 140 | T140 | T140 vhdl_viewer.py routes to verilog/ when lang==verilog | PASS |  |
+| 141 | T141 | T141 Verilog testbench has timescale directive | PASS |  |
+| 142 | T142 | T142 Verilog testbench has module/endmodule | PASS |  |
+| 143 | T143 | T143 inputs are reg, outputs are wire | PASS |  |
+| 144 | T144 | T144 UUT instantiated with named port mapping | PASS |  |
+| 145 | T145 | T145 VCD dump directives present with correct filename | PASS |  |
+| 146 | T146 | T146 100 MHz clock driven by always #5 toggle | PASS |  |
+| 147 | T147 | T147 active-low signal CLR initialised to 1 and pulsed low | PASS |  |
+| 148 | T148 | T148 Verilog testbench ends with $finish | PASS |  |
+| 149 | T149 | T149 $dlatch maps to DLATCH (not DFF) | PASS |  |
+| 150 | T150 | T150 $_SR_ maps to SRLATCH | PASS |  |
+| 151 | T151 | T151 3-input Yosys gate cells mapped ($_{AND,OR,NAND,NOR,XOR}3_) | PASS |  |
+| 152 | T152 | T152 4-input Yosys gate cells mapped | PASS |  |
+| 153 | T153 | T153 $_BUF_ maps to BUF | PASS |  |
+| 154 | T154 | T154 SVCG module names for all new sequential/combo blocks mapped | PASS |  |
+| 155 | T155 | T155 PORT_MAP correct for CNT_4BIT_UD DIR and TC | PASS |  |
+| 156 | T156 | T156 PORT_MAP correct for COMP_4BIT ALB/AEB/AGB outputs | PASS |  |
 
-_140/140 passed, 0 skipped._
+_156/156 passed, 0 skipped._

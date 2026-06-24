@@ -82,8 +82,9 @@ class VhdlViewerMixin:
             print(f"Error in on_view_vhdl_code: {e}")
 
     def show_vhdl_code_dialog(self, vhdl_code, title="VHDL Code"):
+        import tempfile
         dialog = Gtk.Dialog(title=title, parent=self, flags=0)
-        dialog.set_default_size(600, 400)
+        dialog.set_default_size(600, 420)
         sw = Gtk.ScrolledWindow()
         sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         dialog.get_content_area().pack_start(sw, True, True, 0)
@@ -93,6 +94,43 @@ class VhdlViewerMixin:
         tv.set_wrap_mode(Gtk.WrapMode.NONE)
         tv.get_buffer().set_text(vhdl_code)
         sw.add(tv)
+
+        # Syntax check on a temp file
+        is_verilog = "module " in vhdl_code and "endmodule" in vhdl_code
+        suffix = ".v" if is_verilog else ".vhd"
+        chk_label = Gtk.Label()
+        chk_label.set_halign(Gtk.Align.START)
+        chk_label.set_margin_start(6)
+        chk_label.set_margin_bottom(4)
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=suffix,
+                                             delete=False) as tf:
+                tf.write(vhdl_code)
+                tmp_path = tf.name
+            from vhdl_export import check_verilog_syntax, check_vhdl_syntax
+            if is_verilog:
+                avail, ok, out = check_verilog_syntax(tmp_path)
+                tool = "iverilog"
+            else:
+                avail, ok, out = check_vhdl_syntax(tmp_path)
+                tool = "ghdl"
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            if avail:
+                safe = (out or "").replace("&", "&amp;").replace("<", "&lt;")
+                if ok:
+                    chk_label.set_markup(f"<span color='green'>{tool}: syntax OK</span>")
+                else:
+                    chk_label.set_markup(
+                        f"<span color='red'>{tool} errors:\n{safe[:300]}</span>")
+            else:
+                chk_label.set_text(f"({tool} not on PATH — install it for syntax check)")
+        except Exception as e:
+            chk_label.set_text(f"(syntax check error: {e})")
+        dialog.get_content_area().pack_start(chk_label, False, False, 0)
+
         dialog.show_all()
         dialog.run()
         dialog.destroy()

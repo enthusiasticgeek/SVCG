@@ -8,7 +8,8 @@ from gi.repository import Gtk, Gdk
 from vhdl_export import (generate_vhdl, generate_verilog,
                           check_vhdl_syntax, check_verilog_syntax,
                           generate_custom_vhd, generate_custom_v)
-from testbench_gen import generate_testbench, run_ghdl_simulation, launch_gtkwave
+from testbench_gen import (generate_testbench, run_ghdl_simulation, launch_gtkwave,
+                           generate_verilog_testbench, run_iverilog_simulation)
 from yosys_importer import import_yosys_json
 
 
@@ -57,6 +58,7 @@ class MenuBar:
         file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Export as SVG...",             self.on_export_svg))
         file_menu.append(_mi("Export as PNG...",             self.on_export_png))
+        file_menu.append(_mi("Export EDIF Netlist...",       self.on_export_edif))
         file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Toggle Dark Mode",             self.on_toggle_dark_mode))
         file_menu.append(Gtk.SeparatorMenuItem())
@@ -240,18 +242,20 @@ class MenuBar:
 
     def on_generate_testbench(self, widget):
         mw = self.main_window
+        lang = getattr(mw, "hdl_language", "vhdl")
         if not mw.pins:
             self._show_error("Nothing to export", "Add IO pins to define the entity ports first.")
             return
 
-        # Ask for entity name
+        # Ask for entity/module name
         name_dialog = Gtk.MessageDialog(
             transient_for=mw, flags=0,
             message_type=Gtk.MessageType.QUESTION,
             buttons=Gtk.ButtonsType.OK_CANCEL,
             text="Generate Testbench",
         )
-        name_dialog.format_secondary_text("Enter top-level entity name:")
+        lbl = "module" if lang == "verilog" else "entity"
+        name_dialog.format_secondary_text(f"Enter top-level {lbl} name:")
         entry = Gtk.Entry()
         default_name = "SCHEMATIC"
         if mw.current_file_path:
@@ -268,7 +272,12 @@ class MenuBar:
         if resp != Gtk.ResponseType.OK:
             return
 
-        # Generate entity + testbench text
+        if lang == "verilog":
+            self._run_verilog_testbench(mw, entity_name)
+        else:
+            self._run_vhdl_testbench(mw, entity_name)
+
+    def _run_vhdl_testbench(self, mw, entity_name):
         try:
             entity_vhdl = generate_vhdl(entity_name, mw.blocks, mw.pins, mw.wires)
             tb_vhdl     = generate_testbench(entity_name, mw.pins)
@@ -276,28 +285,20 @@ class MenuBar:
             self._show_error("Generation failed", str(exc))
             return
 
-        # File chooser for testbench save path
         save_dialog = Gtk.FileChooserDialog(
-            title="Save Testbench File",
-            parent=mw,
+            title="Save VHDL Testbench", parent=mw,
             action=Gtk.FileChooserAction.SAVE,
         )
-        save_dialog.add_buttons(
-            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-            Gtk.STOCK_SAVE,   Gtk.ResponseType.ACCEPT,
-        )
+        save_dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                Gtk.STOCK_SAVE,   Gtk.ResponseType.ACCEPT)
         save_dialog.set_current_name(f"{entity_name.lower()}_tb.vhd")
-        flt = Gtk.FileFilter()
-        flt.set_name("VHDL files (*.vhd, *.vhdl)")
-        flt.add_pattern("*.vhd")
-        flt.add_pattern("*.vhdl")
+        flt = Gtk.FileFilter(); flt.set_name("VHDL files (*.vhd)"); flt.add_pattern("*.vhd")
         save_dialog.add_filter(flt)
         if mw.current_file_path:
             save_dialog.set_current_folder(os.path.dirname(mw.current_file_path))
         resp = save_dialog.run()
         if resp != Gtk.ResponseType.ACCEPT:
-            save_dialog.destroy()
-            return
+            save_dialog.destroy(); return
         tb_path = save_dialog.get_filename()
         save_dialog.destroy()
         if not tb_path.lower().endswith((".vhd", ".vhdl")):
@@ -305,17 +306,12 @@ class MenuBar:
 
         workdir = os.path.dirname(tb_path)
         entity_path = os.path.join(workdir, f"{entity_name.lower()}.vhd")
-
         try:
-            with open(entity_path, "w") as f:
-                f.write(entity_vhdl)
-            with open(tb_path, "w") as f:
-                f.write(tb_vhdl)
+            with open(entity_path, "w") as f: f.write(entity_vhdl)
+            with open(tb_path,     "w") as f: f.write(tb_vhdl)
         except IOError as exc:
-            self._show_error("Could not write file", str(exc))
-            return
+            self._show_error("Could not write file", str(exc)); return
 
-        # Collect custom RTL block VHDs for GHDL
         custom_vhds = []
         seen_custom = set()
         for block in mw.blocks:
@@ -324,22 +320,74 @@ class MenuBar:
                 ename = cd.get("entity_name", "CUSTOM_BLOCK")
                 if ename not in seen_custom:
                     seen_custom.add(ename)
-                    vhd = generate_custom_vhd(
-                        ename,
-                        cd.get("input_names", []),
-                        cd.get("output_names", []),
-                        cd.get("vhdl_body", cd.get("vhdl", "")),
-                    )
+                    vhd = generate_custom_vhd(ename, cd.get("input_names", []),
+                                              cd.get("output_names", []),
+                                              cd.get("vhdl_body", cd.get("vhdl", "")))
                     custom_vhds.append((ename, vhd))
 
-        # Try GHDL simulation
         tb_entity = f"{entity_name.lower()}_tb"
         sim_ok, sim_log, vcd_path = run_ghdl_simulation(
             entity_path, tb_path, tb_entity, workdir,
             custom_vhds=custom_vhds if custom_vhds else None,
         )
+        self._show_tb_preview(mw, tb_vhdl, tb_path, sim_ok, sim_log, vcd_path)
 
-        # Preview dialog
+    def _run_verilog_testbench(self, mw, module_name):
+        try:
+            entity_v = generate_verilog(module_name, mw.blocks, mw.pins, mw.wires)
+            tb_v     = generate_verilog_testbench(module_name, mw.pins)
+        except Exception as exc:
+            self._show_error("Generation failed", str(exc))
+            return
+
+        save_dialog = Gtk.FileChooserDialog(
+            title="Save Verilog Testbench", parent=mw,
+            action=Gtk.FileChooserAction.SAVE,
+        )
+        save_dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                Gtk.STOCK_SAVE,   Gtk.ResponseType.ACCEPT)
+        save_dialog.set_current_name(f"{module_name.lower()}_tb.v")
+        flt = Gtk.FileFilter(); flt.set_name("Verilog files (*.v)"); flt.add_pattern("*.v")
+        save_dialog.add_filter(flt)
+        if mw.current_file_path:
+            save_dialog.set_current_folder(os.path.dirname(mw.current_file_path))
+        resp = save_dialog.run()
+        if resp != Gtk.ResponseType.ACCEPT:
+            save_dialog.destroy(); return
+        tb_path = save_dialog.get_filename()
+        save_dialog.destroy()
+        if not tb_path.lower().endswith(".v"):
+            tb_path += ".v"
+
+        workdir = os.path.dirname(tb_path)
+        entity_path = os.path.join(workdir, f"{module_name.lower()}.v")
+        try:
+            with open(entity_path, "w") as f: f.write(entity_v)
+            with open(tb_path,     "w") as f: f.write(tb_v)
+        except IOError as exc:
+            self._show_error("Could not write file", str(exc)); return
+
+        custom_vs = []
+        seen_custom = set()
+        for block in mw.blocks:
+            if block.block_type == "CUSTOM":
+                cd = getattr(block, "custom_data", None) or {}
+                ename = cd.get("entity_name", "CUSTOM_BLOCK")
+                if ename not in seen_custom:
+                    seen_custom.add(ename)
+                    v = generate_custom_v(ename, cd.get("input_names", []),
+                                         cd.get("output_names", []),
+                                         cd.get("verilog_body", cd.get("vhdl", "")))
+                    custom_vs.append((ename, v))
+
+        tb_module = f"{module_name.lower()}_tb"
+        sim_ok, sim_log, vcd_path = run_iverilog_simulation(
+            entity_path, tb_path, tb_module, workdir,
+            custom_vs=custom_vs if custom_vs else None,
+        )
+        self._show_tb_preview(mw, tb_v, tb_path, sim_ok, sim_log, vcd_path)
+
+    def _show_tb_preview(self, mw, tb_text, tb_path, sim_ok, sim_log, vcd_path):
         preview = Gtk.Dialog(
             title=f"Testbench — {os.path.basename(tb_path)}",
             transient_for=mw, flags=0,
@@ -348,32 +396,24 @@ class MenuBar:
             preview.add_button("Launch GTKWave", Gtk.ResponseType.APPLY)
         preview.add_button("Close", Gtk.ResponseType.CLOSE)
         preview.set_default_size(700, 500)
-
         sw = Gtk.ScrolledWindow()
         sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        tv = Gtk.TextView()
-        tv.set_editable(False)
-        tv.set_monospace(True)
-        tv.get_buffer().set_text(tb_vhdl)
+        tv = Gtk.TextView(); tv.set_editable(False); tv.set_monospace(True)
+        tv.get_buffer().set_text(tb_text)
         sw.add(tv)
         preview.get_content_area().pack_start(sw, True, True, 0)
-
         if sim_log:
             sim_label = Gtk.Label(label=sim_log[:500])
             sim_label.set_halign(Gtk.Align.START)
             sim_label.set_margin_start(6)
             sim_label.set_margin_bottom(4)
             sim_label.set_line_wrap(True)
+            safe = sim_log[:500].replace("&", "&amp;").replace("<", "&lt;")
             if not sim_ok:
-                sim_label.set_markup(
-                    "<span color='red'>" +
-                    sim_log[:500].replace("&", "&amp;").replace("<", "&lt;") +
-                    "</span>"
-                )
+                sim_label.set_markup(f"<span color='red'>{safe}</span>")
             else:
-                sim_label.set_markup("<span color='green'>" + sim_log[:200] + "</span>")
+                sim_label.set_markup(f"<span color='green'>{safe[:200]}</span>")
             preview.get_content_area().pack_start(sim_label, False, False, 0)
-
         preview.show_all()
         while True:
             resp = preview.run()
@@ -384,6 +424,73 @@ class MenuBar:
             else:
                 break
         preview.destroy()
+
+    # ------------------------------------------------------------------
+    # EDIF Netlist export
+    # ------------------------------------------------------------------
+
+    def on_export_edif(self, widget):
+        mw = self.main_window
+        if not mw.blocks and not mw.pins:
+            self._show_error("Nothing to export", "Add blocks to the canvas first.")
+            return
+
+        save_dialog = Gtk.FileChooserDialog(
+            title="Export EDIF Netlist", parent=mw,
+            action=Gtk.FileChooserAction.SAVE,
+        )
+        save_dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                Gtk.STOCK_SAVE,   Gtk.ResponseType.ACCEPT)
+        save_dialog.set_current_name("netlist.edf")
+        flt = Gtk.FileFilter()
+        flt.set_name("EDIF files (*.edf, *.edif)")
+        flt.add_pattern("*.edf"); flt.add_pattern("*.edif")
+        save_dialog.add_filter(flt)
+        if mw.current_file_path:
+            save_dialog.set_current_folder(os.path.dirname(mw.current_file_path))
+        resp = save_dialog.run()
+        if resp != Gtk.ResponseType.ACCEPT:
+            save_dialog.destroy(); return
+        edif_path = save_dialog.get_filename()
+        save_dialog.destroy()
+        if not edif_path.lower().endswith((".edf", ".edif")):
+            edif_path += ".edf"
+
+        import tempfile
+        try:
+            json_str = mw.elements_to_json()
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json",
+                                             delete=False) as tf:
+                tf.write(json_str)
+                tmp_json = tf.name
+        except Exception as exc:
+            self._show_error("EDIF export failed", f"Could not serialize canvas: {exc}")
+            return
+
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.join(os.path.dirname(
+                os.path.abspath(__file__)), "experimental"))
+            from edif_convertor import generate_edif_netlist
+            generate_edif_netlist(tmp_json, edif_path)
+        except Exception as exc:
+            self._show_error("EDIF export failed", str(exc))
+            return
+        finally:
+            try:
+                os.unlink(tmp_json)
+            except OSError:
+                pass
+
+        info = Gtk.MessageDialog(
+            transient_for=mw, flags=0,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.OK,
+            text="EDIF Export Complete",
+        )
+        info.format_secondary_text(f"Saved to:\n{edif_path}")
+        info.run()
+        info.destroy()
 
     # ------------------------------------------------------------------
     # Yosys JSON netlist import (P4.3)

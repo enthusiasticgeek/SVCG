@@ -12,8 +12,12 @@
 │ ▸ Digital    │         zoom with Ctrl+scroll-wheel          │
 │   Gates      │                                              │
 │ ▸ Flip-Flops │                                              │
+│ ▸ Latches    │                                              │
 │ ▸ Muxes/Buf  │                                              │
 │ ▸ Arithmetic │                                              │
+│ ▸ Dec/Enc/   │                                              │
+│   Demux      │                                              │
+│ ▸ Sequential │                                              │
 │ ▸ Custom RTL │                                              │
 │ ▸ Components │                                              │
 │ ▸ Edit Ops   │                                              │

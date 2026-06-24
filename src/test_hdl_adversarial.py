@@ -26,6 +26,8 @@ Groups:
   G21  EDIF export                       (T107-T114)
   G22  New block types                   (T115-T130)
   G23  Verilog template files            (T131-T140)
+  G24  Verilog testbench generator       (T141-T148)
+  G25  Yosys importer new block types    (T149-T156)
 
 Usage:
     cd src
@@ -1950,6 +1952,153 @@ def g23_verilog_templates(win):
 
 
 # ===========================================================================
+# G24 — Verilog testbench generator
+# ===========================================================================
+
+def g24_verilog_testbench(win):
+    print("\n--- G24: Verilog testbench generator ---")
+    from testbench_gen import generate_verilog_testbench
+    from pins import Pin
+    gs = win.grid_size
+
+    def _pins(*specs):
+        ps = []
+        for i, (name, ptype) in enumerate(specs):
+            ps.append(Pin(gs, gs*(3+i*4), gs*3, gs*2, name, ptype, gs, 1, win))
+        return ps
+
+    # T141 — timescale directive present
+    def T141():
+        pins = _pins(("CLK","CLK"), ("D","input_pin"), ("Q","output_pin"))
+        tb = generate_verilog_testbench("MY_MOD", pins)
+        assert "`timescale" in tb, "timescale directive missing"
+    run_test("T141 Verilog testbench has timescale directive", T141)
+
+    # T142 — module declaration and endmodule
+    def T142():
+        pins = _pins(("A","input_pin"), ("Y","output_pin"))
+        tb = generate_verilog_testbench("TOP", pins)
+        assert "module TOP_tb;" in tb, "module declaration missing"
+        assert "endmodule" in tb, "endmodule missing"
+    run_test("T142 Verilog testbench has module/endmodule", T142)
+
+    # T143 — inputs declared as reg, outputs as wire
+    def T143():
+        pins = _pins(("A","input_pin"), ("B","input_pin"), ("Y","output_pin"))
+        tb = generate_verilog_testbench("GATE", pins)
+        assert "reg  A" in tb, "input A should be reg"
+        assert "reg  B" in tb, "input B should be reg"
+        assert "wire Y" in tb, "output Y should be wire"
+    run_test("T143 inputs are reg, outputs are wire", T143)
+
+    # T144 — UUT instantiation with named port mapping
+    def T144():
+        pins = _pins(("CLK","CLK"), ("Q","output_pin"))
+        tb = generate_verilog_testbench("DUT", pins)
+        assert "DUT uut (" in tb, "UUT instantiation missing"
+        assert ".CLK(CLK)" in tb, "named port .CLK missing"
+        assert ".Q(Q)" in tb, "named port .Q missing"
+    run_test("T144 UUT instantiated with named port mapping", T144)
+
+    # T145 — $dumpfile and $dumpvars present
+    def T145():
+        pins = _pins(("A","input_pin"), ("Y","output_pin"))
+        tb = generate_verilog_testbench("VCD_TEST", pins)
+        assert "$dumpfile" in tb, "$dumpfile missing"
+        assert "$dumpvars" in tb, "$dumpvars missing"
+        assert "VCD_TEST_tb.vcd" in tb, "VCD filename missing"
+    run_test("T145 VCD dump directives present with correct filename", T145)
+
+    # T146 — clock driven by always #5
+    def T146():
+        pins = _pins(("CLK","CLK"), ("D","input_pin"), ("Q","output_pin"))
+        tb = generate_verilog_testbench("FF", pins)
+        assert "always #5" in tb, "clock always #5 missing"
+        assert "= ~CLK" in tb or "= ~" in tb, "clock toggle missing"
+    run_test("T146 100 MHz clock driven by always #5 toggle", T146)
+
+    # T147 — active-low signal initialised to 1 and pulsed low
+    def T147():
+        pins = _pins(("CLR","input_pin"),)
+        tb = generate_verilog_testbench("AL", pins)
+        assert "CLR = 1'b1" in tb, "active-low CLR should init to 1"
+        assert "CLR = 1'b0" in tb, "active-low CLR should pulse low"
+    run_test("T147 active-low signal CLR initialised to 1 and pulsed low", T147)
+
+    # T148 — $finish present
+    def T148():
+        pins = _pins(("A","input_pin"), ("Y","output_pin"))
+        tb = generate_verilog_testbench("FIN", pins)
+        assert "$finish" in tb, "$finish missing"
+    run_test("T148 Verilog testbench ends with $finish", T148)
+
+
+# ===========================================================================
+# G25 — Yosys importer new block types
+# ===========================================================================
+
+def g25_yosys_new_blocks(win):
+    print("\n--- G25: Yosys importer new block types ---")
+    from yosys_importer import YOSYS_TO_SVCG, PORT_MAP
+
+    # T149 — $dlatch now maps to DLATCH (not DFF)
+    def T149():
+        assert YOSYS_TO_SVCG.get("$dlatch") == "DLATCH", \
+            "$dlatch should map to DLATCH, not DFF"
+    run_test("T149 $dlatch maps to DLATCH (not DFF)", T149)
+
+    # T150 — $_SR_ maps to SRLATCH
+    def T150():
+        assert YOSYS_TO_SVCG.get("$_SR_") == "SRLATCH", \
+            "$_SR_ should map to SRLATCH"
+    run_test("T150 $_SR_ maps to SRLATCH", T150)
+
+    # T151 — 3-input gate Yosys cells mapped
+    def T151():
+        for cell, svcg in [("$_AND3_","AND3"), ("$_OR3_","OR3"),
+                           ("$_NAND3_","NAND3"), ("$_NOR3_","NOR3"), ("$_XOR3_","XOR3")]:
+            assert YOSYS_TO_SVCG.get(cell) == svcg, f"{cell} should map to {svcg}"
+    run_test("T151 3-input Yosys gate cells mapped ($_{AND,OR,NAND,NOR,XOR}3_)", T151)
+
+    # T152 — 4-input gate Yosys cells mapped
+    def T152():
+        for cell, svcg in [("$_AND4_","AND4"), ("$_OR4_","OR4"),
+                           ("$_NAND4_","NAND4"), ("$_NOR4_","NOR4")]:
+            assert YOSYS_TO_SVCG.get(cell) == svcg, f"{cell} should map to {svcg}"
+    run_test("T152 4-input Yosys gate cells mapped", T152)
+
+    # T153 — BUF cell mapped
+    def T153():
+        assert YOSYS_TO_SVCG.get("$_BUF_") == "BUF", "$_BUF_ should map to BUF"
+    run_test("T153 $_BUF_ maps to BUF", T153)
+
+    # T154 — SVCG module names for sequential blocks mapped
+    def T154():
+        for name, svcg in [("CNT_4BIT","CNT_4BIT"), ("CNT_4BIT_UD","CNT_4BIT_UD"),
+                           ("SHREG_4BIT","SHREG_4BIT"), ("DEC_2TO4","DEC_2TO4"),
+                           ("DEC_3TO8","DEC_3TO8"), ("ENC_4TO2","ENC_4TO2"),
+                           ("DEMUX_1TO4","DEMUX_1TO4"), ("DEMUX_1TO8","DEMUX_1TO8"),
+                           ("RCA_4BIT","RCA_4BIT"), ("COMP_4BIT","COMP_4BIT")]:
+            assert YOSYS_TO_SVCG.get(name) == svcg, f"{name} module name not mapped"
+    run_test("T154 SVCG module names for all new sequential/combo blocks mapped", T154)
+
+    # T155 — PORT_MAP entries for CNT_4BIT_UD ports correct
+    def T155():
+        assert PORT_MAP.get(("CNT_4BIT_UD","DIR")) == ("in", 3), \
+            "CNT_4BIT_UD DIR should be in port index 3"
+        assert PORT_MAP.get(("CNT_4BIT_UD","TC")) == ("out", 4), \
+            "CNT_4BIT_UD TC should be out port index 4"
+    run_test("T155 PORT_MAP correct for CNT_4BIT_UD DIR and TC", T155)
+
+    # T156 — PORT_MAP entries for COMP_4BIT outputs
+    def T156():
+        assert PORT_MAP.get(("COMP_4BIT","ALB")) == ("out", 0)
+        assert PORT_MAP.get(("COMP_4BIT","AEB")) == ("out", 1)
+        assert PORT_MAP.get(("COMP_4BIT","AGB")) == ("out", 2)
+    run_test("T156 PORT_MAP correct for COMP_4BIT ALB/AEB/AGB outputs", T156)
+
+
+# ===========================================================================
 # Entry point
 # ===========================================================================
 
@@ -1978,6 +2127,8 @@ def run_all_tests(win):
     g21_edif_export(win)
     g22_new_blocks(win)
     g23_verilog_templates(win)
+    g24_verilog_testbench(win)
+    g25_yosys_new_blocks(win)
 
     passed  = sum(1 for _, s, _ in results if s == "PASS")
     skipped = sum(1 for _, s, _ in results if s == "SKIP")
