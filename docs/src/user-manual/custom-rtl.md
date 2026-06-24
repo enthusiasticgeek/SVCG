@@ -12,6 +12,25 @@ Custom RTL blocks let you define behavioral or RTL logic that goes beyond the st
 
 The entity/module *declaration* (port list) is auto-generated from the names you entered; you provide only the architecture body (VHDL) or module body (Verilog).
 
+## Bus / vector ports
+
+Port names can include a bit-range to declare multi-bit buses:
+
+| Syntax | Example | Generated VHDL | Generated Verilog |
+|---|---|---|---|
+| `name[hi:lo]` | `data[7:0]` | `data : in STD_LOGIC_VECTOR(7 downto 0)` | `input wire [7:0] data` |
+| `name:width` | `addr:16` | `addr : in STD_LOGIC_VECTOR(15 downto 0)` | `input wire [15:0] addr` |
+
+Scalar ports (no range) generate `STD_LOGIC` / `wire` as usual.
+
+## Inline syntax check
+
+A **Check Syntax** button sits below the code editor.  Clicking it:
+
+1. Builds the full entity+architecture (VHDL) or module (Verilog) from the current port list and body.
+2. Writes it to a temporary file and runs `ghdl -a` (VHDL) or `iverilog -t null` (Verilog).
+3. Shows a green **OK** or a red error message inline — no need to leave the dialog.
+
 ## Language awareness
 
 The dialog matches the active HDL language. Code written in VHDL mode is stored separately from Verilog mode, so switching languages and re-editing does not overwrite your work.

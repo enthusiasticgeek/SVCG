@@ -10,7 +10,7 @@
 - [Window Layout](user-manual/window-layout.md)
 - [Workflow: Schematic to HDL](user-manual/workflow.md)
 - [Custom RTL Blocks & AI](user-manual/custom-rtl.md)
-- [Simulation (GHDL + GTKWave)](user-manual/simulation.md)
+- [Simulation (GHDL / iverilog + GTKWave)](user-manual/simulation.md)
 - [Yosys Netlist Import](user-manual/yosys.md)
 - [Component Library](user-manual/component-library.md)
 - [EDIF Export](user-manual/edif.md)

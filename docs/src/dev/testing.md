@@ -4,26 +4,26 @@ All test suites live in `src/` and are run from that directory.
 
 ```bash
 cd src
-python test_gui.py                 # 60 general GUI tests
-python test_gui_adversarial.py     # 49 student-scenario adversarial tests
-python test_hdl_adversarial.py     # 114 VHDL + Verilog + EDIF tests
+python test_gui.py                 # 65 general GUI tests
+python test_gui_adversarial.py     # 61 student-scenario adversarial tests
+python test_hdl_adversarial.py     # 172 VHDL + Verilog + EDIF + simulation tests
 ```
 
 Each suite writes a Markdown report to the project root.
 
-## test_gui.py — General GUI (60 tests)
+## test_gui.py — General GUI (65 tests)
 
-Covers core schematic operations: block placement, pin placement, wire connection, undo/redo, save/load round-trip, multi-select group operations, zoom, component library, dark mode, SVG/PNG export.
+Covers core schematic operations: block placement, pin placement, wire connection, undo/redo, save/load round-trip, multi-select group operations, zoom, component library, dark mode, SVG/PNG export, Verilog structural export, and bus port syntax for custom blocks.
 
 Report: `TESTING.md`
 
-## test_gui_adversarial.py — Student scenarios (49 tests)
+## test_gui_adversarial.py — Student scenarios (61 tests)
 
 Simulates the kinds of mistakes and edge cases that students encounter: placing blocks off-grid, double-connecting ports, loading corrupted JSON, rotating connected blocks, copy-paste of multi-block selections.
 
 Report: `TESTING_adversarial.md`
 
-## test_hdl_adversarial.py — HDL generation (114 tests in 21 groups)
+## test_hdl_adversarial.py — HDL generation (172 tests in 27 groups)
 
 | Group | Tests | Topic |
 |---|---|---|
@@ -48,5 +48,23 @@ Report: `TESTING_adversarial.md`
 | G19 | T97–T100 | Language-aware code storage |
 | G20 | T101–T106 | Active-low CLK + misc testbench |
 | G21 | T107–T114 | EDIF export |
+| G22 | T115–T130 | New block types (MUX, FA, HA, counters…) |
+| G23 | T131–T140 | Verilog template library files |
+| G24 | T141–T148 | Verilog testbench generator |
+| G25 | T149–T156 | Yosys importer new block types |
+| G26 | T157–T164 | VHDL waveform simulation (GHDL) |
+| G27 | T165–T172 | Verilog waveform simulation (iverilog+vvp) |
 
 Report: `TESTING_hdl_adversarial.md`
+
+### G26 / G27 — Simulation correctness
+
+G26 and G27 verify that the HDL primitives and SVCG-generated structural netlists produce **correct waveform output** when simulated:
+
+- AND, OR, NOT, XOR — full truth table via VCD inspection
+- Half-adder — all 4 input combinations including `A=1, B=1 → CO=1`
+- D flip-flop — async CLR/PRE and rising-edge data capture
+- Full-adder — 5 carry-propagation cases
+- Full pipeline (T164, T172) — structural netlist generated from the GUI canvas, compiled by GHDL/iverilog, VCD verified exhaustively
+
+These tests require GHDL and iverilog to be on `PATH`; otherwise they are automatically marked SKIP.  See [Simulation](../user-manual/simulation.md) for installation instructions.
