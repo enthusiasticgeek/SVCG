@@ -1,8 +1,8 @@
 # SVCG HDL Adversarial Test Report (VHDL + Verilog)
 
-**Date:** 2026-06-24 08:14  
+**Date:** 2026-06-24 08:27  
 **Platform:** Windows 11 / MSYS2 MinGW64  
-**Result: 130/130 passed, 0 skipped**
+**Result: 140/140 passed, 0 skipped**
 
 | # | ID | Test | Result | Notes |
 |---|-----|------|--------|-------|
@@ -136,5 +136,15 @@
 | 128 | T128 | T128 CNT_4BIT has TC terminal-count output | PASS |  |
 | 129 | T129 | T129 CNT_4BIT_UD has DIR up/down control input | PASS |  |
 | 130 | T130 | T130 AND3 appears as AND3_GATE component in structural VHDL | PASS |  |
+| 131 | T131 | T131 src/verilog/ directory exists | PASS |  |
+| 132 | T132 | T132 all 44 Verilog template files present | PASS |  |
+| 133 | T133 | T133 every .v file contains 'module' keyword | PASS |  |
+| 134 | T134 | T134 every .v file ends with 'endmodule' | PASS |  |
+| 135 | T135 | T135 combinational gate .v files use 'assign' statement | PASS |  |
+| 136 | T136 | T136 flip-flop .v files use posedge CLK | PASS |  |
+| 137 | T137 | T137 no spurious .v template for unknown block type | PASS |  |
+| 138 | T138 | T138 and.v ports match VHDL port names (IN1/IN2/OUT1) | PASS |  |
+| 139 | T139 | T139 cnt_4bit_ud.v has DIR and TC ports | PASS |  |
+| 140 | T140 | T140 vhdl_viewer.py routes to verilog/ when lang==verilog | PASS |  |
 
-_130/130 passed, 0 skipped._
+_140/140 passed, 0 skipped._

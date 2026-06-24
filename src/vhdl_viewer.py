@@ -55,16 +55,29 @@ class VhdlViewerMixin:
 
             block_type = block.block_type.lower()
             src_dir = os.path.dirname(os.path.abspath(__file__))
-            vhdl_file_path = os.path.join(src_dir, "vhdl", f"{block_type}.vhd")
-            if os.path.exists(vhdl_file_path):
-                with open(vhdl_file_path, "r") as f:
-                    vhdl_code = f.read()
-                self.show_vhdl_code_dialog(vhdl_code)
+            if lang == "verilog":
+                tmpl_path = os.path.join(src_dir, "verilog", f"{block_type}.v")
+                if os.path.exists(tmpl_path):
+                    with open(tmpl_path, "r") as f:
+                        code = f.read()
+                    self.show_vhdl_code_dialog(code,
+                        title=f"Verilog — {block.block_type}")
+                else:
+                    self.show_error_message(
+                        "Verilog Template Not Found",
+                        f"No Verilog template found for block type '{block_type}'.",
+                    )
             else:
-                self.show_error_message(
-                    "VHDL Code Not Found",
-                    f"No VHDL template found for block type '{block_type}'.",
-                )
+                vhdl_file_path = os.path.join(src_dir, "vhdl", f"{block_type}.vhd")
+                if os.path.exists(vhdl_file_path):
+                    with open(vhdl_file_path, "r") as f:
+                        vhdl_code = f.read()
+                    self.show_vhdl_code_dialog(vhdl_code)
+                else:
+                    self.show_error_message(
+                        "VHDL Code Not Found",
+                        f"No VHDL template found for block type '{block_type}'.",
+                    )
         except Exception as e:
             print(f"Error in on_view_vhdl_code: {e}")
 

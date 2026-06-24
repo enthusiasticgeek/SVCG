@@ -25,6 +25,7 @@ Groups:
   G20  Active-low CLK + misc testbench   (T101-T106)
   G21  EDIF export                       (T107-T114)
   G22  New block types                   (T115-T130)
+  G23  Verilog template files            (T131-T140)
 
 Usage:
     cd src
@@ -1829,6 +1830,126 @@ def g22_new_blocks(win):
 
 
 # ===========================================================================
+# G23 — Verilog template files
+# ===========================================================================
+
+def g23_verilog_templates(win):
+    print("\n--- G23: Verilog template files ---")
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    v_dir = os.path.join(src_dir, "verilog")
+
+    ALL_BLOCKS = [
+        "and", "or", "not", "nand", "nor", "xor", "xnor", "buf",
+        "and3", "or3", "nand3", "nor3", "xor3",
+        "and4", "or4", "nand4", "nor4",
+        "jkff", "srff", "dff", "tff", "dff_pipeline", "dlatch", "srlatch",
+        "mux_2x1", "mux_4x1", "mux_8x1",
+        "tristatebuf_2", "tristatebuf_4", "tristatebuf_8",
+        "fa", "fa_gc", "fa_wc", "ha",
+        "dec_2to4", "dec_3to8", "enc_4to2",
+        "demux_1to4", "demux_1to8",
+        "rca_4bit", "comp_4bit", "shreg_4bit", "cnt_4bit", "cnt_4bit_ud",
+    ]
+
+    # T131 — verilog/ directory exists
+    def T131():
+        assert os.path.isdir(v_dir), f"src/verilog/ directory does not exist: {v_dir}"
+    run_test("T131 src/verilog/ directory exists", T131)
+
+    # T132 — all 44 .v template files present
+    def T132():
+        missing = [b for b in ALL_BLOCKS
+                   if not os.path.exists(os.path.join(v_dir, f"{b}.v"))]
+        assert not missing, f"Missing .v files: {missing}"
+    run_test("T132 all 44 Verilog template files present", T132)
+
+    # T133 — every .v file starts with 'module' keyword
+    def T133():
+        bad = []
+        for b in ALL_BLOCKS:
+            path = os.path.join(v_dir, f"{b}.v")
+            if os.path.exists(path):
+                content = open(path).read()
+                if "module " not in content:
+                    bad.append(b)
+        assert not bad, f".v files missing 'module' keyword: {bad}"
+    run_test("T133 every .v file contains 'module' keyword", T133)
+
+    # T134 — every .v file ends with 'endmodule'
+    def T134():
+        bad = []
+        for b in ALL_BLOCKS:
+            path = os.path.join(v_dir, f"{b}.v")
+            if os.path.exists(path):
+                content = open(path).read().strip()
+                if not content.endswith("endmodule"):
+                    bad.append(b)
+        assert not bad, f".v files not ending with 'endmodule': {bad}"
+    run_test("T134 every .v file ends with 'endmodule'", T134)
+
+    # T135 — combinational gates have 'assign' statement
+    def T135():
+        comb = ["and", "or", "not", "nand", "nor", "xor", "xnor", "buf",
+                "and3", "or3", "nand3", "nor3", "xor3",
+                "and4", "or4", "nand4", "nor4"]
+        bad = []
+        for b in comb:
+            path = os.path.join(v_dir, f"{b}.v")
+            if os.path.exists(path):
+                if "assign" not in open(path).read():
+                    bad.append(b)
+        assert not bad, f"Combinational gates missing 'assign': {bad}"
+    run_test("T135 combinational gate .v files use 'assign' statement", T135)
+
+    # T136 — flip-flop templates use 'always @(posedge CLK'
+    def T136():
+        ffs = ["dff", "jkff", "srff", "tff"]
+        bad = []
+        for b in ffs:
+            path = os.path.join(v_dir, f"{b}.v")
+            if os.path.exists(path):
+                content = open(path).read()
+                if "posedge CLK" not in content:
+                    bad.append(b)
+        assert not bad, f"FF templates missing 'posedge CLK': {bad}"
+    run_test("T136 flip-flop .v files use posedge CLK", T136)
+
+    # T137 — viewer falls back gracefully when no .v file matches unknown block type
+    def T137():
+        missing_path = os.path.join(v_dir, "nonexistent_block.v")
+        assert not os.path.exists(missing_path), \
+            "nonexistent_block.v should not exist"
+    run_test("T137 no spurious .v template for unknown block type", T137)
+
+    # T138 — AND gate Verilog ports match VHDL port names (IN1, IN2, OUT1)
+    def T138():
+        path = os.path.join(v_dir, "and.v")
+        content = open(path).read()
+        assert "IN1" in content, "IN1 missing from and.v"
+        assert "IN2" in content, "IN2 missing from and.v"
+        assert "OUT1" in content, "OUT1 missing from and.v"
+    run_test("T138 and.v ports match VHDL port names (IN1/IN2/OUT1)", T138)
+
+    # T139 — CNT_4BIT_UD Verilog template has DIR and TC ports
+    def T139():
+        path = os.path.join(v_dir, "cnt_4bit_ud.v")
+        content = open(path).read()
+        assert "DIR" in content, "DIR missing from cnt_4bit_ud.v"
+        assert "TC" in content, "TC missing from cnt_4bit_ud.v"
+    run_test("T139 cnt_4bit_ud.v has DIR and TC ports", T139)
+
+    # T140 — vhdl_viewer.py references verilog/ path for lang==verilog
+    def T140():
+        viewer_path = os.path.join(src_dir, "vhdl_viewer.py")
+        content = open(viewer_path).read()
+        assert '"verilog"' in content or "'verilog'" in content, \
+            "vhdl_viewer.py does not reference 'verilog' language"
+        assert "verilog" in content and ".v" in content, \
+            "vhdl_viewer.py does not look up .v files"
+    run_test("T140 vhdl_viewer.py routes to verilog/ when lang==verilog", T140)
+
+
+# ===========================================================================
 # Entry point
 # ===========================================================================
 
@@ -1856,6 +1977,7 @@ def run_all_tests(win):
     g20_al_clk_and_misc(win)
     g21_edif_export(win)
     g22_new_blocks(win)
+    g23_verilog_templates(win)
 
     passed  = sum(1 for _, s, _ in results if s == "PASS")
     skipped = sum(1 for _, s, _ in results if s == "SKIP")
