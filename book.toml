@@ -1,0 +1,14 @@
+[book]
+title = "SVCG — Simple VHDL/Verilog Code Generator"
+authors = ["SVCG Contributors"]
+language = "en"
+src = "docs/src"
+
+[build]
+build-dir = "docs/book"
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/enthusiasticgeek/SVCG"
+
+edit-url-template = "https://github.com/enthusiasticgeek/SVCG/edit/main/{path}"

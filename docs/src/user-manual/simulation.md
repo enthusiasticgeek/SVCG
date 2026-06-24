@@ -1,0 +1,85 @@
+# Simulation (GHDL + GTKWave)
+
+`File > Generate Testbench + Simulate...` does the following in one step:
+
+1. Generates a structural VHDL entity from the schematic.
+2. Auto-generates a simulation testbench (see details below).
+3. If [GHDL](https://github.com/ghdl/ghdl) is on `PATH`, runs `ghdl -a / -e / -r --vcd` and shows the log inline.
+4. A **Launch GTKWave** button appears if simulation produced a `.vcd` waveform file.
+
+> Simulation always uses VHDL regardless of the HDL language selector (GHDL is a VHDL simulator).
+
+## Auto-generated testbench
+
+The testbench (`entity_name_tb`) is fully auto-generated from the schematic's IO pins.
+
+### Clock detection
+
+Any input port whose name contains `clk` (case-insensitive — e.g. `CLK`, `sys_clk`, `Clk_in`) gets a dedicated **100 MHz clock process** (5 ns inactive / 5 ns active, repeating forever).
+
+Active-low clock ports (e.g. `clk_n`) start `'1'` (inactive) and pulse `'0'` (active edge) — the correct polarity for a falling-edge clock.
+
+### Active-low signal detection
+
+Ports matching any of the following patterns are initialised to `'1'` (inactive) and pulsed `'0'` (asserted) in the stimulus process instead of pulsed high:
+
+| Pattern | Examples |
+|---|---|
+| Exact names | `pre`, `clr`, `nrst`, `n_rst`, `rst_n`, `reset_n`, `set_n`, `clr_n`, `preset_n`, `clear_n` |
+| Starts with `n_` | `n_reset`, `n_enable` |
+| Starts with `nr` | `nrst`, `nreset` |
+| Ends with `_n` | `rst_n`, `oe_n` |
+| Ends with `_b` | `cs_b` |
+| Ends with `_bar` | `set_bar` |
+
+### Stimulus process
+
+For every non-clock input port:
+
+- **Active-low**: asserts `'0'` for 20 ns, then deasserts `'1'` for 20 ns.
+- **Regular**: drives `'1'` for 20 ns, then `'0'` for 20 ns.
+- Ends with `report "Simulation complete" severity note; wait;`.
+
+### Output / inout ports
+
+Appear in the component declaration and UUT `port map` but are never driven by the stimulus process.
+
+### Stop time
+
+Simulation runs for **2 µs** by default.
+
+## Example testbench snippet (half-adder)
+
+```vhdl
+entity half_adder_tb is
+end entity;
+
+architecture sim of half_adder_tb is
+    component half_adder
+        port (
+            A   : in  STD_LOGIC;
+            B   : in  STD_LOGIC;
+            SUM : out STD_LOGIC;
+            CO  : out STD_LOGIC
+        );
+    end component;
+
+    signal A   : STD_LOGIC := '0';
+    signal B   : STD_LOGIC := '0';
+    signal SUM : STD_LOGIC;
+    signal CO  : STD_LOGIC;
+begin
+    uut : half_adder port map (A => A, B => B, SUM => SUM, CO => CO);
+
+    stim_proc : process
+    begin
+        wait for 20 ns;
+        A <= '1'; wait for 20 ns;
+        A <= '0'; wait for 20 ns;
+        B <= '1'; wait for 20 ns;
+        B <= '0'; wait for 20 ns;
+        report "Simulation complete" severity note;
+        wait;
+    end process;
+end architecture sim;
+```

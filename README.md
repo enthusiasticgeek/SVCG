@@ -369,9 +369,9 @@ SVCG/
 │   └── components/              # User-saved component sub-circuits (JSON)
 ├── src/experimental/
 │   └── edif_convertor.py        # JSON -> EDIF netlist converter
-├── test_gui.py                  # Automated GUI test suite (60 tests)
-├── test_gui_adversarial.py      # Student-scenario adversarial tests (49 tests)
-└── test_hdl_adversarial.py      # VHDL + Verilog HDL generation tests (54 tests)
+│   ├── test_gui.py              # Automated GUI test suite (60 tests)
+│   ├── test_gui_adversarial.py  # Student-scenario adversarial tests (49 tests)
+│   └── test_hdl_adversarial.py  # VHDL + Verilog + EDIF generation tests (114 tests)
 ```
 
 ---
@@ -382,7 +382,7 @@ SVCG/
 cd src
 python test_gui.py                 # 60 general GUI tests  → TESTING.md
 python test_gui_adversarial.py     # 49 student-scenario tests → TESTING_adversarial.md
-python test_hdl_adversarial.py     # 54 VHDL + Verilog tests → TESTING_hdl_adversarial.md
+python test_hdl_adversarial.py     # 114 VHDL + Verilog + EDIF tests → TESTING_hdl_adversarial.md
 ```
 
 ---
