@@ -123,6 +123,40 @@ module half_adder_tb;
 endmodule
 ```
 
+## Testbench stimulus coverage
+
+> **Important limitation:** The auto-generated testbench drives each input port **sequentially** — one port high for 20 ns, then low for 20 ns, then the next port, and so on.  It never asserts two inputs simultaneously.
+>
+> For purely combinational circuits this means the all-inputs-high case is **never exercised**.  For a half-adder, the `A=1, B=1 → CO=1` case is not present in the auto-generated stimulus, even though the UUT logic is correct.
+
+### What this means in practice
+
+| Scenario | Auto-TB covers it? |
+|---|---|
+| Single-input toggle (NOT gate) | Yes |
+| Two inputs driven one at a time | Yes |
+| Two inputs high simultaneously (carry-out) | **No** |
+| Clock-edge capture with simultaneous data | **No** |
+
+### Exhaustive coverage via G26 / G27 simulation tests
+
+The automated test suite (`test_hdl_adversarial.py`) groups **G26** (T157–T164) and **G27** (T165–T172) run exhaustive testbenches via GHDL and iverilog respectively, covering every combination including the CO=1 case for the half-adder.  These tests verify:
+
+- **Primitives** (AND, OR, NOT, XOR) — all truth-table entries via VCD inspection
+- **Half-adder** — all 4 input combinations including `A=1, B=1 → CO=1`
+- **D flip-flop** — async CLR/PRE and rising-edge capture
+- **Full-adder** — 5 carry-propagation cases
+- **Full SVCG pipeline** — structural netlist generated from the GUI canvas, compiled by GHDL/iverilog, VCD verified exhaustively (T164, T172)
+
+Run the suite headlessly:
+
+```bash
+cd src
+python test_hdl_adversarial.py
+```
+
+SKIP results for G26/G27 tests indicate the corresponding simulator is not on `PATH` — install GHDL or iverilog (see table below) and rerun.
+
 ## Installing simulators
 
 | Simulator | Install (MSYS2 MinGW64) | Install (Ubuntu/Debian) |

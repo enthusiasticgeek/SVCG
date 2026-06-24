@@ -28,6 +28,8 @@ Groups:
   G23  Verilog template files            (T131-T140)
   G24  Verilog testbench generator       (T141-T148)
   G25  Yosys importer new block types    (T149-T156)
+  G26  VHDL waveform simulation (GHDL)   (T157-T164)
+  G27  Verilog waveform simulation (iverilog+vvp) (T165-T172)
 
 Usage:
     cd src
@@ -36,7 +38,7 @@ Usage:
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib
-import sys, os, json, tempfile, traceback, shutil
+import sys, os, json, tempfile, traceback, shutil, subprocess
 from datetime import datetime
 
 if hasattr(sys.stdout, 'reconfigure'):
@@ -132,6 +134,144 @@ def build_half_adder(win):
     connect_wire(win, xor, 0, "output", pSUM, 0, "pin",    "SUM")
     connect_wire(win, and_,0, "output", pCO,  0, "pin",    "CARRY")
     return xor, and_, pA, pB, pSUM, pCO
+
+
+# ---------------------------------------------------------------------------
+# Simulation helpers (G26 / G27)
+# ---------------------------------------------------------------------------
+
+_SRC_DIR_ADV = os.path.dirname(os.path.abspath(__file__))
+
+
+def _vhd_lib(name):
+    return os.path.join(_SRC_DIR_ADV, "vhdl", f"{name}.vhd")
+
+
+def _v_lib(name):
+    return os.path.join(_SRC_DIR_ADV, "verilog", f"{name}.v")
+
+
+def _parse_vcd_fn(path):
+    """
+    Parse a VCD file and return a function state_at_ns(t_ns) -> {NAME: value}.
+
+    GHDL lowercases signal names; iverilog preserves case.  The returned dict
+    always has both lower- and upper-case keys so callers can use either.
+    """
+    import re as _re
+    with open(path) as f:
+        text = f.read()
+
+    ts_m = _re.search(r'\$timescale\s+([\d.]+)\s*(fs|ps|ns|us|ms)\s*\$end', text)
+    if ts_m:
+        ts_ns = float(ts_m.group(1)) * {
+            'fs': 1e-6, 'ps': 1e-3, 'ns': 1.0, 'us': 1e3, 'ms': 1e6,
+        }[ts_m.group(2)]
+    else:
+        ts_ns = 1.0
+
+    code_name = {}
+    depth = 0
+    for l in text.splitlines():
+        l = l.strip()
+        if l.startswith('$scope'):    depth += 1
+        elif l.startswith('$upscope'): depth -= 1
+        elif l.startswith('$var') and depth == 1:
+            p = l.split()
+            if len(p) >= 5:
+                code_name[p[3]] = p[4]
+        elif '$enddefinitions' in l:
+            break
+
+    cur, t_u, snaps = {}, 0, {}
+    for l in text.splitlines():
+        l = l.strip()
+        if l.startswith('#'):
+            snaps[t_u] = dict(cur)
+            t_u = int(l[1:])
+        elif l and l[0] in '01xzXZ' and not l.startswith('$'):
+            c = code_name.get(l[1:])
+            if c:
+                cur[c] = l[0]
+    snaps[t_u] = dict(cur)
+
+    def state_at_ns(t_ns):
+        """Return signal values at time just before t_ns.  Case-insensitive access."""
+        limit = int((t_ns - 0.001) / ts_ns)
+        merged = {}
+        for ts_key in sorted(snaps):
+            if ts_key <= limit:
+                merged.update(snaps[ts_key])
+            else:
+                break
+        # Add upper-case aliases so GHDL (lower) and iverilog (upper) both work
+        merged.update({k.upper(): v for k, v in merged.items()})
+        return merged
+
+    return state_at_ns
+
+
+def _sim_ghdl(tb_code, tb_entity, lib_names, stop_time="200ns"):
+    """
+    Compile lib_names (list of base names, e.g. ['and']) + tb_code through GHDL.
+    Returns state_at_ns function on success, raises AssertionError on failure.
+    Raises RuntimeError('SKIP: ghdl not on PATH') if ghdl absent.
+    """
+    ghdl = shutil.which("ghdl")
+    if not ghdl:
+        raise RuntimeError("SKIP: ghdl not on PATH")
+    tmpdir = tempfile.mkdtemp()
+    try:
+        tb_path  = os.path.join(tmpdir, f"{tb_entity}.vhd")
+        vcd_path = os.path.join(tmpdir, f"{tb_entity}.vcd")
+        with open(tb_path, "w") as f:
+            f.write(tb_code)
+        for name in lib_names:
+            r = subprocess.run([ghdl, "-a", "--std=08", _vhd_lib(name)],
+                               cwd=tmpdir, capture_output=True, text=True)
+            assert r.returncode == 0, f"ghdl -a {name}.vhd failed: {r.stderr[:300]}"
+        r = subprocess.run([ghdl, "-a", "--std=08", tb_path],
+                           cwd=tmpdir, capture_output=True, text=True)
+        assert r.returncode == 0, f"ghdl -a tb failed: {r.stderr[:300]}"
+        r = subprocess.run([ghdl, "-e", "--std=08", tb_entity],
+                           cwd=tmpdir, capture_output=True, text=True)
+        assert r.returncode == 0, f"ghdl -e failed: {r.stderr[:300]}"
+        subprocess.run([ghdl, "-r", "--std=08", tb_entity,
+                        f"--vcd={vcd_path}", f"--stop-time={stop_time}"],
+                       cwd=tmpdir, capture_output=True, text=True)
+        assert os.path.exists(vcd_path), "ghdl -r did not produce VCD"
+        return _parse_vcd_fn(vcd_path)
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def _sim_iverilog(tb_code, vcd_name, lib_names, extra_v_paths=None):
+    """
+    Compile lib_names + optional extra_v_paths + tb_code through iverilog+vvp.
+    vcd_name: the filename the testbench writes via $dumpfile (relative, no dir).
+    Returns state_at_ns function on success, raises AssertionError on failure.
+    Raises RuntimeError('SKIP: iverilog not on PATH') if absent.
+    """
+    iverilog = shutil.which("iverilog")
+    vvp      = shutil.which("vvp")
+    if not iverilog or not vvp:
+        raise RuntimeError("SKIP: iverilog not on PATH")
+    tmpdir = tempfile.mkdtemp()
+    try:
+        tb_path  = os.path.join(tmpdir, vcd_name.replace(".vcd", "_tb.v"))
+        sim_path = os.path.join(tmpdir, "sim_out")
+        vcd_path = os.path.join(tmpdir, vcd_name)
+        with open(tb_path, "w") as f:
+            f.write(tb_code)
+        lib_paths = [_v_lib(n) for n in lib_names] + (extra_v_paths or [])
+        r = subprocess.run([iverilog, "-o", sim_path] + lib_paths + [tb_path],
+                           cwd=tmpdir, capture_output=True, text=True)
+        assert r.returncode == 0, f"iverilog failed: {r.stderr[:300]}"
+        subprocess.run([vvp, sim_path], cwd=tmpdir, capture_output=True, text=True)
+        assert os.path.exists(vcd_path), f"vvp did not produce {vcd_name}"
+        return _parse_vcd_fn(vcd_path)
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def write_report():
@@ -2099,6 +2239,510 @@ def g25_yosys_new_blocks(win):
 
 
 # ===========================================================================
+# G26 — VHDL waveform simulation (GHDL end-to-end)
+# Compiles each library .vhd primitive + a bespoke exhaustive testbench,
+# runs GHDL, parses the VCD, and asserts every expected logic value.
+# Tests are SKIPPED (not FAILED) when ghdl is absent from PATH.
+# ===========================================================================
+
+# Shared testbench templates ------------------------------------------------
+
+_GATE2_VHD_TB = """\
+library IEEE; use IEEE.STD_LOGIC_1164.ALL;
+entity {entity}_tb is end;
+architecture sim of {entity}_tb is
+    component {component} port(IN1,IN2:in STD_LOGIC; OUT1:out STD_LOGIC); end component;
+    signal IN1,IN2,OUT1 : STD_LOGIC := '0';
+begin
+    uut: {component} port map(IN1=>IN1, IN2=>IN2, OUT1=>OUT1);
+    stim: process begin
+        IN1<='0'; IN2<='0'; wait for 10 ns;
+        IN1<='0'; IN2<='1'; wait for 10 ns;
+        IN1<='1'; IN2<='0'; wait for 10 ns;
+        IN1<='1'; IN2<='1'; wait for 10 ns;
+        wait;
+    end process;
+end;"""
+
+_HA_VHD_TB = """\
+library IEEE; use IEEE.STD_LOGIC_1164.ALL;
+entity ha_sim_tb is end;
+architecture sim of ha_sim_tb is
+    component HA port(A,B:in STD_LOGIC; SO,CO:out STD_LOGIC); end component;
+    signal A,B,SO,CO : STD_LOGIC := '0';
+begin
+    uut: HA port map(A=>A, B=>B, SO=>SO, CO=>CO);
+    stim: process begin
+        A<='0'; B<='0'; wait for 10 ns;
+        A<='0'; B<='1'; wait for 10 ns;
+        A<='1'; B<='0'; wait for 10 ns;
+        A<='1'; B<='1'; wait for 10 ns;
+        wait;
+    end process;
+end;"""
+
+_DFF_VHD_TB = """\
+library IEEE; use IEEE.STD_LOGIC_1164.ALL;
+entity dff_sim_tb is end;
+architecture sim of dff_sim_tb is
+    component DFF port(D,CLK,PRE,CLR:in STD_LOGIC; Q,Q_bar:out STD_LOGIC); end component;
+    signal D,CLK,PRE,CLR,Q,Q_bar : STD_LOGIC := '0';
+begin
+    uut: DFF port map(D=>D, CLK=>CLK, PRE=>PRE, CLR=>CLR, Q=>Q, Q_bar=>Q_bar);
+    stim: process begin
+        -- async CLR (active-low): hold CLR=0 -> Q must be 0
+        D<='0'; CLK<='0'; PRE<='1'; CLR<='0'; wait for 10 ns;
+        -- async PRE (active-low): release CLR, assert PRE=0 -> Q must be 1
+        CLR<='1'; PRE<='0'; wait for 10 ns;
+        -- normal op: release PRE, D=1, rising CLK -> Q captures 1
+        PRE<='1'; D<='1'; CLK<='0'; wait for 5 ns;
+        CLK<='1'; wait for 5 ns;
+        -- D=0, rising CLK -> Q captures 0
+        CLK<='0'; D<='0'; wait for 5 ns;
+        CLK<='1'; wait for 5 ns;
+        CLK<='0'; wait for 10 ns;
+        wait;
+    end process;
+end;"""
+
+_FA_VHD_TB = """\
+library IEEE; use IEEE.STD_LOGIC_1164.ALL;
+entity fa_sim_tb is end;
+architecture sim of fa_sim_tb is
+    -- FA ports: A, B, SI (carry-in), CI (unused), SO (sum), CO (carry-out)
+    component FA port(A,B,SI,CI:in STD_LOGIC; SO,CO:out STD_LOGIC); end component;
+    signal A,B,SI,CI,SO,CO : STD_LOGIC := '0';
+begin
+    uut: FA port map(A=>A, B=>B, SI=>SI, CI=>CI, SO=>SO, CO=>CO);
+    stim: process begin
+        A<='0'; B<='0'; SI<='0'; CI<='0'; wait for 10 ns;
+        A<='0'; B<='0'; SI<='1'; CI<='0'; wait for 10 ns;
+        A<='0'; B<='1'; SI<='1'; CI<='0'; wait for 10 ns;
+        A<='1'; B<='1'; SI<='0'; CI<='0'; wait for 10 ns;
+        A<='1'; B<='1'; SI<='1'; CI<='0'; wait for 10 ns;
+        wait;
+    end process;
+end;"""
+
+
+def g26_vhdl_sim_waveforms(win):
+    print("\n--- G26: VHDL waveform simulation (GHDL) ---")
+    ghdl_avail = bool(shutil.which("ghdl"))
+    if not ghdl_avail:
+        for tid in range(157, 165):
+            log_skip(f"T{tid} (VHDL sim)", "ghdl not on PATH")
+        return
+
+    # ── T157 — AND gate truth table ──────────────────────────────────────────
+    def T157():
+        tb = _GATE2_VHD_TB.format(entity="and_sim", component="AND_GATE")
+        at = _sim_ghdl(tb, "and_sim_tb", ["and"])
+        cases = [(5,'0','0','0'),(15,'0','1','0'),(25,'1','0','0'),(35,'1','1','1')]
+        for t, i1, i2, out in cases:
+            s = at(t)
+            assert s.get('IN1','?')==i1, f"t={t}: IN1 wrong ({s})"
+            assert s.get('IN2','?')==i2, f"t={t}: IN2 wrong ({s})"
+            assert s.get('OUT1','?')==out, f"t={t}: AND({i1},{i2}) expected {out}, got {s.get('OUT1')}"
+    run_test("T157 AND gate VHDL truth table verified via GHDL VCD", T157)
+
+    # ── T158 — OR gate truth table ────────────────────────────────────────────
+    def T158():
+        tb = _GATE2_VHD_TB.format(entity="or_sim", component="OR_GATE")
+        at = _sim_ghdl(tb, "or_sim_tb", ["or"])
+        cases = [(5,'0','0','0'),(15,'0','1','1'),(25,'1','0','1'),(35,'1','1','1')]
+        for t, i1, i2, out in cases:
+            s = at(t)
+            assert s.get('OUT1','?')==out, f"t={t}: OR({i1},{i2}) expected {out}, got {s.get('OUT1')}"
+    run_test("T158 OR gate VHDL truth table verified via GHDL VCD", T158)
+
+    # ── T159 — NOT gate truth table ───────────────────────────────────────────
+    def T159():
+        tb = """\
+library IEEE; use IEEE.STD_LOGIC_1164.ALL;
+entity not_sim_tb is end;
+architecture sim of not_sim_tb is
+    component NOT_GATE port(IN1:in STD_LOGIC; OUT1:out STD_LOGIC); end component;
+    signal IN1,OUT1 : STD_LOGIC := '0';
+begin
+    uut: NOT_GATE port map(IN1=>IN1, OUT1=>OUT1);
+    stim: process begin
+        IN1<='0'; wait for 10 ns;
+        IN1<='1'; wait for 10 ns;
+        wait;
+    end process;
+end;"""
+        at = _sim_ghdl(tb, "not_sim_tb", ["not"])
+        assert at(5).get('IN1','?')  == '0', "IN1 should be 0"
+        assert at(5).get('OUT1','?') == '1', "NOT(0) should be 1"
+        assert at(15).get('IN1','?')  == '1', "IN1 should be 1"
+        assert at(15).get('OUT1','?') == '0', "NOT(1) should be 0"
+    run_test("T159 NOT gate VHDL truth table verified via GHDL VCD", T159)
+
+    # ── T160 — XOR gate truth table ───────────────────────────────────────────
+    def T160():
+        tb = _GATE2_VHD_TB.format(entity="xor_sim", component="XOR_GATE")
+        at = _sim_ghdl(tb, "xor_sim_tb", ["xor"])
+        cases = [(5,'0','0','0'),(15,'0','1','1'),(25,'1','0','1'),(35,'1','1','0')]
+        for t, i1, i2, out in cases:
+            s = at(t)
+            assert s.get('OUT1','?')==out, f"t={t}: XOR({i1},{i2}) expected {out}, got {s.get('OUT1')}"
+    run_test("T160 XOR gate VHDL truth table verified via GHDL VCD", T160)
+
+    # ── T161 — HA: all 4 combos including CO=1 ────────────────────────────────
+    def T161():
+        at = _sim_ghdl(_HA_VHD_TB, "ha_sim_tb", ["ha"])
+        # Truth table: SO = A XOR B, CO = A AND B
+        cases = [
+            (5,  '0','0', '0','0'),  # 0+0=0 carry=0
+            (15, '0','1', '1','0'),  # 0+1=1 carry=0
+            (25, '1','0', '1','0'),  # 1+0=1 carry=0
+            (35, '1','1', '0','1'),  # 1+1=0 carry=1  <-- CO=1 case
+        ]
+        for t, a, b, so_exp, co_exp in cases:
+            s = at(t)
+            assert s.get('SO','?')==so_exp, f"t={t}: HA SO({a},{b}) expected {so_exp}, got {s.get('SO')}"
+            assert s.get('CO','?')==co_exp, f"t={t}: HA CO({a},{b}) expected {co_exp}, got {s.get('CO')}"
+    run_test("T161 HA VHDL: all 4 combos including CO=1 verified via GHDL VCD", T161)
+
+    # ── T162 — DFF: async CLR/PRE and rising-edge capture ─────────────────────
+    def T162():
+        at = _sim_ghdl(_DFF_VHD_TB, "dff_sim_tb", ["dff"])
+        # t=5ns:  CLR=0 asserted  → Q=0
+        assert at(5).get('Q','?')  == '0', "DFF: async CLR should force Q=0"
+        # t=15ns: PRE=0 asserted  → Q=1
+        assert at(15).get('Q','?') == '1', "DFF: async PRE should force Q=1"
+        # t=28ns: CLK rose at t=25ns with D=1 → Q=1
+        assert at(28).get('Q','?') == '1', "DFF: rising CLK with D=1 should latch Q=1"
+        # t=38ns: CLK rose at t=35ns with D=0 → Q=0
+        assert at(38).get('Q','?') == '0', "DFF: rising CLK with D=0 should latch Q=0"
+    run_test("T162 DFF VHDL: async CLR/PRE and clock-edge capture via GHDL VCD", T162)
+
+    # ── T163 — FA: carry propagation across key combos ────────────────────────
+    def T163():
+        at = _sim_ghdl(_FA_VHD_TB, "fa_sim_tb", ["fa"])
+        # SO = A XOR B XOR SI,  CO = (A AND B) OR (SI AND (A XOR B));  CI unused
+        cases = [
+            (5,  '0','0','0', '0','0'),   # 0+0+0=0 c=0
+            (15, '0','0','1', '1','0'),   # 0+0+1=1 c=0
+            (25, '0','1','1', '0','1'),   # 0+1+1=0 c=1
+            (35, '1','1','0', '0','1'),   # 1+1+0=0 c=1
+            (45, '1','1','1', '1','1'),   # 1+1+1=1 c=1
+        ]
+        for t, a, b, si, so_exp, co_exp in cases:
+            s = at(t)
+            assert s.get('SO','?')==so_exp, \
+                f"t={t}: FA SO({a},{b},{si}) expected {so_exp}, got {s.get('SO')}"
+            assert s.get('CO','?')==co_exp, \
+                f"t={t}: FA CO({a},{b},{si}) expected {co_exp}, got {s.get('CO')}"
+    run_test("T163 FA VHDL: carry propagation verified via GHDL VCD", T163)
+
+    # ── T164 — Full SVCG pipeline: structural half-adder VHDL → GHDL → VCD ──
+    def T164():
+        from vhdl_export import generate_vhdl
+        reset(win)
+        build_half_adder(win)
+        top_vhdl = generate_vhdl("half_adder", win.blocks, win.pins, win.wires)
+        # Custom exhaustive testbench (covers A=1,B=1 → CARRY=1, unlike auto-TB)
+        tb = """\
+library IEEE; use IEEE.STD_LOGIC_1164.ALL;
+entity half_adder_tb is end;
+architecture sim of half_adder_tb is
+    component half_adder port(A,B:in STD_LOGIC; SUM,CARRY:out STD_LOGIC); end component;
+    signal A,B,SUM,CARRY : STD_LOGIC := '0';
+begin
+    uut: half_adder port map(A=>A, B=>B, SUM=>SUM, CARRY=>CARRY);
+    stim: process begin
+        A<='0'; B<='0'; wait for 10 ns;
+        A<='0'; B<='1'; wait for 10 ns;
+        A<='1'; B<='0'; wait for 10 ns;
+        A<='1'; B<='1'; wait for 10 ns;
+        wait;
+    end process;
+end;"""
+        ghdl = shutil.which("ghdl")
+        tmpdir = tempfile.mkdtemp()
+        try:
+            top_path = os.path.join(tmpdir, "half_adder.vhd")
+            tb_path  = os.path.join(tmpdir, "half_adder_tb.vhd")
+            vcd_path = os.path.join(tmpdir, "ha_pipe.vcd")
+            with open(top_path, "w") as f: f.write(top_vhdl)
+            with open(tb_path,  "w") as f: f.write(tb)
+            for lib in ["xor", "and"]:
+                r = subprocess.run([ghdl, "-a", "--std=08", _vhd_lib(lib)],
+                                   cwd=tmpdir, capture_output=True, text=True)
+                assert r.returncode == 0, f"ghdl -a {lib}: {r.stderr[:200]}"
+            for path in [top_path, tb_path]:
+                r = subprocess.run([ghdl, "-a", "--std=08", path],
+                                   cwd=tmpdir, capture_output=True, text=True)
+                assert r.returncode == 0, f"ghdl -a {path}: {r.stderr[:200]}"
+            r = subprocess.run([ghdl, "-e", "--std=08", "half_adder_tb"],
+                               cwd=tmpdir, capture_output=True, text=True)
+            assert r.returncode == 0, f"ghdl -e: {r.stderr[:200]}"
+            subprocess.run([ghdl, "-r", "--std=08", "half_adder_tb",
+                            f"--vcd={vcd_path}", "--stop-time=50ns"],
+                           cwd=tmpdir, capture_output=True, text=True)
+            assert os.path.exists(vcd_path), "GHDL pipeline produced no VCD"
+            at = _parse_vcd_fn(vcd_path)
+            cases = [
+                (5,  '0','0','0','0'),   # A=0,B=0 -> SUM=0,CARRY=0
+                (15, '0','1','1','0'),   # A=0,B=1 -> SUM=1,CARRY=0
+                (25, '1','0','1','0'),   # A=1,B=0 -> SUM=1,CARRY=0
+                (35, '1','1','0','1'),   # A=1,B=1 -> SUM=0,CARRY=1  <-- full pipeline CO=1
+            ]
+            for t, a, b, sum_exp, carry_exp in cases:
+                s = at(t)
+                assert s.get('A','?')==a,         f"t={t}: A wrong ({s})"
+                assert s.get('B','?')==b,         f"t={t}: B wrong ({s})"
+                assert s.get('SUM','?')==sum_exp, f"t={t}: SUM expected {sum_exp}, got {s.get('SUM')}"
+                assert s.get('CARRY','?')==carry_exp, \
+                    f"t={t}: CARRY expected {carry_exp}, got {s.get('CARRY')}"
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    run_test("T164 Full SVCG pipeline: structural half-adder VHDL → GHDL → VCD correct", T164)
+
+
+# ===========================================================================
+# G27 — Verilog waveform simulation (iverilog + vvp end-to-end)
+# ===========================================================================
+
+_GATE2_V_TB = """\
+`timescale 1ns/1ps
+module {module}_tb;
+    reg IN1=0, IN2=0;
+    wire OUT1;
+    {component} uut(.IN1(IN1),.IN2(IN2),.OUT1(OUT1));
+    initial begin
+        $dumpfile("{module}_tb.vcd");
+        $dumpvars(0, {module}_tb);
+        IN1=0; IN2=0; #10;
+        IN1=0; IN2=1; #10;
+        IN1=1; IN2=0; #10;
+        IN1=1; IN2=1; #10;
+        $finish;
+    end
+endmodule"""
+
+_HA_V_TB = """\
+`timescale 1ns/1ps
+module ha_sim_tb;
+    reg  A=0, B=0;
+    wire SO, CO;
+    HA uut(.A(A),.B(B),.SO(SO),.CO(CO));
+    initial begin
+        $dumpfile("ha_sim_tb.vcd");
+        $dumpvars(0, ha_sim_tb);
+        A=0; B=0; #10;
+        A=0; B=1; #10;
+        A=1; B=0; #10;
+        A=1; B=1; #10;
+        $finish;
+    end
+endmodule"""
+
+_DFF_V_TB = """\
+`timescale 1ns/1ps
+module dff_sim_tb;
+    reg D=0, CLK=0, PRE=1, CLR=0;
+    wire Q, Q_bar;
+    DFF uut(.D(D),.CLK(CLK),.PRE(PRE),.CLR(CLR),.Q(Q),.Q_bar(Q_bar));
+    initial begin
+        $dumpfile("dff_sim_tb.vcd");
+        $dumpvars(0, dff_sim_tb);
+        // async CLR: CLR=0 -> Q=0
+        D=0; CLK=0; PRE=1; CLR=0; #10;
+        // async PRE: CLR=1, PRE=0 -> Q=1
+        CLR=1; PRE=0; #10;
+        // normal op: D=1, rising CLK -> Q=1
+        PRE=1; D=1; CLK=0; #5;
+        CLK=1; #5;
+        // D=0, rising CLK -> Q=0
+        CLK=0; D=0; #5;
+        CLK=1; #5;
+        CLK=0; #10;
+        $finish;
+    end
+endmodule"""
+
+_FA_V_TB = """\
+`timescale 1ns/1ps
+module fa_sim_tb;
+    reg A=0, B=0, SI=0, CI=0;
+    wire SO, CO;
+    FA uut(.A(A),.B(B),.SI(SI),.CI(CI),.SO(SO),.CO(CO));
+    initial begin
+        $dumpfile("fa_sim_tb.vcd");
+        $dumpvars(0, fa_sim_tb);
+        A=0; B=0; SI=0; CI=0; #10;
+        A=0; B=0; SI=1; CI=0; #10;
+        A=0; B=1; SI=1; CI=0; #10;
+        A=1; B=1; SI=0; CI=0; #10;
+        A=1; B=1; SI=1; CI=0; #10;
+        $finish;
+    end
+endmodule"""
+
+
+def g27_verilog_sim_waveforms(win):
+    print("\n--- G27: Verilog waveform simulation (iverilog+vvp) ---")
+    iv_avail = bool(shutil.which("iverilog") and shutil.which("vvp"))
+    if not iv_avail:
+        for tid in range(165, 173):
+            log_skip(f"T{tid} (Verilog sim)", "iverilog not on PATH")
+        return
+
+    # ── T165 — AND gate truth table ───────────────────────────────────────────
+    def T165():
+        tb = _GATE2_V_TB.format(module="and_sim", component="AND_GATE")
+        at = _sim_iverilog(tb, "and_sim_tb.vcd", ["and"])
+        cases = [(5,'0','0','0'),(15,'0','1','0'),(25,'1','0','0'),(35,'1','1','1')]
+        for t, i1, i2, out in cases:
+            s = at(t)
+            assert s.get('OUT1','?')==out, \
+                f"t={t}: AND({i1},{i2}) expected {out}, got {s.get('OUT1')}"
+    run_test("T165 AND gate Verilog truth table verified via iverilog VCD", T165)
+
+    # ── T166 — OR gate truth table ────────────────────────────────────────────
+    def T166():
+        tb = _GATE2_V_TB.format(module="or_sim", component="OR_GATE")
+        at = _sim_iverilog(tb, "or_sim_tb.vcd", ["or"])
+        cases = [(5,'0','0','0'),(15,'0','1','1'),(25,'1','0','1'),(35,'1','1','1')]
+        for t, i1, i2, out in cases:
+            s = at(t)
+            assert s.get('OUT1','?')==out, \
+                f"t={t}: OR({i1},{i2}) expected {out}, got {s.get('OUT1')}"
+    run_test("T166 OR gate Verilog truth table verified via iverilog VCD", T166)
+
+    # ── T167 — NOT gate truth table ───────────────────────────────────────────
+    def T167():
+        tb = """\
+`timescale 1ns/1ps
+module not_sim_tb;
+    reg IN1=0;
+    wire OUT1;
+    NOT_GATE uut(.IN1(IN1),.OUT1(OUT1));
+    initial begin
+        $dumpfile("not_sim_tb.vcd");
+        $dumpvars(0, not_sim_tb);
+        IN1=0; #10; IN1=1; #10; $finish;
+    end
+endmodule"""
+        at = _sim_iverilog(tb, "not_sim_tb.vcd", ["not"])
+        assert at(5).get('OUT1','?')  == '1', "NOT(0) should be 1"
+        assert at(15).get('OUT1','?') == '0', "NOT(1) should be 0"
+    run_test("T167 NOT gate Verilog truth table verified via iverilog VCD", T167)
+
+    # ── T168 — XOR gate truth table ───────────────────────────────────────────
+    def T168():
+        tb = _GATE2_V_TB.format(module="xor_sim", component="XOR_GATE")
+        at = _sim_iverilog(tb, "xor_sim_tb.vcd", ["xor"])
+        cases = [(5,'0','0','0'),(15,'0','1','1'),(25,'1','0','1'),(35,'1','1','0')]
+        for t, i1, i2, out in cases:
+            s = at(t)
+            assert s.get('OUT1','?')==out, \
+                f"t={t}: XOR({i1},{i2}) expected {out}, got {s.get('OUT1')}"
+    run_test("T168 XOR gate Verilog truth table verified via iverilog VCD", T168)
+
+    # ── T169 — HA: all 4 combos including CO=1 ────────────────────────────────
+    def T169():
+        at = _sim_iverilog(_HA_V_TB, "ha_sim_tb.vcd", ["ha"])
+        cases = [
+            (5,  '0','0','0','0'),
+            (15, '0','1','1','0'),
+            (25, '1','0','1','0'),
+            (35, '1','1','0','1'),   # CO=1 case
+        ]
+        for t, a, b, so_exp, co_exp in cases:
+            s = at(t)
+            assert s.get('SO','?')==so_exp, \
+                f"t={t}: HA SO({a},{b}) expected {so_exp}, got {s.get('SO')}"
+            assert s.get('CO','?')==co_exp, \
+                f"t={t}: HA CO({a},{b}) expected {co_exp}, got {s.get('CO')}"
+    run_test("T169 HA Verilog: all 4 combos including CO=1 verified via iverilog VCD", T169)
+
+    # ── T170 — DFF: async CLR/PRE and rising-edge capture ─────────────────────
+    def T170():
+        at = _sim_iverilog(_DFF_V_TB, "dff_sim_tb.vcd", ["dff"])
+        assert at(5).get('Q','?')  == '0', "DFF: async CLR should force Q=0"
+        assert at(15).get('Q','?') == '1', "DFF: async PRE should force Q=1"
+        assert at(28).get('Q','?') == '1', "DFF: rising CLK with D=1 should latch Q=1"
+        assert at(38).get('Q','?') == '0', "DFF: rising CLK with D=0 should latch Q=0"
+    run_test("T170 DFF Verilog: async CLR/PRE and clock-edge capture via iverilog VCD", T170)
+
+    # ── T171 — FA: carry propagation ─────────────────────────────────────────
+    def T171():
+        at = _sim_iverilog(_FA_V_TB, "fa_sim_tb.vcd", ["fa"])
+        cases = [
+            (5,  '0','0','0', '0','0'),
+            (15, '0','0','1', '1','0'),
+            (25, '0','1','1', '0','1'),
+            (35, '1','1','0', '0','1'),
+            (45, '1','1','1', '1','1'),
+        ]
+        for t, a, b, si, so_exp, co_exp in cases:
+            s = at(t)
+            assert s.get('SO','?')==so_exp, \
+                f"t={t}: FA SO({a},{b},{si}) expected {so_exp}, got {s.get('SO')}"
+            assert s.get('CO','?')==co_exp, \
+                f"t={t}: FA CO({a},{b},{si}) expected {co_exp}, got {s.get('CO')}"
+    run_test("T171 FA Verilog: carry propagation verified via iverilog VCD", T171)
+
+    # ── T172 — Full SVCG pipeline: structural half-adder Verilog → iverilog ──
+    def T172():
+        from vhdl_export import generate_verilog
+        reset(win)
+        build_half_adder(win)
+        top_vlog = generate_verilog("half_adder", win.blocks, win.pins, win.wires)
+        tb = """\
+`timescale 1ns/1ps
+module half_adder_tb;
+    reg  A=0, B=0;
+    wire SUM, CARRY;
+    half_adder uut(.A(A),.B(B),.SUM(SUM),.CARRY(CARRY));
+    initial begin
+        $dumpfile("half_adder_tb.vcd");
+        $dumpvars(0, half_adder_tb);
+        A=0; B=0; #10;
+        A=0; B=1; #10;
+        A=1; B=0; #10;
+        A=1; B=1; #10;
+        $finish;
+    end
+endmodule"""
+        iverilog = shutil.which("iverilog")
+        vvp      = shutil.which("vvp")
+        tmpdir = tempfile.mkdtemp()
+        try:
+            top_path = os.path.join(tmpdir, "half_adder.v")
+            tb_path  = os.path.join(tmpdir, "half_adder_tb.v")
+            sim_path = os.path.join(tmpdir, "sim_out")
+            vcd_path = os.path.join(tmpdir, "half_adder_tb.vcd")
+            with open(top_path, "w") as f: f.write(top_vlog)
+            with open(tb_path,  "w") as f: f.write(tb)
+            r = subprocess.run(
+                [iverilog, "-o", sim_path, _v_lib("xor"), _v_lib("and"), top_path, tb_path],
+                cwd=tmpdir, capture_output=True, text=True)
+            assert r.returncode == 0, f"iverilog: {r.stderr[:300]}"
+            subprocess.run([vvp, sim_path], cwd=tmpdir, capture_output=True, text=True)
+            assert os.path.exists(vcd_path), "iverilog pipeline produced no VCD"
+            at = _parse_vcd_fn(vcd_path)
+            cases = [
+                (5,  '0','0','0','0'),
+                (15, '0','1','1','0'),
+                (25, '1','0','1','0'),
+                (35, '1','1','0','1'),   # CARRY=1 case
+            ]
+            for t, a, b, sum_exp, carry_exp in cases:
+                s = at(t)
+                assert s.get('SUM','?')==sum_exp, \
+                    f"t={t}: SUM expected {sum_exp}, got {s.get('SUM')}"
+                assert s.get('CARRY','?')==carry_exp, \
+                    f"t={t}: CARRY expected {carry_exp}, got {s.get('CARRY')}"
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    run_test("T172 Full SVCG pipeline: structural half-adder Verilog → iverilog → VCD correct", T172)
+
+
+# ===========================================================================
 # Entry point
 # ===========================================================================
 
@@ -2129,6 +2773,8 @@ def run_all_tests(win):
     g23_verilog_templates(win)
     g24_verilog_testbench(win)
     g25_yosys_new_blocks(win)
+    g26_vhdl_sim_waveforms(win)
+    g27_verilog_sim_waveforms(win)
 
     passed  = sum(1 for _, s, _ in results if s == "PASS")
     skipped = sum(1 for _, s, _ in results if s == "SKIP")
