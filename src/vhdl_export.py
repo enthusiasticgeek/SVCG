@@ -63,6 +63,36 @@ ENTITY_MAP = {
     "FA_GC":        "FA_GC",
     "FA_WC":        "FA_WC",
     "HA":           "HA",
+    # 3-input gates
+    "AND3":         "AND3_GATE",
+    "OR3":          "OR3_GATE",
+    "NAND3":        "NAND3_GATE",
+    "NOR3":         "NOR3_GATE",
+    "XOR3":         "XOR3_GATE",
+    # 4-input gates
+    "AND4":         "AND4_GATE",
+    "OR4":          "OR4_GATE",
+    "NAND4":        "NAND4_GATE",
+    "NOR4":         "NOR4_GATE",
+    # buffer
+    "BUF":          "BUF_GATE",
+    # latches
+    "DLATCH":       "DLATCH",
+    "SRLATCH":      "SRLATCH",
+    # decoders / encoders
+    "DEC_2TO4":     "DEC_2TO4",
+    "DEC_3TO8":     "DEC_3TO8",
+    "ENC_4TO2":     "ENC_4TO2",
+    # demux
+    "DEMUX_1TO4":   "DEMUX_1TO4",
+    "DEMUX_1TO8":   "DEMUX_1TO8",
+    # arithmetic
+    "RCA_4BIT":     "RCA_4BIT",
+    "COMP_4BIT":    "COMP_4BIT",
+    # sequential
+    "SHREG_4BIT":   "SHREG_4BIT",
+    "CNT_4BIT":     "CNT_4BIT",
+    "CNT_4BIT_UD":  "CNT_4BIT_UD",
 }
 
 # IO pin type -> VHDL port direction

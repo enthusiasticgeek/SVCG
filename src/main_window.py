@@ -124,6 +124,16 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
             ("NOR Gate", "NOR"),
             ("XOR Gate", "XOR"),
             ("XNOR Gate", "XNOR"),
+            ("Buffer", "BUF"),
+            ("AND3 Gate", "AND3"),
+            ("OR3 Gate", "OR3"),
+            ("NAND3 Gate", "NAND3"),
+            ("NOR3 Gate", "NOR3"),
+            ("XOR3 Gate", "XOR3"),
+            ("AND4 Gate", "AND4"),
+            ("OR4 Gate", "OR4"),
+            ("NAND4 Gate", "NAND4"),
+            ("NOR4 Gate", "NOR4"),
         ]
         for label, block_type in gates_buttons:
             button = Gtk.Button(label=label)
@@ -149,6 +159,22 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
             button.connect("clicked", self.on_button_clicked, block_type)
             button.set_tooltip_text("Right click top left area of the generated block for more options!")
             self.flipflop_box.pack_start(button, False, False, 0)
+
+        self.expander_latches = Gtk.Expander(label="Latches")
+        self.left_pane.pack_start(self.expander_latches, False, False, 0)
+
+        self.latches_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.expander_latches.add(self.latches_box)
+
+        latch_buttons = [
+            ("D Latch", "DLATCH"),
+            ("SR Latch", "SRLATCH"),
+        ]
+        for label, block_type in latch_buttons:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", self.on_button_clicked, block_type)
+            button.set_tooltip_text("Right click top left area of the generated block for more options!")
+            self.latches_box.pack_start(button, False, False, 0)
 
         self.expander_muxes = Gtk.Expander(label="Muxes/Buffers")
         self.left_pane.pack_start(self.expander_muxes, False, False, 0)
@@ -181,12 +207,50 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
             ("Half Adder", "HA"),
             ("Full Adder Gray Cell", "FA_GC"),
             ("Full Adder White Cell", "FA_WC"),
+            ("4-bit Ripple Carry Adder", "RCA_4BIT"),
+            ("4-bit Comparator", "COMP_4BIT"),
         ]
         for label, block_type in arithmetic_buttons:
             button = Gtk.Button(label=label)
             button.connect("clicked", self.on_button_clicked, block_type)
             button.set_tooltip_text("Right click top left area of the generated block for more options!")
             self.arithmetic_box.pack_start(button, False, False, 0)
+
+        self.expander_decode = Gtk.Expander(label="Decoders/Encoders/Demux")
+        self.left_pane.pack_start(self.expander_decode, False, False, 0)
+
+        self.decode_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.expander_decode.add(self.decode_box)
+
+        decode_buttons = [
+            ("2-to-4 Decoder",   "DEC_2TO4"),
+            ("3-to-8 Decoder",   "DEC_3TO8"),
+            ("4-to-2 Encoder",   "ENC_4TO2"),
+            ("1-to-4 DEMUX",     "DEMUX_1TO4"),
+            ("1-to-8 DEMUX",     "DEMUX_1TO8"),
+        ]
+        for label, block_type in decode_buttons:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", self.on_button_clicked, block_type)
+            button.set_tooltip_text("Right click top left area of the generated block for more options!")
+            self.decode_box.pack_start(button, False, False, 0)
+
+        self.expander_sequential = Gtk.Expander(label="Sequential")
+        self.left_pane.pack_start(self.expander_sequential, False, False, 0)
+
+        self.sequential_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.expander_sequential.add(self.sequential_box)
+
+        sequential_buttons = [
+            ("4-bit Shift Reg (SIPO)", "SHREG_4BIT"),
+            ("4-bit Up Counter",       "CNT_4BIT"),
+            ("4-bit Up/Down Counter",  "CNT_4BIT_UD"),
+        ]
+        for label, block_type in sequential_buttons:
+            button = Gtk.Button(label=label)
+            button.connect("clicked", self.on_button_clicked, block_type)
+            button.set_tooltip_text("Right click top left area of the generated block for more options!")
+            self.sequential_box.pack_start(button, False, False, 0)
 
         # Custom RTL blocks panel
         self.expander_custom_rtl = Gtk.Expander(label="Custom RTL")

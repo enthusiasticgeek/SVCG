@@ -1,8 +1,8 @@
 # SVCG HDL Adversarial Test Report (VHDL + Verilog)
 
-**Date:** 2026-06-23 16:23  
+**Date:** 2026-06-24 08:14  
 **Platform:** Windows 11 / MSYS2 MinGW64  
-**Result: 114/114 passed, 0 skipped**
+**Result: 130/130 passed, 0 skipped**
 
 | # | ID | Test | Result | Notes |
 |---|-----|------|--------|-------|
@@ -120,5 +120,21 @@
 | 112 | T112 | T112 single-bit pin uses bare port name without index | PASS |  |
 | 113 | T113 | T113 net connection resolves pin wire correctly | PASS |  |
 | 114 | T114 | T114 full EDIF round-trip produces output file | PASS |  |
+| 115 | T115 | T115 3-input gates have 3 inputs and 1 output | PASS |  |
+| 116 | T116 | T116 4-input gates have 4 inputs and 1 output | PASS |  |
+| 117 | T117 | T117 BUF has 1 input/output, vertically aligned | PASS |  |
+| 118 | T118 | T118 DLATCH has D/EN inputs and Q/Q' outputs | PASS |  |
+| 119 | T119 | T119 SRLATCH has S/R inputs and Q/Q' outputs | PASS |  |
+| 120 | T120 | T120 DEC_2TO4 has 3 inputs, 4 outputs | PASS |  |
+| 121 | T121 | T121 DEC_3TO8 has 4 inputs, 8 outputs | PASS |  |
+| 122 | T122 | T122 ENC_4TO2 has VALID output | PASS |  |
+| 123 | T123 | T123 DEMUX_1TO4 ports correct | PASS |  |
+| 124 | T124 | T124 DEMUX_1TO8 has 5 inputs, 8 outputs with S2 | PASS |  |
+| 125 | T125 | T125 RCA_4BIT has CIN/COUT and correct port counts | PASS |  |
+| 126 | T126 | T126 COMP_4BIT has ALB/AEB/AGB outputs | PASS |  |
+| 127 | T127 | T127 SHREG_4BIT has SIN/CLK/RST inputs, Q0-Q3 outputs | PASS |  |
+| 128 | T128 | T128 CNT_4BIT has TC terminal-count output | PASS |  |
+| 129 | T129 | T129 CNT_4BIT_UD has DIR up/down control input | PASS |  |
+| 130 | T130 | T130 AND3 appears as AND3_GATE component in structural VHDL | PASS |  |
 
-_114/114 passed, 0 skipped._
+_130/130 passed, 0 skipped._

@@ -110,6 +110,36 @@ class Block:
         "FA_GC":         (4, 2),
         "FA_WC":         (4, 2),
         "HA":            (2, 2),
+        # 3-input gates
+        "AND3":          (3, 1),
+        "OR3":           (3, 1),
+        "NAND3":         (3, 1),
+        "NOR3":          (3, 1),
+        "XOR3":          (3, 1),
+        # 4-input gates
+        "AND4":          (4, 1),
+        "OR4":           (4, 1),
+        "NAND4":         (4, 1),
+        "NOR4":          (4, 1),
+        # buffer
+        "BUF":           (1, 1),
+        # latches
+        "DLATCH":        (2, 2),
+        "SRLATCH":       (2, 2),
+        # decoders / encoders
+        "DEC_2TO4":      (3, 4),
+        "DEC_3TO8":      (4, 8),
+        "ENC_4TO2":      (4, 3),
+        # demux
+        "DEMUX_1TO4":    (4, 4),
+        "DEMUX_1TO8":    (5, 8),
+        # arithmetic
+        "RCA_4BIT":      (9, 5),
+        "COMP_4BIT":     (8, 3),
+        # sequential
+        "SHREG_4BIT":    (3, 4),
+        "CNT_4BIT":      (3, 5),
+        "CNT_4BIT_UD":   (4, 5),
     }
 
     def init_wires(self):
@@ -206,6 +236,104 @@ class Block:
             self.output_points = [self.rotate_point(int(self.x), int(self.y + self.height*2)), self.rotate_point(int(self.x + self.width*2), int(self.y + self.height*2))]
             self.input_names = ["A", "B"]
             self.output_names = ["CO","SO"]
+        # ── 3-input gates ────────────────────────────────────────────────────
+        elif self.block_type in ["AND3", "OR3", "NAND3", "NOR3", "XOR3"]:
+            self.input_points = [
+                self.rotate_point(int(self.x),                int(self.y)),
+                self.rotate_point(int(self.x + self.width/2), int(self.y)),
+                self.rotate_point(int(self.x + self.width),   int(self.y)),
+            ]
+            self.output_points = [
+                self.rotate_point(int(self.x + self.width/2), int(self.y + self.height)),
+            ]
+            self.input_names  = ["IN1", "IN2", "IN3"]
+            self.output_names = ["OUT1"]
+        # ── 4-input gates ────────────────────────────────────────────────────
+        elif self.block_type in ["AND4", "OR4", "NAND4", "NOR4"]:
+            self.input_points = [
+                self.rotate_point(int(self.x),                  int(self.y)),
+                self.rotate_point(int(self.x + self.width/3),   int(self.y)),
+                self.rotate_point(int(self.x + 2*self.width/3), int(self.y)),
+                self.rotate_point(int(self.x + self.width),     int(self.y)),
+            ]
+            self.output_points = [
+                self.rotate_point(int(self.x + self.width/2), int(self.y + self.height)),
+            ]
+            self.input_names  = ["IN1", "IN2", "IN3", "IN4"]
+            self.output_names = ["OUT1"]
+        # ── buffer ───────────────────────────────────────────────────────────
+        elif self.block_type == "BUF":
+            self.input_points  = [self.rotate_point(int(self.x + self.width/2), int(self.y))]
+            self.output_points = [self.rotate_point(int(self.x + self.width/2), int(self.y + self.height))]
+            self.input_names   = ["IN1"]
+            self.output_names  = ["OUT1"]
+        # ── latches ──────────────────────────────────────────────────────────
+        elif self.block_type == "DLATCH":
+            self.input_points = [
+                self.rotate_point(int(self.x),               int(self.y)),
+                self.rotate_point(int(self.x + self.width*2), int(self.y)),
+            ]
+            self.output_points = [
+                self.rotate_point(int(self.x),               int(self.y + self.height*2)),
+                self.rotate_point(int(self.x + self.width*2), int(self.y + self.height*2)),
+            ]
+            self.input_names  = ["D", "EN"]
+            self.output_names = ["Q", "Q'"]
+        elif self.block_type == "SRLATCH":
+            self.input_points = [
+                self.rotate_point(int(self.x),               int(self.y)),
+                self.rotate_point(int(self.x + self.width*2), int(self.y)),
+            ]
+            self.output_points = [
+                self.rotate_point(int(self.x),               int(self.y + self.height*2)),
+                self.rotate_point(int(self.x + self.width*2), int(self.y + self.height*2)),
+            ]
+            self.input_names  = ["S", "R"]
+            self.output_names = ["Q", "Q'"]
+        # ── box-style blocks: decoder, encoder, demux, arithmetic, sequential
+        elif self.block_type in ["DEC_2TO4", "DEC_3TO8", "ENC_4TO2",
+                                  "DEMUX_1TO4", "DEMUX_1TO8",
+                                  "RCA_4BIT", "COMP_4BIT",
+                                  "SHREG_4BIT", "CNT_4BIT", "CNT_4BIT_UD"]:
+            _BOX_PORTS = {
+                "DEC_2TO4":    (["A","B","EN"],
+                                ["Y0","Y1","Y2","Y3"]),
+                "DEC_3TO8":    (["A","B","C","EN"],
+                                ["Y0","Y1","Y2","Y3","Y4","Y5","Y6","Y7"]),
+                "ENC_4TO2":    (["I0","I1","I2","I3"],
+                                ["Y0","Y1","VALID"]),
+                "DEMUX_1TO4":  (["I","S0","S1","EN"],
+                                ["O0","O1","O2","O3"]),
+                "DEMUX_1TO8":  (["I","S0","S1","S2","EN"],
+                                ["O0","O1","O2","O3","O4","O5","O6","O7"]),
+                "RCA_4BIT":    (["A0","A1","A2","A3","B0","B1","B2","B3","CIN"],
+                                ["S0","S1","S2","S3","COUT"]),
+                "COMP_4BIT":   (["A0","A1","A2","A3","B0","B1","B2","B3"],
+                                ["ALB","AEB","AGB"]),
+                "SHREG_4BIT":  (["SIN","CLK","RST"],
+                                ["Q0","Q1","Q2","Q3"]),
+                "CNT_4BIT":    (["CLK","RST","EN"],
+                                ["Q0","Q1","Q2","Q3","TC"]),
+                "CNT_4BIT_UD": (["CLK","RST","EN","DIR"],
+                                ["Q0","Q1","Q2","Q3","TC"]),
+            }
+            in_names, out_names = _BOX_PORTS[self.block_type]
+            n_in, n_out = len(in_names), len(out_names)
+            n = max(n_in, n_out)
+            total_h = n * self.height
+            box_w   = self.width * 2
+            self.input_points = [
+                self.rotate_point(int(self.x),
+                                  int(self.y + total_h * (i + 0.5) / n_in))
+                for i in range(n_in)
+            ]
+            self.output_points = [
+                self.rotate_point(int(self.x + box_w),
+                                  int(self.y + total_h * (i + 0.5) / n_out))
+                for i in range(n_out)
+            ]
+            self.input_names  = list(in_names)
+            self.output_names = list(out_names)
         elif self.block_type == "CUSTOM":
             cd = self.custom_data or {}
             in_names  = cd.get("input_names",  [])
@@ -286,6 +414,25 @@ class Block:
             self.draw_fa(cr)
         elif self.block_type == "HA":
             self.draw_ha(cr)
+        elif self.block_type in ["AND3", "NAND3"]:
+            self.draw_and_block(cr)
+        elif self.block_type in ["OR3", "NOR3"]:
+            self.draw_or_block(cr)
+        elif self.block_type == "XOR3":
+            self.draw_xor_block(cr)
+        elif self.block_type in ["AND4", "NAND4"]:
+            self.draw_and_block(cr)
+        elif self.block_type in ["OR4", "NOR4"]:
+            self.draw_or_block(cr)
+        elif self.block_type == "BUF":
+            self.draw_buf_gate_block(cr)
+        elif self.block_type in ["DLATCH", "SRLATCH"]:
+            self.draw_latch_block(cr)
+        elif self.block_type in ["DEC_2TO4", "DEC_3TO8", "ENC_4TO2",
+                                  "DEMUX_1TO4", "DEMUX_1TO8",
+                                  "RCA_4BIT", "COMP_4BIT",
+                                  "SHREG_4BIT", "CNT_4BIT", "CNT_4BIT_UD"]:
+            self.draw_box_block(cr)
         elif self.block_type == "CUSTOM":
             self.draw_custom_rtl_block(cr)
         else:
@@ -1027,6 +1174,65 @@ class Block:
         cr.move_to(10, 10)
         cr.show_text(self.text)
 
+    def draw_buf_gate_block(self, cr):
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.fill()
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, self.width, self.height)
+        cr.stroke()
+        # Triangle pointing down (like NOT without the bubble)
+        w, h = self.width, self.height
+        cr.move_to(w * 0.1, h * 0.15)
+        cr.line_to(w * 0.9, h * 0.15)
+        cr.line_to(w * 0.5, h * 0.85)
+        cr.close_path()
+        cr.set_source_rgb(*self.fill_color)
+        cr.fill_preserve()
+        cr.set_source_rgb(*self.border_color)
+        cr.stroke()
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(7)
+        cr.move_to(4, 10)
+        cr.show_text(self.text)
+
+    def draw_latch_block(self, cr):
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, self.width * 2, self.height * 2)
+        cr.fill()
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, self.width * 2, self.height * 2)
+        cr.stroke()
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(8)
+        cr.move_to(10, 10)
+        cr.show_text(self.text)
+
+    def draw_box_block(self, cr):
+        """Generic labeled rectangle for multi-port box-style blocks."""
+        _BOX_H_MULT = {
+            "DEC_2TO4":    4, "DEC_3TO8":    8, "ENC_4TO2":    4,
+            "DEMUX_1TO4":  4, "DEMUX_1TO8":  8,
+            "RCA_4BIT":    9, "COMP_4BIT":   8,
+            "SHREG_4BIT":  4, "CNT_4BIT":    5, "CNT_4BIT_UD": 5,
+        }
+        n = _BOX_H_MULT.get(self.block_type, 4)
+        bw = self.width  * 2
+        bh = self.height * n
+        fill_color = (1, 1, 0) if self.selected else self.fill_color
+        cr.set_source_rgb(*fill_color)
+        cr.rectangle(0, 0, bw, bh)
+        cr.fill()
+        cr.set_source_rgb(*self.border_color)
+        cr.rectangle(0, 0, bw, bh)
+        cr.stroke()
+        cr.set_source_rgb(*self.text_color)
+        cr.set_font_size(8)
+        cr.move_to(6, 14)
+        cr.show_text(self.text)
+
     def draw_custom_rtl_block(self, cr):
         fill_color = (1, 1, 0) if self.selected else (0.88, 0.94, 1.0)
         cd = self.custom_data or {}
@@ -1069,11 +1275,10 @@ class Block:
     def _render_size(self):
         """Return (render_width, render_height) — actual drawn extent, which can exceed self.width/height for multi-cell blocks."""
         bt = self.block_type
-        if bt in ("JKFF", "SRFF", "DFF", "TFF", "FA", "FA_GC", "FA_WC", "HA"):
+        if bt in ("JKFF", "SRFF", "DFF", "TFF", "FA", "FA_GC", "FA_WC", "HA",
+                  "DLATCH", "SRLATCH"):
             return self.width * 2, self.height * 2
-        if bt == "DFF_PIPELINE":
-            return self.width * 2, self.height * 2
-        if bt == "MUX_2X1":
+        if bt in ("DFF_PIPELINE", "MUX_2X1"):
             return self.width * 2, self.height * 2
         if bt == "MUX_4X1":
             return self.width * 3, self.height * 4
@@ -1085,6 +1290,14 @@ class Block:
             return self.width * 3, self.height * 4
         if bt == "TRISTATEBUF_8":
             return self.width * 5, self.height * 8
+        _BOX_H = {
+            "DEC_2TO4": 4, "DEC_3TO8": 8, "ENC_4TO2": 4,
+            "DEMUX_1TO4": 4, "DEMUX_1TO8": 8,
+            "RCA_4BIT": 9, "COMP_4BIT": 8,
+            "SHREG_4BIT": 4, "CNT_4BIT": 5, "CNT_4BIT_UD": 5,
+        }
+        if bt in _BOX_H:
+            return self.width * 2, self.height * _BOX_H[bt]
         return self.width, self.height
 
     def contains_point(self, x, y, tolerance=10):

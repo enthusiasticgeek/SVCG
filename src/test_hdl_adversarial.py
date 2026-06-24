@@ -24,6 +24,7 @@ Groups:
   G19  Language-aware code storage       (T97-T100)
   G20  Active-low CLK + misc testbench   (T101-T106)
   G21  EDIF export                       (T107-T114)
+  G22  New block types                   (T115-T130)
 
 Usage:
     cd src
@@ -1672,6 +1673,162 @@ def g21_edif_export(win):
 
 
 # ===========================================================================
+# G22 — New block types
+# ===========================================================================
+
+def g22_new_blocks(win):
+    print("\n--- G22: New block types ---")
+    from blocks import Block
+    from vhdl_export import generate_vhdl, generate_verilog
+    gs = win.grid_size
+
+    def _block(bt):
+        b = Block(gs*5, gs*5, gs*4, gs*4, bt, bt, gs, win)
+        return b
+
+    # T115 — 3-input gate has 3 input ports and 1 output
+    def T115():
+        for bt in ["AND3", "OR3", "NAND3", "NOR3", "XOR3"]:
+            b = _block(bt)
+            assert len(b.input_points)  == 3, f"{bt}: expected 3 inputs, got {len(b.input_points)}"
+            assert len(b.output_points) == 1, f"{bt}: expected 1 output"
+            assert b.input_names  == ["IN1","IN2","IN3"]
+            assert b.output_names == ["OUT1"]
+    run_test("T115 3-input gates have 3 inputs and 1 output", T115)
+
+    # T116 — 4-input gate has 4 input ports and 1 output
+    def T116():
+        for bt in ["AND4", "OR4", "NAND4", "NOR4"]:
+            b = _block(bt)
+            assert len(b.input_points)  == 4, f"{bt}: expected 4 inputs"
+            assert len(b.output_points) == 1, f"{bt}: expected 1 output"
+            assert b.input_names == ["IN1","IN2","IN3","IN4"]
+    run_test("T116 4-input gates have 4 inputs and 1 output", T116)
+
+    # T117 — BUF has 1 input, 1 output, same-axis alignment
+    def T117():
+        b = _block("BUF")
+        assert len(b.input_points)  == 1
+        assert len(b.output_points) == 1
+        assert b.input_names  == ["IN1"]
+        assert b.output_names == ["OUT1"]
+        # input and output share the same X coordinate (vertically aligned)
+        assert b.input_points[0][0] == b.output_points[0][0]
+    run_test("T117 BUF has 1 input/output, vertically aligned", T117)
+
+    # T118 — DLATCH ports
+    def T118():
+        b = _block("DLATCH")
+        assert b.input_names  == ["D", "EN"]
+        assert b.output_names == ["Q", "Q'"]
+        assert len(b.input_points)  == 2
+        assert len(b.output_points) == 2
+    run_test("T118 DLATCH has D/EN inputs and Q/Q' outputs", T118)
+
+    # T119 — SRLATCH ports
+    def T119():
+        b = _block("SRLATCH")
+        assert b.input_names  == ["S", "R"]
+        assert b.output_names == ["Q", "Q'"]
+    run_test("T119 SRLATCH has S/R inputs and Q/Q' outputs", T119)
+
+    # T120 — DEC_2TO4 has 3 inputs and 4 outputs
+    def T120():
+        b = _block("DEC_2TO4")
+        assert b.input_names  == ["A","B","EN"]
+        assert b.output_names == ["Y0","Y1","Y2","Y3"]
+        assert len(b.input_points)  == 3
+        assert len(b.output_points) == 4
+    run_test("T120 DEC_2TO4 has 3 inputs, 4 outputs", T120)
+
+    # T121 — DEC_3TO8 has 4 inputs and 8 outputs
+    def T121():
+        b = _block("DEC_3TO8")
+        assert len(b.input_points)  == 4
+        assert len(b.output_points) == 8
+        assert "Y7" in b.output_names
+    run_test("T121 DEC_3TO8 has 4 inputs, 8 outputs", T121)
+
+    # T122 — ENC_4TO2 has VALID output
+    def T122():
+        b = _block("ENC_4TO2")
+        assert b.output_names == ["Y0","Y1","VALID"]
+        assert len(b.input_points)  == 4
+        assert len(b.output_points) == 3
+    run_test("T122 ENC_4TO2 has VALID output", T122)
+
+    # T123 — DEMUX_1TO4 port counts
+    def T123():
+        b = _block("DEMUX_1TO4")
+        assert b.input_names  == ["I","S0","S1","EN"]
+        assert b.output_names == ["O0","O1","O2","O3"]
+    run_test("T123 DEMUX_1TO4 ports correct", T123)
+
+    # T124 — DEMUX_1TO8 has 5 inputs, 8 outputs
+    def T124():
+        b = _block("DEMUX_1TO8")
+        assert len(b.input_points)  == 5
+        assert len(b.output_points) == 8
+        assert "S2" in b.input_names
+    run_test("T124 DEMUX_1TO8 has 5 inputs, 8 outputs with S2", T124)
+
+    # T125 — RCA_4BIT has 9 inputs (A0-A3, B0-B3, CIN) and 5 outputs
+    def T125():
+        b = _block("RCA_4BIT")
+        assert len(b.input_points)  == 9
+        assert len(b.output_points) == 5
+        assert "CIN"  in b.input_names
+        assert "COUT" in b.output_names
+    run_test("T125 RCA_4BIT has CIN/COUT and correct port counts", T125)
+
+    # T126 — COMP_4BIT has ALB/AEB/AGB outputs
+    def T126():
+        b = _block("COMP_4BIT")
+        assert b.output_names == ["ALB","AEB","AGB"]
+        assert len(b.input_points) == 8
+    run_test("T126 COMP_4BIT has ALB/AEB/AGB outputs", T126)
+
+    # T127 — SHREG_4BIT has SIN input and Q0-Q3 outputs
+    def T127():
+        b = _block("SHREG_4BIT")
+        assert b.input_names  == ["SIN","CLK","RST"]
+        assert b.output_names == ["Q0","Q1","Q2","Q3"]
+    run_test("T127 SHREG_4BIT has SIN/CLK/RST inputs, Q0-Q3 outputs", T127)
+
+    # T128 — CNT_4BIT has TC output
+    def T128():
+        b = _block("CNT_4BIT")
+        assert "TC" in b.output_names
+        assert len(b.output_points) == 5
+    run_test("T128 CNT_4BIT has TC terminal-count output", T128)
+
+    # T129 — CNT_4BIT_UD has DIR input
+    def T129():
+        b = _block("CNT_4BIT_UD")
+        assert "DIR" in b.input_names
+        assert len(b.input_points) == 4
+    run_test("T129 CNT_4BIT_UD has DIR up/down control input", T129)
+
+    # T130 — VHDL export lists all new block types in component declarations
+    def T130():
+        reset(win)
+        rebuild_grid(win)
+        from pins import Pin
+        pA = Pin(gs, gs*2, gs*3, gs*2, "A", "input_pin",  gs, 1, win)
+        pY = Pin(gs*12, gs*2, gs*3, gs*2, "Y", "output_pin", gs, 1, win)
+        b3 = Block(gs*5, gs*5, gs*4, gs*4, "gate3", "AND3", gs, win)
+        win.pins.extend([pA, pY])
+        win.blocks.append(b3)
+        rebuild_grid(win)
+        vhd = generate_vhdl("TOP", win.blocks, win.pins, win.wires)
+        assert "AND3_GATE" in vhd, "AND3_GATE component missing from VHDL"
+        assert "IN1" in vhd
+        assert "IN2" in vhd
+        assert "IN3" in vhd
+    run_test("T130 AND3 appears as AND3_GATE component in structural VHDL", T130)
+
+
+# ===========================================================================
 # Entry point
 # ===========================================================================
 
@@ -1698,6 +1855,7 @@ def run_all_tests(win):
     g19_language_aware_code(win)
     g20_al_clk_and_misc(win)
     g21_edif_export(win)
+    g22_new_blocks(win)
 
     passed  = sum(1 for _, s, _ in results if s == "PASS")
     skipped = sum(1 for _, s, _ in results if s == "SKIP")
