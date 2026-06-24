@@ -94,12 +94,25 @@ _CUSTOM_URL_HINTS = {
 # Shared helpers
 # ---------------------------------------------------------------------------
 
+def _describe_port(name):
+    """Return a human-readable port description including bus width if specified."""
+    import re as _re
+    m = _re.search(r'\[(\d+):(\d+)\]', name)
+    if m:
+        base = name[:m.start()].strip()
+        return f"{base} ({int(m.group(1))-int(m.group(2))+1}-bit vector [{m.group(1)}:{m.group(2)}])"
+    m2 = _re.match(r'^([A-Za-z_]\w*):(\d+)$', name.strip())
+    if m2:
+        return f"{m2.group(1)} ({m2.group(2)}-bit vector)"
+    return name
+
+
 def _build_prompt(entity, in_names, out_names, description, language="vhdl"):
     ports_desc = ""
     if in_names:
-        ports_desc += "Inputs:  " + ", ".join(in_names) + "\n"
+        ports_desc += "Inputs:  " + ", ".join(_describe_port(n) for n in in_names) + "\n"
     if out_names:
-        ports_desc += "Outputs: " + ", ".join(out_names) + "\n"
+        ports_desc += "Outputs: " + ", ".join(_describe_port(n) for n in out_names) + "\n"
 
     if language == "verilog":
         return (
@@ -110,7 +123,7 @@ def _build_prompt(entity, in_names, out_names, description, language="vhdl"):
             "Requirements:\n"
             "- Output ONLY the module body (signal/reg declarations and logic)\n"
             "- Do NOT include the 'module' header line or 'endmodule'\n"
-            "- All ports are 1-bit (wire for inputs, reg for outputs unless combinational)\n"
+            "- Scalar ports are 1-bit; vector ports use the width shown above\n"
             "- Use synthesisable Verilog-2001 or SystemVerilog\n"
             "- Add brief comments explaining key steps"
         )
@@ -123,7 +136,7 @@ def _build_prompt(entity, in_names, out_names, description, language="vhdl"):
             "Requirements:\n"
             "- Output ONLY the architecture block (starting with 'architecture ...' "
             "and ending with 'end architecture ...;')\n"
-            "- Use STD_LOGIC_1164 only (no NUMERIC_STD unless essential)\n"
+            "- Scalar ports are STD_LOGIC; vector ports are STD_LOGIC_VECTOR with the width shown\n"
             "- Include a complete, synthesisable behavioral implementation\n"
             "- Add brief comments explaining key steps\n"
             "- Do NOT include the entity declaration or library/use clauses"
@@ -293,7 +306,8 @@ class CustomBlockDialog(Gtk.Dialog):
         # --- Input ports ---
         grid.attach(Gtk.Label(label="Input Ports:", halign=Gtk.Align.END), 0, row, 1, 1)
         self._inputs_entry = Gtk.Entry()
-        self._inputs_entry.set_placeholder_text("comma-separated, e.g.  clk, rst, d")
+        self._inputs_entry.set_placeholder_text(
+            "comma-separated, e.g.  clk, rst, d   or bus: data[7:0], addr:16")
         self._inputs_entry.set_hexpand(True)
         grid.attach(self._inputs_entry, 1, row, 1, 1)
         row += 1
@@ -301,7 +315,8 @@ class CustomBlockDialog(Gtk.Dialog):
         # --- Output ports ---
         grid.attach(Gtk.Label(label="Output Ports:", halign=Gtk.Align.END), 0, row, 1, 1)
         self._outputs_entry = Gtk.Entry()
-        self._outputs_entry.set_placeholder_text("comma-separated, e.g.  q, q_bar")
+        self._outputs_entry.set_placeholder_text(
+            "comma-separated, e.g.  q, q_bar   or bus: result[7:0], carry")
         self._outputs_entry.set_hexpand(True)
         grid.attach(self._outputs_entry, 1, row, 1, 1)
         row += 1
@@ -384,6 +399,17 @@ class CustomBlockDialog(Gtk.Dialog):
         sw.set_vexpand(True)
         sw.add(self._vhdl_view)
         grid.attach(sw, 1, row, 1, 1)
+        row += 1
+
+        # --- Syntax-check button + result label ---
+        syn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self._check_btn = Gtk.Button(label="Check Syntax")
+        self._check_btn.connect("clicked", self._on_check_syntax)
+        syn_box.pack_start(self._check_btn, False, False, 0)
+        self._syntax_label = Gtk.Label(halign=Gtk.Align.START)
+        self._syntax_label.set_hexpand(True)
+        syn_box.pack_start(self._syntax_label, True, True, 0)
+        grid.attach(syn_box, 1, row, 1, 1)
 
         # Pre-populate if editing existing block
         if existing:
@@ -591,6 +617,48 @@ class CustomBlockDialog(Gtk.Dialog):
         else:
             self._vhdl_view.get_buffer().set_text(arch_text)
             threading.Thread(target=self._refresh_ollama_models, daemon=True).start()
+
+    # ------------------------------------------------------------------
+    # Inline syntax check
+    # ------------------------------------------------------------------
+
+    def _on_check_syntax(self, widget):
+        import tempfile
+        entity    = self._entity_entry.get_text().strip() or "MY_BLOCK"
+        in_names  = [s.strip() for s in self._inputs_entry.get_text().split(",") if s.strip()]
+        out_names = [s.strip() for s in self._outputs_entry.get_text().split(",") if s.strip()]
+        buf = self._vhdl_view.get_buffer()
+        code = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), True)
+
+        try:
+            if self._language == "verilog":
+                from vhdl_export import generate_custom_v, check_verilog_syntax
+                full_code = generate_custom_v(entity, in_names, out_names, code)
+                check_fn, tool, suffix = check_verilog_syntax, "iverilog", ".v"
+            else:
+                from vhdl_export import generate_custom_vhd, check_vhdl_syntax
+                full_code = generate_custom_vhd(entity, in_names, out_names, code)
+                check_fn, tool, suffix = check_vhdl_syntax, "ghdl", ".vhd"
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False) as tf:
+                tf.write(full_code)
+                tmp_path = tf.name
+            avail, ok, out = check_fn(tmp_path)
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+            if not avail:
+                self._syntax_label.set_text(f"({tool} not on PATH — install for syntax check)")
+            elif ok:
+                self._syntax_label.set_markup(f"<span color='green'>{tool}: syntax OK ✓</span>")
+            else:
+                safe = (out or "").replace("&", "&amp;").replace("<", "&lt;")
+                self._syntax_label.set_markup(
+                    f"<span color='red'>{tool} errors: {safe[:250]}</span>")
+        except Exception as e:
+            self._syntax_label.set_text(f"(syntax check error: {e})")
 
     # ------------------------------------------------------------------
 

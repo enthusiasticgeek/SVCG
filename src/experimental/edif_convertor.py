@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-#experimental!
-
 import json
 import sys
 

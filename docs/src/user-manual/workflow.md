@@ -55,6 +55,21 @@ The Verilog file contains:
 - `wire` declarations for internal nets
 - Named module instantiations with `.port(signal)` connections
 
+## Simulation
+
+After generating HDL you can go straight to waveform simulation without leaving SVCG.
+
+`File > Generate Testbench + Simulate...` auto-generates a testbench and runs it:
+
+| HDL setting | Simulator used | Testbench style |
+|---|---|---|
+| VHDL | GHDL (`ghdl -a / -e / -r --vcd`) | VHDL entity `…_tb` with GHDL-compatible process |
+| Verilog | iverilog + vvp | Verilog module `…_tb` with `$dumpfile`/`$dumpvars` |
+
+Both paths produce a `.vcd` waveform file.  If [GTKWave](https://github.com/gtkwave/gtkwave) is on `PATH`, a **Launch GTKWave** button opens the waveform automatically.
+
+See [Simulation](simulation.md) for full details on clock detection, active-low signal handling, and testbench structure.
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |

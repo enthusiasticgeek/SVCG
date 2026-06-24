@@ -489,6 +489,75 @@ def run_all_tests(win):
     run_test("Dirty flag updates window title with *", t_dirty_flag)
 
     # ------------------------------------------------------------------
+    # Group 14 — Verilog export
+    # ------------------------------------------------------------------
+    print("\n-- Verilog export --")
+
+    def t_verilog_structure():
+        from vhdl_export import generate_verilog
+        v = generate_verilog("TEST_MOD", win.blocks, win.pins, win.wires)
+        assert "module TEST_MOD" in v, "missing module declaration"
+        assert "endmodule" in v, "missing endmodule"
+    run_test("Verilog output has module + endmodule", t_verilog_structure)
+
+    def t_verilog_empty_canvas():
+        from vhdl_export import generate_verilog
+        v = generate_verilog("EMPTY_V", [], [], [])
+        assert "module EMPTY_V" in v
+        assert "endmodule" in v
+    run_test("Verilog export with empty schematic (no crash)", t_verilog_empty_canvas)
+
+    def t_verilog_ports():
+        from vhdl_export import generate_verilog
+        p_in  = Pin(gs, gs*40, gs*3, gs*2, "A", "input_pin",  gs, 1, win)
+        p_out = Pin(gs, gs*42, gs*3, gs*2, "Y", "output_pin", gs, 1, win)
+        v = generate_verilog("PORT_MOD", [], [p_in, p_out], [])
+        assert "input" in v and "output" in v, "missing port directions"
+        assert "A" in v and "Y" in v
+    run_test("Verilog export has input/output port directions", t_verilog_ports)
+
+    def t_verilog_wire_declarations():
+        from vhdl_export import generate_verilog
+        b1 = Block(gs*10, gs*10, gs*4, gs*4, "wire_src", "AND", gs, win)
+        b2 = Block(gs*20, gs*10, gs*4, gs*4, "wire_dst", "OR",  gs, win)
+        sp = list(b1.output_points[0]) if b1.output_points else [gs*14, gs*12]
+        ep = list(b2.input_points[0])  if b2.input_points  else [gs*20, gs*12]
+        w  = Wire("net_test_v", sp, ep, "wire", gs, win)
+        v  = generate_verilog("WIRE_MOD", [b1, b2], [], [w])
+        assert "wire" in v.lower(), "no wire declarations"
+    run_test("Verilog export contains wire declarations for nets", t_verilog_wire_declarations)
+
+    def t_verilog_custom_vhd_bus():
+        from vhdl_export import generate_custom_vhd
+        code = generate_custom_vhd("BUS_BLOCK",
+            ["data[7:0]", "clk"],
+            ["result[3:0]"],
+            "")
+        assert "STD_LOGIC_VECTOR(7 downto 0)" in code, "missing 8-bit input vector"
+        assert "STD_LOGIC_VECTOR(3 downto 0)" in code, "missing 4-bit output vector"
+        assert "STD_LOGIC" in code, "missing scalar CLK port"
+    run_test("generate_custom_vhd: bus ports generate STD_LOGIC_VECTOR", t_verilog_custom_vhd_bus)
+
+    def t_verilog_custom_v_bus():
+        from vhdl_export import generate_custom_v
+        code = generate_custom_v("BUS_MOD",
+            ["data[7:0]", "clk"],
+            ["result[3:0]"],
+            "")
+        assert "[7:0]" in code, "missing 8-bit input range"
+        assert "[3:0]" in code, "missing 4-bit output range"
+        assert "module BUS_MOD" in code
+        assert "endmodule" in code
+    run_test("generate_custom_v: bus ports generate [N:M] range", t_verilog_custom_v_bus)
+
+    def t_verilog_custom_v_shorthand():
+        from vhdl_export import generate_custom_v
+        code = generate_custom_v("SHORT_MOD", ["addr:16"], ["data:8"], "")
+        assert "[15:0]" in code, "addr:16 should expand to [15:0]"
+        assert "[7:0]"  in code, "data:8 should expand to [7:0]"
+    run_test("generate_custom_v: :N shorthand expands correctly", t_verilog_custom_v_shorthand)
+
+    # ------------------------------------------------------------------
     # Finish
     # ------------------------------------------------------------------
     if tmp_path and os.path.exists(tmp_path):

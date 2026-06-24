@@ -1,17 +1,26 @@
-# Simulation (GHDL + GTKWave)
+# Simulation (GHDL / iverilog + GTKWave)
 
 `File > Generate Testbench + Simulate...` does the following in one step:
 
+The active HDL language (set by the `HDL:` combo at the top of the left panel) determines which simulator is used.
+
+## VHDL path (GHDL)
+
 1. Generates a structural VHDL entity from the schematic.
-2. Auto-generates a simulation testbench (see details below).
+2. Auto-generates a VHDL simulation testbench.
 3. If [GHDL](https://github.com/ghdl/ghdl) is on `PATH`, runs `ghdl -a / -e / -r --vcd` and shows the log inline.
 4. A **Launch GTKWave** button appears if simulation produced a `.vcd` waveform file.
 
-> Simulation always uses VHDL regardless of the HDL language selector (GHDL is a VHDL simulator).
+## Verilog path (iverilog + vvp)
+
+1. Generates a structural Verilog module from the schematic.
+2. Auto-generates a Verilog simulation testbench (`\`timescale 1ns/1ps`, named port map, `$dumpfile`/`$dumpvars`, `$finish`).
+3. If [iverilog](https://github.com/steveicarus/iverilog) is on `PATH`, compiles all library primitives + top module + testbench in a single `iverilog` call, then runs `vvp` to produce a `.vcd` file.
+4. A **Launch GTKWave** button appears if simulation produced a `.vcd` file.
 
 ## Auto-generated testbench
 
-The testbench (`entity_name_tb`) is fully auto-generated from the schematic's IO pins.
+The testbench is fully auto-generated from the schematic's IO pins.  The VHDL testbench entity is named `entity_name_tb`; the Verilog testbench module is named `module_name_tb`.
 
 ### Clock detection
 
@@ -48,9 +57,10 @@ Appear in the component declaration and UUT `port map` but are never driven by t
 
 Simulation runs for **2 µs** by default.
 
-## Example testbench snippet (half-adder)
+## Example VHDL testbench snippet (half-adder)
 
 ```vhdl
+-- VHDL testbench (GHDL path)
 entity half_adder_tb is
 end entity;
 
@@ -83,3 +93,40 @@ begin
     end process;
 end architecture sim;
 ```
+
+## Example Verilog testbench snippet (half-adder)
+
+```verilog
+// Verilog testbench (iverilog + vvp path)
+`timescale 1ns/1ps
+
+module half_adder_tb;
+    reg  A = 1'b0;
+    reg  B = 1'b0;
+    wire SUM;
+    wire CO;
+
+    half_adder uut (.A(A), .B(B), .SUM(SUM), .CO(CO));
+
+    initial begin
+        $dumpfile("half_adder_tb.vcd");
+        $dumpvars(0, half_adder_tb);
+
+        // Stimulus
+        #20 A = 1'b1;
+        #20 A = 1'b0;
+        #20 B = 1'b1;
+        #20 B = 1'b0;
+        #20;
+        $finish;
+    end
+endmodule
+```
+
+## Installing simulators
+
+| Simulator | Install (MSYS2 MinGW64) | Install (Ubuntu/Debian) |
+|---|---|---|
+| GHDL | `pacman -S mingw-w64-x86_64-ghdl` | `apt install ghdl` |
+| iverilog | `pacman -S mingw-w64-x86_64-iverilog` | `apt install iverilog` |
+| GTKWave | `pacman -S mingw-w64-x86_64-gtkwave` | `apt install gtkwave` |

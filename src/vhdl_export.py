@@ -161,6 +161,32 @@ def _sanitize(name):
     return n or "sig_unknown"
 
 
+def _parse_bus(name):
+    """
+    Parse optional bus/vector notation from a port name string.
+
+    Accepted formats:
+      data[7:0]   ->  ("data", 7, 0)
+      data[3:3]   ->  ("data", 3, 3)
+      data:8      ->  ("data", 7, 0)   # :N means [N-1:0]
+      data        ->  ("data", None, None)  # scalar
+
+    Returns (base_name, high, low).  high/low are None for scalar ports.
+    """
+    s = str(name).strip()
+    # data[N:M]
+    m = re.search(r'\[(\d+):(\d+)\]', s)
+    if m:
+        base = s[:m.start()].strip()
+        return base, int(m.group(1)), int(m.group(2))
+    # data:N  (width shorthand)
+    m = re.match(r'^([A-Za-z_]\w*):(\d+)$', s)
+    if m:
+        width = int(m.group(2))
+        return m.group(1), max(0, width - 1), 0
+    return s, None, None
+
+
 def _vhdl_port_name(block_pin_label):
     """Map block pin label to VHDL port name (Q' -> Q_bar)."""
     return "Q_bar" if block_pin_label == "Q'" else block_pin_label
@@ -222,14 +248,24 @@ def generate_custom_vhd(entity_name, input_names, output_names, user_arch_text):
         "",
         "entity %s is" % entity_name,
     ]
-    all_ports = ([((_sanitize(n)), "in")  for n in input_names] +
-                 [((_sanitize(n)), "out") for n in output_names])
+    all_ports = []
+    for n in input_names:
+        base, hi, lo = _parse_bus(n)
+        all_ports.append((_sanitize(base), "in", hi, lo))
+    for n in output_names:
+        base, hi, lo = _parse_bus(n)
+        all_ports.append((_sanitize(base), "out", hi, lo))
     if all_ports:
         lines.append("  port (")
-        for idx, (pname, pdir) in enumerate(all_ports):
-            default = " := '0'" if pdir == "in" else ""
+        for idx, (pname, pdir, hi, lo) in enumerate(all_ports):
             sep = ";" if idx < len(all_ports) - 1 else ""
-            lines.append("    %s : %s  STD_LOGIC%s%s" % (pname, pdir, default, sep))
+            if hi is not None:
+                ptype = "STD_LOGIC_VECTOR(%d downto %d)" % (hi, lo)
+                default = " := (others => '0')" if pdir == "in" else ""
+            else:
+                ptype = "STD_LOGIC"
+                default = " := '0'" if pdir == "in" else ""
+            lines.append("    %s : %s  %s%s%s" % (pname, pdir, ptype, default, sep))
         lines.append("  );")
     lines += ["end %s;" % entity_name, ""]
 
@@ -257,15 +293,20 @@ def generate_custom_v(module_name, input_names, output_names, user_body_text):
     logic, without the `module` header and without `endmodule`).
     If empty a stub is produced.
     """
-    all_ports = (
-        [(_sanitize(n), "input")      for n in input_names] +
-        [(_sanitize(n), "output reg") for n in output_names]
-    )
+    all_ports = []
+    for n in input_names:
+        base, hi, lo = _parse_bus(n)
+        width = f"[{hi}:{lo}] " if hi is not None else ""
+        all_ports.append((_sanitize(base), f"input wire {width}"))
+    for n in output_names:
+        base, hi, lo = _parse_bus(n)
+        width = f"[{hi}:{lo}] " if hi is not None else ""
+        all_ports.append((_sanitize(base), f"output reg {width}"))
     lines = [f"module {module_name} ("]
     if all_ports:
         for idx, (pname, pdir) in enumerate(all_ports):
             sep = "," if idx < len(all_ports) - 1 else ""
-            lines.append(f"    {pdir} {pname}{sep}")
+            lines.append(f"    {pdir}{pname}{sep}")
     lines += [");", ""]
 
     body = (user_body_text or "").strip()
