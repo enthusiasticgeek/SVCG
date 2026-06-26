@@ -352,14 +352,15 @@ def generate_verilog(module_name, blocks, pins, wires):
                 pname = "%s_%d" % (base, i) if pin.num_pins > 1 else base
                 if pname not in seen_port_names:
                     seen_port_names.add(pname)
-                    port_list.append((pname, direction))
+                    port_list.append((pname, direction, None, None))
                 for wid in wire_list:
                     wire_to_port[wid] = pname
         else:
-            pname = base
+            base_raw, hi, lo = _parse_bus(pin.text)
+            pname = _sanitize(base_raw)
             if pname not in seen_port_names:
                 seen_port_names.add(pname)
-                port_list.append((pname, direction))
+                port_list.append((pname, direction, hi, lo))
             for wire_list in pin.wires:
                 for wid in wire_list:
                     wire_to_port[wid] = pname
@@ -379,9 +380,10 @@ def generate_verilog(module_name, blocks, pins, wires):
             internal_signals[sig] = True
 
     lines = [f"module {module_name} ("]
-    for idx, (pname, direction) in enumerate(port_list):
+    for idx, (pname, direction, hi, lo) in enumerate(port_list):
         sep = "," if idx < len(port_list) - 1 else ""
-        lines.append(f"{indent}{_vdir.get(direction, 'input wire')} {pname}{sep}")
+        width_str = f"[{hi}:{lo}] " if hi is not None else ""
+        lines.append(f"{indent}{_vdir.get(direction, 'input wire')} {width_str}{pname}{sep}")
     lines += [");", ""]
 
     for sig in internal_signals:
@@ -451,14 +453,15 @@ def generate_vhdl(entity_name, blocks, pins, wires):
                 pname = "%s_%d" % (base, i) if pin.num_pins > 1 else base
                 if pname not in seen_port_names:
                     seen_port_names.add(pname)
-                    port_list.append((pname, direction, False, 1))
+                    port_list.append((pname, direction, None, None))
                 for wid in wire_list:
                     wire_to_port[wid] = pname
         else:
-            pname = base
+            base_raw, hi, lo = _parse_bus(pin.text)
+            pname = _sanitize(base_raw)
             if pname not in seen_port_names:
                 seen_port_names.add(pname)
-                port_list.append((pname, direction, False, 1))
+                port_list.append((pname, direction, hi, lo))
             for wire_list in pin.wires:
                 for wid in wire_list:
                     wire_to_port[wid] = pname
@@ -502,11 +505,11 @@ def generate_vhdl(entity_name, blocks, pins, wires):
     lines.append("entity %s is" % entity_name)
     if port_list:
         lines.append(indent + "Port (")
-        for idx, (pname, direction, is_vec, width) in enumerate(port_list):
+        for idx, (pname, direction, hi, lo) in enumerate(port_list):
             comma = ";" if idx < len(port_list) - 1 else ""
-            if is_vec:
-                lines.append("%s%s%s : %s  STD_LOGIC_VECTOR(%d downto 0)%s" % (
-                    indent, indent, pname, direction, width - 1, comma))
+            if hi is not None:
+                lines.append("%s%s%s : %s  STD_LOGIC_VECTOR(%d downto %d)%s" % (
+                    indent, indent, pname, direction, hi, lo, comma))
             else:
                 lines.append("%s%s%s : %s  STD_LOGIC%s" % (
                     indent, indent, pname, direction, comma))

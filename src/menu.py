@@ -58,7 +58,7 @@ class MenuBar:
         file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Export as SVG...",             self.on_export_svg))
         file_menu.append(_mi("Export as PNG...",             self.on_export_png))
-        file_menu.append(_mi("Export EDIF Netlist...",       self.on_export_edif))
+        file_menu.append(_mi("Export EDIF Netlist… (experimental)", self.on_export_edif))
         file_menu.append(Gtk.SeparatorMenuItem())
         file_menu.append(_mi("Toggle Dark Mode",             self.on_toggle_dark_mode))
         file_menu.append(Gtk.SeparatorMenuItem())
@@ -636,6 +636,7 @@ class MenuBar:
             "gtk-application-prefer-dark-theme", mw.dark_mode
         )
         mw.drawing_area.queue_draw()
+        mw.save_config()
 
     def on_menu_file_quit(self, widget):
         Gtk.main_quit()

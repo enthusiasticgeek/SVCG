@@ -17,6 +17,7 @@ from vhdl_viewer import VhdlViewerMixin
 from component_library import ComponentLibraryMixin
 import random
 import os
+import json
 
 
 class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, ComponentLibraryMixin, Gtk.Window):
@@ -275,6 +276,11 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
         refresh_btn.connect("clicked", lambda w: self.refresh_component_panel())
         comp_outer.pack_start(refresh_btn, False, False, 0)
 
+        self.comp_search = Gtk.SearchEntry()
+        self.comp_search.set_placeholder_text("Filter components…")
+        self.comp_search.connect("search-changed", lambda w: self.refresh_component_panel())
+        comp_outer.pack_start(self.comp_search, False, False, 0)
+
         self.comp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         comp_outer.pack_start(self.comp_box, False, False, 0)
 
@@ -328,7 +334,11 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
         self.drawing_area.grab_focus()
 
         self.dirty = False
-        self.dark_mode = False
+        self.dark_mode = self._load_dark_mode_pref()
+        if self.dark_mode:
+            Gtk.Settings.get_default().set_property(
+                "gtk-application-prefer-dark-theme", True
+            )
 
         self.status_bar = Gtk.Label()
         self.status_bar.set_markup("<span color='#555555'>Ready</span>")
@@ -859,19 +869,44 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
         self.drawing_area.queue_draw()
         self.update_json()
 
-    def on_connect_pin(self, widget):
-        try:
-            if self.selected_block or self.selected_pin:
-                print("Connect pin")
-        except Exception as e:
-            print(f"Error in on_connect_pin: {e}")
-
     def on_disconnect_pin(self, widget):
         try:
-            if self.selected_block or self.selected_pin:
-                print("Disconnect pin")
+            if self.selected_block:
+                self.delete_block_wire_connections()
+            elif self.selected_pin:
+                self.delete_pin_wire_connections()
         except Exception as e:
             print(f"Error in on_disconnect_pin: {e}")
+
+    # ------------------------------------------------------------------
+    # App config (dark mode persistence, etc.)
+    # ------------------------------------------------------------------
+
+    def _config_path(self):
+        cfg_dir = os.path.join(os.path.expanduser("~"), ".svcg")
+        os.makedirs(cfg_dir, exist_ok=True)
+        return os.path.join(cfg_dir, "config.json")
+
+    def _load_dark_mode_pref(self):
+        try:
+            with open(self._config_path()) as f:
+                return bool(json.load(f).get("dark_mode", False))
+        except Exception:
+            return False
+
+    def save_config(self):
+        try:
+            cfg = {}
+            try:
+                with open(self._config_path()) as f:
+                    cfg = json.load(f)
+            except Exception:
+                pass
+            cfg["dark_mode"] = self.dark_mode
+            with open(self._config_path(), "w") as f:
+                json.dump(cfg, f, indent=2)
+        except Exception as e:
+            print(f"Could not save config: {e}")
 
     # ------------------------------------------------------------------
     # Canvas export (SVG / PNG)

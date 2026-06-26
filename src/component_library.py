@@ -160,13 +160,24 @@ class ComponentLibraryMixin:
             self.comp_box.remove(child)
 
         comp_dir = self._comp_dir()
-        files = sorted(f for f in os.listdir(comp_dir) if f.endswith(".json")) \
-                if os.path.isdir(comp_dir) else []
+        all_files = sorted(f for f in os.listdir(comp_dir) if f.endswith(".json")) \
+                    if os.path.isdir(comp_dir) else []
 
-        if not files:
+        query = ""
+        if hasattr(self, "comp_search"):
+            query = (self.comp_search.get_text() or "").lower().strip()
+        files = [f for f in all_files if query in os.path.splitext(f)[0].lower()] \
+                if query else all_files
+
+        if not all_files:
             lbl = Gtk.Label(label="No components yet.\nUse File > Save Selection as Component.")
             lbl.set_line_wrap(True)
             lbl.set_justify(Gtk.Justification.LEFT)
+            lbl.set_halign(Gtk.Align.START)
+            lbl.set_margin_start(4)
+            self.comp_box.pack_start(lbl, False, False, 0)
+        elif not files:
+            lbl = Gtk.Label(label=f'No match for "{query}".')
             lbl.set_halign(Gtk.Align.START)
             lbl.set_margin_start(4)
             self.comp_box.pack_start(lbl, False, False, 0)

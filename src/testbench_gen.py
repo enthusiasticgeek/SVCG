@@ -7,7 +7,7 @@ import os
 import shutil
 import subprocess
 
-from vhdl_export import PIN_DIRECTION, _sanitize
+from vhdl_export import PIN_DIRECTION, _sanitize, _parse_bus
 
 
 # Names that are conventionally active-low — initialise to '1' (inactive) and
@@ -31,28 +31,33 @@ def generate_testbench(entity_name, pins):
     entity_name : str   Top-level entity name (must match the entity file)
     pins        : list  Pin objects from BlocksWindow.pins
     """
-    # Build ordered port list
-    port_list = []  # [(signal_name, direction)]
+    # Build ordered port list  [(signal_name, direction, hi, lo)]
+    # hi/lo are None for scalar ports; integers for vector ports (e.g. data[7:0])
+    port_list = []
     seen = set()
     for pin in pins:
         ptype  = pin.pin_type
         direction = PIN_DIRECTION.get(ptype, "in")
-        base   = _sanitize(pin.text)
         is_bus = "bus" in ptype.lower()
         if is_bus:
+            base = _sanitize(pin.text)
             for i in range(pin.num_pins):
                 pname = f"{base}_{i}" if pin.num_pins > 1 else base
                 if pname not in seen:
                     seen.add(pname)
-                    port_list.append((pname, direction))
+                    port_list.append((pname, direction, None, None))
         else:
-            if base not in seen:
-                seen.add(base)
-                port_list.append((base, direction))
+            base_raw, hi, lo = _parse_bus(pin.text)
+            pname = _sanitize(base_raw)
+            if pname not in seen:
+                seen.add(pname)
+                port_list.append((pname, direction, hi, lo))
 
-    clk_ports      = [p for p, d in port_list if d == "in"  and "clk" in p.lower()]
-    input_ports    = [(p, d) for p, d in port_list if d == "in"]
-    non_clk_inputs = [(p, d) for p, d in input_ports if p not in clk_ports]
+    clk_ports      = [p for p, d, h, l in port_list if d == "in" and "clk" in p.lower()]
+    input_ports    = [(p, d, h, l) for p, d, h, l in port_list if d == "in"]
+    non_clk_inputs = [(p, d, h, l) for p, d, h, l in input_ports if p not in clk_ports]
+    # Scalar non-clock inputs only — bus ports are excluded from the exhaustive sweep
+    scalar_inputs  = [(p, d) for p, d, h, l in non_clk_inputs if h is None]
 
     ind = "    "
     lines = [
@@ -70,27 +75,34 @@ def generate_testbench(entity_name, pins):
     if port_list:
         lines.append(f"{ind}component {entity_name}")
         lines.append(f"{ind}{ind}port (")
-        for idx, (pname, direction) in enumerate(port_list):
+        for idx, (pname, direction, hi, lo) in enumerate(port_list):
             sep = ";" if idx < len(port_list) - 1 else ""
-            lines.append(f"{ind}{ind}{ind}{pname} : {direction}  STD_LOGIC{sep}")
+            if hi is not None:
+                lines.append(f"{ind}{ind}{ind}{pname} : {direction}  STD_LOGIC_VECTOR({hi} downto {lo}){sep}")
+            else:
+                lines.append(f"{ind}{ind}{ind}{pname} : {direction}  STD_LOGIC{sep}")
         lines.append(f"{ind}{ind});")
         lines.append(f"{ind}end component;")
         lines.append("")
 
     # Signal declarations — active-low signals init to '1' (inactive)
-    for pname, direction in port_list:
-        if direction == "in":
-            init = " := '1'" if _is_active_low(pname) else " := '0'"
+    for pname, direction, hi, lo in port_list:
+        if hi is not None:
+            init = f" := (others => '0')"
+            lines.append(f"{ind}signal {pname} : STD_LOGIC_VECTOR({hi} downto {lo}){init};")
         else:
-            init = ""
-        lines.append(f"{ind}signal {pname} : STD_LOGIC{init};")
+            if direction == "in":
+                init = " := '1'" if _is_active_low(pname) else " := '0'"
+            else:
+                init = ""
+            lines.append(f"{ind}signal {pname} : STD_LOGIC{init};")
     lines.append("")
 
     lines += ["begin", ""]
 
     # UUT instantiation
     lines.append(f"{ind}uut : {entity_name} port map (")
-    for idx, (pname, _) in enumerate(port_list):
+    for idx, (pname, _d, _h, _l) in enumerate(port_list):
         sep = "," if idx < len(port_list) - 1 else ""
         lines.append(f"{ind}{ind}{pname} => {pname}{sep}")
     lines += [f"{ind});", ""]
@@ -99,32 +111,33 @@ def generate_testbench(entity_name, pins):
     # Active-low clocks start inactive ('1') and pulse active ('0').
     for cname in clk_ports:
         if _is_active_low(cname):
-            lo, hi = "'1'", "'0'"   # inactive first, then active (falling-edge clock)
+            clk_lo, clk_hi = "'1'", "'0'"
         else:
-            lo, hi = "'0'", "'1'"   # inactive first, then active (rising-edge clock)
+            clk_lo, clk_hi = "'0'", "'1'"
         lines += [
             f"{ind}-- 100 MHz clock (10 ns period)",
             f"{ind}{cname}_proc : process",
             f"{ind}begin",
-            f"{ind}{ind}{cname} <= {lo}; wait for 5 ns;",
-            f"{ind}{ind}{cname} <= {hi}; wait for 5 ns;",
+            f"{ind}{ind}{cname} <= {clk_lo}; wait for 5 ns;",
+            f"{ind}{ind}{cname} <= {clk_hi}; wait for 5 ns;",
             f"{ind}end process;",
             "",
         ]
 
     # Stimulus process
-    # - Wait 2 clock periods for power-on stabilisation
-    # - Active-low signals pulse LOW (assert) then back HIGH (deassert)
-    # - Regular inputs pulse HIGH then LOW
-    # - Each phase is 20 ns (2 clock periods) so edges are clock-aligned
     lines += [
         f"{ind}stim_proc : process",
         f"{ind}begin",
         f"{ind}{ind}-- power-on hold",
         f"{ind}{ind}wait for 20 ns;",
     ]
-    for pname, _ in non_clk_inputs:
-        if _is_active_low(pname):
+    for pname, _d, hi, lo in non_clk_inputs:
+        if hi is not None:
+            lines += [
+                f"{ind}{ind}{pname} <= (others => '1'); wait for 20 ns;",
+                f"{ind}{ind}{pname} <= (others => '0'); wait for 20 ns;",
+            ]
+        elif _is_active_low(pname):
             lines += [
                 f"{ind}{ind}-- assert {pname} (active-low)",
                 f"{ind}{ind}{pname} <= '0'; wait for 20 ns;",
@@ -135,6 +148,21 @@ def generate_testbench(entity_name, pins):
                 f"{ind}{ind}{pname} <= '1'; wait for 20 ns;",
                 f"{ind}{ind}{pname} <= '0'; wait for 20 ns;",
             ]
+    # Exhaustive combinational sweep — all 2^N combinations of scalar inputs.
+    # Bus ports and clock ports are excluded.
+    if 1 <= len(scalar_inputs) <= 8:
+        n = len(scalar_inputs)
+        lines += [
+            f"{ind}{ind}-- Exhaustive sweep: all {2**n} input combinations",
+        ]
+        for combo in range(2 ** n):
+            parts = []
+            for bit_idx, (pname, _) in enumerate(scalar_inputs):
+                val = (combo >> bit_idx) & 1
+                parts.append(f"{pname} <= '{val}';")
+            lines.append(f"{ind}{ind}{' '.join(parts)} wait for 10 ns;")
+        lines.append("")
+
     lines += [
         f"{ind}{ind}report \"Simulation complete\" severity note;",
         f"{ind}{ind}wait;",
@@ -240,27 +268,30 @@ def generate_verilog_testbench(module_name, pins):
     module_name : str   Top-level module name (must match the generated .v file)
     pins        : list  Pin objects from BlocksWindow.pins
     """
-    port_list = []
+    port_list = []   # (pname, direction, hi, lo)
     seen = set()
     for pin in pins:
         ptype     = pin.pin_type
         direction = PIN_DIRECTION.get(ptype, "in")
-        base      = _sanitize(pin.text)
         is_bus    = "bus" in ptype.lower()
         if is_bus:
+            base = _sanitize(pin.text)
             for i in range(pin.num_pins):
                 pname = f"{base}_{i}" if pin.num_pins > 1 else base
                 if pname not in seen:
                     seen.add(pname)
-                    port_list.append((pname, direction))
+                    port_list.append((pname, direction, None, None))
         else:
-            if base not in seen:
-                seen.add(base)
-                port_list.append((base, direction))
+            base_raw, hi, lo = _parse_bus(pin.text)
+            pname = _sanitize(base_raw)
+            if pname not in seen:
+                seen.add(pname)
+                port_list.append((pname, direction, hi, lo))
 
-    clk_ports      = [p for p, d in port_list if d == "in" and "clk" in p.lower()]
-    input_ports    = [(p, d) for p, d in port_list if d == "in"]
-    non_clk_inputs = [(p, d) for p, d in input_ports if p not in clk_ports]
+    clk_ports      = [p for p, d, h, l in port_list if d == "in" and "clk" in p.lower()]
+    input_ports    = [(p, d, h, l) for p, d, h, l in port_list if d == "in"]
+    non_clk_inputs = [(p, d, h, l) for p, d, h, l in input_ports if p not in clk_ports]
+    scalar_inputs  = [(p, d) for p, d, h, l in non_clk_inputs if h is None]
 
     lines = [
         "`timescale 1ns/1ps",
@@ -270,17 +301,23 @@ def generate_verilog_testbench(module_name, pins):
     ]
 
     # Port declarations — inputs are reg, outputs are wire
-    for pname, direction in port_list:
+    for pname, direction, hi, lo in port_list:
         if direction == "in":
-            init = " = 1'b1" if _is_active_low(pname) else " = 1'b0"
-            lines.append(f"    reg  {pname}{init};")
+            if hi is not None:
+                lines.append(f"    reg  [{hi}:{lo}] {pname} = 0;")
+            else:
+                init = " = 1'b1" if _is_active_low(pname) else " = 1'b0"
+                lines.append(f"    reg  {pname}{init};")
         else:
-            lines.append(f"    wire {pname};")
+            if hi is not None:
+                lines.append(f"    wire [{hi}:{lo}] {pname};")
+            else:
+                lines.append(f"    wire {pname};")
     lines.append("")
 
     # UUT instantiation
     lines.append(f"    {module_name} uut (")
-    for idx, (pname, _) in enumerate(port_list):
+    for idx, (pname, _d, _h, _l) in enumerate(port_list):
         sep = "," if idx < len(port_list) - 1 else ""
         lines.append(f"        .{pname}({pname}){sep}")
     lines += ["    );", ""]
@@ -315,8 +352,13 @@ def generate_verilog_testbench(module_name, pins):
         "        // power-on hold",
         "        #20;",
     ]
-    for pname, _ in non_clk_inputs:
-        if _is_active_low(pname):
+    for pname, _d, hi, lo in non_clk_inputs:
+        if hi is not None:
+            lines += [
+                f"        {pname} = ~0; #20;",
+                f"        {pname} = 0; #20;",
+            ]
+        elif _is_active_low(pname):
             lines += [
                 f"        // assert {pname} (active-low)",
                 f"        {pname} = 1'b0; #20;",
@@ -327,6 +369,18 @@ def generate_verilog_testbench(module_name, pins):
                 f"        {pname} = 1'b1; #20;",
                 f"        {pname} = 1'b0; #20;",
             ]
+    # Exhaustive combinational sweep — scalar non-clock inputs only.
+    if 1 <= len(scalar_inputs) <= 8:
+        n = len(scalar_inputs)
+        lines.append(f"        // Exhaustive sweep: all {2**n} input combinations")
+        for combo in range(2 ** n):
+            parts = []
+            for bit_idx, (pname, _) in enumerate(scalar_inputs):
+                val = (combo >> bit_idx) & 1
+                parts.append(f"{pname} = 1'b{val};")
+            lines.append(f"        {' '.join(parts)} #10;")
+        lines.append("")
+
     lines += [
         "        $display(\"Simulation complete\");",
         "        #10 $finish;",
