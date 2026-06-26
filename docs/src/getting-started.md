@@ -23,6 +23,7 @@ pacman -S mingw-w64-x86_64-python-gobject \
 
 ```bash
 sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 python3-numpy
+# or: pip install -r requirements.txt  (after apt-installing the GTK3 bindings above)
 ```
 
 #### Linux (Fedora/RHEL)

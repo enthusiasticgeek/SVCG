@@ -3,7 +3,13 @@
 ## Step-by-step
 
 1. **Select HDL language** — choose VHDL or Verilog from the `HDL:` combo at the top of the left panel.
-2. **Add IO pins** from the left panel (Input Pin, Output Pin, etc.) — these become module/entity ports.
+2. **Add IO pins** from the left panel (Input Pin, Output Pin, etc.) — these become module/entity ports.  To declare a multi-bit bus port, append a bit-range to the pin name (right-click → Rename):
+
+   | Name you enter | VHDL port | Verilog port |
+   |---|---|---|
+   | `data[7:0]` | `data : in STD_LOGIC_VECTOR(7 downto 0)` | `input wire [7:0] data` |
+   | `addr:16` | `addr : in STD_LOGIC_VECTOR(15 downto 0)` | `input wire [15:0] addr` |
+   | `A` (no suffix) | `A : in STD_LOGIC` | `input wire A` |
 3. **Add blocks** (gates, flip-flops, muxes, etc.) from the left panel.
 4. **Draw wires** by clicking a connection dot and releasing on another dot.
 5. **Name wires** with right-click → "Rename" — the net name appears on canvas and maps to a `signal` (VHDL) or `wire` (Verilog).

@@ -24,7 +24,7 @@
 | Release on another dot | Complete wire connection |
 | Left-click + drag on wire midpoint | Reroute wire (turns orange while dragging) |
 | Right-click on block body | Context menu: colors, rotate, copy, view HDL… |
-| Right-click on block pin dot | Pin connection menu |
+| Right-click on block or IO pin dot | Pin menu: **Disconnect (remove wires)** — removes all wires attached to that pin |
 | Right-click on wire | Wire menu: rename net, delete |
 | Ctrl+scroll-wheel | Zoom in / out (0.2× – 4.0×) |
 
@@ -127,4 +127,5 @@ All 44 library block types, their panel section, and port names.
 | Save Selection as Component… | Save multi-select as reusable component |
 | Export as SVG… | Render schematic to SVG |
 | Export as PNG… | Render schematic to PNG |
-| Toggle Dark Mode | Switch dark/light canvas theme |
+| Toggle Dark Mode | Switch dark/light canvas theme (preference saved across sessions) |
+| Export EDIF Netlist… (experimental) | Export canvas as EDIF 2.0.0 netlist |

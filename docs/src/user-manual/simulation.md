@@ -43,11 +43,16 @@ Ports matching any of the following patterns are initialised to `'1'` (inactive)
 
 ### Stimulus process
 
-For every non-clock input port:
+The stimulus process runs in two phases:
 
-- **Active-low**: asserts `'0'` for 20 ns, then deasserts `'1'` for 20 ns.
-- **Regular**: drives `'1'` for 20 ns, then `'0'` for 20 ns.
-- Ends with `report "Simulation complete" severity note; wait;`.
+**Phase 1 — sequential:** for every non-clock input port in order:
+- **Bus port** (`STD_LOGIC_VECTOR`): drives all-ones for 20 ns, then all-zeros for 20 ns.
+- **Active-low scalar**: asserts `'0'` for 20 ns, then deasserts `'1'` for 20 ns.
+- **Regular scalar**: drives `'1'` for 20 ns, then `'0'` for 20 ns.
+
+**Phase 2 — exhaustive sweep:** if the circuit has between 1 and 8 scalar non-clock inputs, all 2^N input combinations are driven in order, each for 10 ns.  This ensures that multi-input cases — such as `A=1, B=1 → CO=1` for a half-adder — are always exercised even though they never appear in the sequential pass.  Circuits with more than 8 inputs, or with only bus/clock ports, skip this phase.
+
+Ends with `report "Simulation complete" severity note; wait;`.
 
 ### Output / inout ports
 
