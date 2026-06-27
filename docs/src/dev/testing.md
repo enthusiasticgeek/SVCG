@@ -7,9 +7,12 @@ cd src
 python test_gui.py                 # 65 general GUI tests
 python test_gui_adversarial.py     # 61 student-scenario adversarial tests
 python test_hdl_adversarial.py     # 172 VHDL + Verilog + EDIF + simulation tests
+bash test_arith2_spot.sh           # GHDL exhaustive tests for 6 ECE 645 batch-2 blocks
 ```
 
-Each suite writes a Markdown report to the project root.
+The Python suites write Markdown reports to the project root. The GHDL spot-test
+script requires GHDL on `PATH` and must be run from an MSYS2 MinGW64 shell (or any
+bash with GHDL available); it exits non-zero if any block fails.
 
 ## test_gui.py — General GUI (65 tests)
 
@@ -68,3 +71,18 @@ G26 and G27 verify that the HDL primitives and SVCG-generated structural netlist
 - Full pipeline (T164, T172) — structural netlist generated from the GUI canvas, compiled by GHDL/iverilog, VCD verified exhaustively
 
 These tests require GHDL and iverilog to be on `PATH`; otherwise they are automatically marked SKIP.  See [Simulation](../user-manual/simulation.md) for installation instructions.
+
+## test_arith2_spot.sh — ECE 645 computer arithmetic (6 blocks)
+
+Exhaustively simulates the batch-2 computer-arithmetic blocks using GHDL:
+
+| Block | Test coverage |
+|---|---|
+| KS4 | All 512 combinations of A[0..15], B[0..15], CIN∈{0,1} |
+| BK4 | Same as KS4 |
+| NONREST_DIV4 | All 240 pairs N∈[0..15], D∈[1..15]; checks Q=N/D and R=N mod D |
+| WALLACE3_4 | All 4096 triples A,B,C∈[0..15]; checks P=A+B+C |
+| MOD_ADD4 | All pairs for M=13 and M=7; checks R=(A+B) mod M |
+| SQ4 | All A∈[0..15]; checks P=A² |
+
+Requires GHDL on `PATH`. Run from an MSYS2 MinGW64 shell or any bash with GHDL available.

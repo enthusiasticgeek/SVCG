@@ -30,7 +30,7 @@
 
 ## Block Type Reference
 
-All 44 library block types, their panel section, and port names.
+All 56 library block types, their panel section, and port names.
 
 ### Digital Gates
 
@@ -92,6 +92,18 @@ All 44 library block types, their panel section, and port names.
 | FA_WC | A, B, SI, CI | SO, CO | Full adder White Cell (Kogge-Stone) |
 | RCA_4BIT | A0–A3, B0–B3, CIN | S0–S3, COUT | 4-bit ripple-carry adder |
 | COMP_4BIT | A0–A3, B0–B3 | ALB, AEB, AGB | 4-bit magnitude comparator |
+| CLA4 | A0–A3, B0–B3, CIN | S0–S3, COUT | 4-bit carry-lookahead adder (group generate/propagate) |
+| CARRY_SEL4 | A0–A3, B0–B3, CIN | S0–S3, COUT | 4-bit carry-select adder (dual 2-bit halves, muxed) |
+| KS4 | A0–A3, B0–B3, CIN | S0–S3, COUT | 4-bit Kogge-Stone parallel-prefix adder (2-level) |
+| BK4 | A0–A3, B0–B3, CIN | S0–S3, COUT | 4-bit Brent-Kung parallel-prefix adder (3-level, fewer nodes) |
+| CSA | A, B, C | SO, CO | 1-bit 3:2 carry-save compressor |
+| WALLACE3_4 | A0–A3, B0–B3, C0–C3 | P0–P5 | 3-operand 4-bit Wallace tree (CSA + ripple CPA, 6-bit sum) |
+| MOD_ADD4 | A0–A3, B0–B3, M0–M3 | R0–R3 | 4-bit modular adder: R = (A+B) mod M |
+| ARRAY_MULT4 | A0–A3, B0–B3 | P0–P7 | 4×4 unsigned array multiplier (structural HA/FA grid) |
+| BOOTH_MULT4 | A0–A3, B0–B3 | P0–P7 | 4-bit signed Booth radix-2 multiplier |
+| SQ4 | A0–A3 | P0–P7 | 4-bit squarer: P = A² (8-bit product) |
+| REST_DIV4 | N0–N3, D0–D3 | Q0–Q3, R0–R3 | 4-bit unsigned restoring divider |
+| NONREST_DIV4 | N0–N3, D0–D3 | Q0–Q3, R0–R3 | 4-bit unsigned non-restoring divider (signed-digit quotient) |
 
 ### Decoders / Encoders / Demux
 

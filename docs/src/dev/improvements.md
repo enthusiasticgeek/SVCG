@@ -61,3 +61,31 @@ All planned improvements have been implemented. Below is a summary by priority t
 | Dark mode | Done |
 | SVG / PNG export | Done |
 | EDIF export (experimental) — 3 bugs fixed | Done |
+
+## P5 — Computer Arithmetic Library (ECE 645)
+
+12 computer-arithmetic blocks drawn from ECE 645 course material, each with
+VHDL (GHDL-verified) and Verilog (iverilog-verified) source files and GHDL
+exhaustive simulation tests.
+
+### Batch 1 — Advanced Adders, Multipliers, Restoring Division
+
+| Block | Algorithm | Status |
+|---|---|---|
+| CLA4 | 4-bit carry-lookahead adder (group G/P, 2-level) | Done |
+| CARRY_SEL4 | 4-bit carry-select adder (dual 2-bit halves, muxed on carry) | Done |
+| CSA | 1-bit 3:2 carry-save compressor (SO=A⊕B⊕C, CO=majority) | Done |
+| ARRAY_MULT4 | 4×4 unsigned array multiplier (structural HA/FA partial-product grid) | Done |
+| BOOTH_MULT4 | 4-bit signed Booth radix-2 multiplier (9-bit accumulator) | Done |
+| REST_DIV4 | 4-bit unsigned restoring divider (shift-and-subtract with restore) | Done |
+
+### Batch 2 — Parallel-Prefix, Wallace Tree, Modular, Squarer, Non-Restoring Division
+
+| Block | Algorithm | Status |
+|---|---|---|
+| KS4 | 4-bit Kogge-Stone parallel-prefix adder (2-level, all-to-all) | Done |
+| BK4 | 4-bit Brent-Kung parallel-prefix adder (3-level, half the nodes of KS4) | Done |
+| NONREST_DIV4 | 4-bit non-restoring divider (signed-digit {±1} quotient, 6-bit P) | Done |
+| WALLACE3_4 | 3-operand 4-bit Wallace tree (CSA stage → ripple CPA, 6-bit sum) | Done |
+| MOD_ADD4 | 4-bit modular adder: R = (A+B) mod M | Done |
+| SQ4 | 4-bit squarer: P = A² (8-bit output) | Done |
