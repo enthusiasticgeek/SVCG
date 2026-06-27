@@ -136,6 +136,12 @@ class Block:
         # arithmetic
         "RCA_4BIT":      (9, 5),
         "COMP_4BIT":     (8, 3),
+        "CLA4":          (9, 5),
+        "CARRY_SEL4":    (9, 5),
+        "CSA":           (3, 2),
+        "ARRAY_MULT4":   (8, 8),
+        "BOOTH_MULT4":   (8, 8),
+        "REST_DIV4":     (8, 8),
         # sequential
         "SHREG_4BIT":    (3, 4),
         "CNT_4BIT":      (3, 5),
@@ -294,6 +300,8 @@ class Block:
         elif self.block_type in ["DEC_2TO4", "DEC_3TO8", "ENC_4TO2",
                                   "DEMUX_1TO4", "DEMUX_1TO8",
                                   "RCA_4BIT", "COMP_4BIT",
+                                  "CLA4", "CARRY_SEL4", "CSA",
+                                  "ARRAY_MULT4", "BOOTH_MULT4", "REST_DIV4",
                                   "SHREG_4BIT", "CNT_4BIT", "CNT_4BIT_UD"]:
             _BOX_PORTS = {
                 "DEC_2TO4":    (["A","B","EN"],
@@ -310,6 +318,18 @@ class Block:
                                 ["S0","S1","S2","S3","COUT"]),
                 "COMP_4BIT":   (["A0","A1","A2","A3","B0","B1","B2","B3"],
                                 ["ALB","AEB","AGB"]),
+                "CLA4":        (["A0","A1","A2","A3","B0","B1","B2","B3","CIN"],
+                                ["S0","S1","S2","S3","COUT"]),
+                "CARRY_SEL4":  (["A0","A1","A2","A3","B0","B1","B2","B3","CIN"],
+                                ["S0","S1","S2","S3","COUT"]),
+                "CSA":         (["A","B","C"],
+                                ["SO","CO"]),
+                "ARRAY_MULT4": (["A0","A1","A2","A3","B0","B1","B2","B3"],
+                                ["P0","P1","P2","P3","P4","P5","P6","P7"]),
+                "BOOTH_MULT4": (["A0","A1","A2","A3","B0","B1","B2","B3"],
+                                ["P0","P1","P2","P3","P4","P5","P6","P7"]),
+                "REST_DIV4":   (["N0","N1","N2","N3","D0","D1","D2","D3"],
+                                ["Q0","Q1","Q2","Q3","R0","R1","R2","R3"]),
                 "SHREG_4BIT":  (["SIN","CLK","RST"],
                                 ["Q0","Q1","Q2","Q3"]),
                 "CNT_4BIT":    (["CLK","RST","EN"],
@@ -431,6 +451,8 @@ class Block:
         elif self.block_type in ["DEC_2TO4", "DEC_3TO8", "ENC_4TO2",
                                   "DEMUX_1TO4", "DEMUX_1TO8",
                                   "RCA_4BIT", "COMP_4BIT",
+                                  "CLA4", "CARRY_SEL4", "CSA",
+                                  "ARRAY_MULT4", "BOOTH_MULT4", "REST_DIV4",
                                   "SHREG_4BIT", "CNT_4BIT", "CNT_4BIT_UD"]:
             self.draw_box_block(cr)
         elif self.block_type == "CUSTOM":
@@ -1216,6 +1238,8 @@ class Block:
             "DEC_2TO4":    4, "DEC_3TO8":    8, "ENC_4TO2":    4,
             "DEMUX_1TO4":  4, "DEMUX_1TO8":  8,
             "RCA_4BIT":    9, "COMP_4BIT":   8,
+            "CLA4":        9, "CARRY_SEL4":  9, "CSA":         3,
+            "ARRAY_MULT4": 8, "BOOTH_MULT4": 8, "REST_DIV4":   8,
             "SHREG_4BIT":  4, "CNT_4BIT":    5, "CNT_4BIT_UD": 5,
         }
         n = _BOX_H_MULT.get(self.block_type, 4)
@@ -1294,6 +1318,8 @@ class Block:
             "DEC_2TO4": 4, "DEC_3TO8": 8, "ENC_4TO2": 4,
             "DEMUX_1TO4": 4, "DEMUX_1TO8": 8,
             "RCA_4BIT": 9, "COMP_4BIT": 8,
+            "CLA4": 9, "CARRY_SEL4": 9, "CSA": 3,
+            "ARRAY_MULT4": 8, "BOOTH_MULT4": 8, "REST_DIV4": 8,
             "SHREG_4BIT": 4, "CNT_4BIT": 5, "CNT_4BIT_UD": 5,
         }
         if bt in _BOX_H:

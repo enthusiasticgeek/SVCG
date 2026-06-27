@@ -1,8 +1,8 @@
 # SVCG HDL Adversarial Test Report (VHDL + Verilog)
 
-**Date:** 2026-06-24 10:56  
+**Date:** 2026-06-26 16:08  
 **Platform:** Windows 11 / MSYS2 MinGW64  
-**Result: 156/156 passed, 0 skipped**
+**Result: 172/172 passed, 0 skipped**
 
 | # | ID | Test | Result | Notes |
 |---|-----|------|--------|-------|
@@ -162,5 +162,21 @@
 | 154 | T154 | T154 SVCG module names for all new sequential/combo blocks mapped | PASS |  |
 | 155 | T155 | T155 PORT_MAP correct for CNT_4BIT_UD DIR and TC | PASS |  |
 | 156 | T156 | T156 PORT_MAP correct for COMP_4BIT ALB/AEB/AGB outputs | PASS |  |
+| 157 | T157 | T157 AND gate VHDL truth table verified via GHDL VCD | PASS |  |
+| 158 | T158 | T158 OR gate VHDL truth table verified via GHDL VCD | PASS |  |
+| 159 | T159 | T159 NOT gate VHDL truth table verified via GHDL VCD | PASS |  |
+| 160 | T160 | T160 XOR gate VHDL truth table verified via GHDL VCD | PASS |  |
+| 161 | T161 | T161 HA VHDL: all 4 combos including CO=1 verified via GHDL VCD | PASS |  |
+| 162 | T162 | T162 DFF VHDL: async CLR/PRE and clock-edge capture via GHDL VCD | PASS |  |
+| 163 | T163 | T163 FA VHDL: carry propagation verified via GHDL VCD | PASS |  |
+| 164 | T164 | T164 Full SVCG pipeline: structural half-adder VHDL → GHDL → VCD correct | PASS |  |
+| 165 | T165 | T165 AND gate Verilog truth table verified via iverilog VCD | PASS |  |
+| 166 | T166 | T166 OR gate Verilog truth table verified via iverilog VCD | PASS |  |
+| 167 | T167 | T167 NOT gate Verilog truth table verified via iverilog VCD | PASS |  |
+| 168 | T168 | T168 XOR gate Verilog truth table verified via iverilog VCD | PASS |  |
+| 169 | T169 | T169 HA Verilog: all 4 combos including CO=1 verified via iverilog VCD | PASS |  |
+| 170 | T170 | T170 DFF Verilog: async CLR/PRE and clock-edge capture via iverilog VCD | PASS |  |
+| 171 | T171 | T171 FA Verilog: carry propagation verified via iverilog VCD | PASS |  |
+| 172 | T172 | T172 Full SVCG pipeline: structural half-adder Verilog → iverilog → VCD correct | PASS |  |
 
-_156/156 passed, 0 skipped._
+_172/172 passed, 0 skipped._

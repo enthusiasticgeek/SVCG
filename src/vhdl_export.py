@@ -89,6 +89,12 @@ ENTITY_MAP = {
     # arithmetic
     "RCA_4BIT":     "RCA_4BIT",
     "COMP_4BIT":    "COMP_4BIT",
+    "CLA4":         "CLA4",
+    "CARRY_SEL4":   "CARRY_SEL4",
+    "CSA":          "CSA",
+    "ARRAY_MULT4":  "ARRAY_MULT4",
+    "BOOTH_MULT4":  "BOOTH_MULT4",
+    "REST_DIV4":    "REST_DIV4",
     # sequential
     "SHREG_4BIT":   "SHREG_4BIT",
     "CNT_4BIT":     "CNT_4BIT",

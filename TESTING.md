@@ -1,8 +1,8 @@
 # SVCG Automated GUI Test Report
 
-**Date:** 2026-06-22 23:02  
+**Date:** 2026-06-26 16:08  
 **Platform:** Windows 11 / MSYS2 MinGW64  
-**Result: 58/58 tests passed**
+**Result: 65/65 tests passed**
 
 | # | Test | Result | Notes |
 |---|------|--------|-------|
@@ -64,5 +64,12 @@
 | 56 | Add 10 vertical wires, serialize, remove (no crash) | PASS |  |
 | 57 | update_status_bar() no crash | PASS |  |
 | 58 | Dirty flag updates window title with * | PASS |  |
+| 59 | Verilog output has module + endmodule | PASS |  |
+| 60 | Verilog export with empty schematic (no crash) | PASS |  |
+| 61 | Verilog export has input/output port directions | PASS |  |
+| 62 | Verilog export contains wire declarations for nets | PASS |  |
+| 63 | generate_custom_vhd: bus ports generate STD_LOGIC_VECTOR | PASS |  |
+| 64 | generate_custom_v: bus ports generate [N:M] range | PASS |  |
+| 65 | generate_custom_v: :N shorthand expands correctly | PASS |  |
 
-_58/58 passed._
+_65/65 passed._
