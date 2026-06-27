@@ -148,6 +148,13 @@ class Block:
         "SQ4":           (4, 8),
         "REST_DIV4":     (8, 8),
         "NONREST_DIV4":  (8, 8),
+        "SRT_DIV4":      (8, 8),
+        "GF_ADD4":       (8, 4),
+        "GF_MUL4":       (8, 4),
+        "BOOTH4_MULT4":  (8, 8),
+        "DADDA4":        (12, 6),
+        "BSR4":          (6, 4),
+        "MOD_MUL4":      (12, 4),
         # sequential
         "SHREG_4BIT":    (3, 4),
         "CNT_4BIT":      (3, 5),
@@ -309,7 +316,9 @@ class Block:
                                   "CLA4", "CARRY_SEL4", "KS4", "BK4",
                                   "CSA", "WALLACE3_4", "MOD_ADD4",
                                   "ARRAY_MULT4", "BOOTH_MULT4", "SQ4",
-                                  "REST_DIV4", "NONREST_DIV4",
+                                  "REST_DIV4", "NONREST_DIV4", "SRT_DIV4",
+                                  "GF_ADD4", "GF_MUL4", "BOOTH4_MULT4",
+                                  "DADDA4", "BSR4", "MOD_MUL4",
                                   "SHREG_4BIT", "CNT_4BIT", "CNT_4BIT_UD"]:
             _BOX_PORTS = {
                 "DEC_2TO4":    (["A","B","EN"],
@@ -350,6 +359,20 @@ class Block:
                                 ["Q0","Q1","Q2","Q3","R0","R1","R2","R3"]),
                 "NONREST_DIV4":(["N0","N1","N2","N3","D0","D1","D2","D3"],
                                 ["Q0","Q1","Q2","Q3","R0","R1","R2","R3"]),
+                "SRT_DIV4":    (["N0","N1","N2","N3","D0","D1","D2","D3"],
+                                ["Q0","Q1","Q2","Q3","R0","R1","R2","R3"]),
+                "GF_ADD4":     (["A0","A1","A2","A3","B0","B1","B2","B3"],
+                                ["R0","R1","R2","R3"]),
+                "GF_MUL4":     (["A0","A1","A2","A3","B0","B1","B2","B3"],
+                                ["R0","R1","R2","R3"]),
+                "BOOTH4_MULT4":(["A0","A1","A2","A3","B0","B1","B2","B3"],
+                                ["P0","P1","P2","P3","P4","P5","P6","P7"]),
+                "DADDA4":      (["A0","A1","A2","A3","B0","B1","B2","B3","C0","C1","C2","C3"],
+                                ["P0","P1","P2","P3","P4","P5"]),
+                "BSR4":        (["A0","A1","A2","A3","AMT0","AMT1"],
+                                ["R0","R1","R2","R3"]),
+                "MOD_MUL4":    (["A0","A1","A2","A3","B0","B1","B2","B3","M0","M1","M2","M3"],
+                                ["R0","R1","R2","R3"]),
                 "SHREG_4BIT":  (["SIN","CLK","RST"],
                                 ["Q0","Q1","Q2","Q3"]),
                 "CNT_4BIT":    (["CLK","RST","EN"],
@@ -474,7 +497,9 @@ class Block:
                                   "CLA4", "CARRY_SEL4", "KS4", "BK4",
                                   "CSA", "WALLACE3_4", "MOD_ADD4",
                                   "ARRAY_MULT4", "BOOTH_MULT4", "SQ4",
-                                  "REST_DIV4", "NONREST_DIV4",
+                                  "REST_DIV4", "NONREST_DIV4", "SRT_DIV4",
+                                  "GF_ADD4", "GF_MUL4", "BOOTH4_MULT4",
+                                  "DADDA4", "BSR4", "MOD_MUL4",
                                   "SHREG_4BIT", "CNT_4BIT", "CNT_4BIT_UD"]:
             self.draw_box_block(cr)
         elif self.block_type == "CUSTOM":
@@ -1263,7 +1288,9 @@ class Block:
             "CLA4":        9, "CARRY_SEL4":  9, "KS4":         9, "BK4":         9,
             "CSA":         3, "WALLACE3_4": 12, "MOD_ADD4":   12,
             "ARRAY_MULT4": 8, "BOOTH_MULT4": 8, "SQ4":         8,
-            "REST_DIV4":   8, "NONREST_DIV4": 8,
+            "REST_DIV4":   8, "NONREST_DIV4": 8, "SRT_DIV4":    8,
+            "GF_ADD4":     8, "GF_MUL4":      8, "BOOTH4_MULT4": 8,
+            "DADDA4":     12, "BSR4":          6, "MOD_MUL4":   12,
             "SHREG_4BIT":  4, "CNT_4BIT":    5, "CNT_4BIT_UD": 5,
         }
         n = _BOX_H_MULT.get(self.block_type, 4)
@@ -1345,7 +1372,9 @@ class Block:
             "CLA4": 9, "CARRY_SEL4": 9, "KS4": 9, "BK4": 9,
             "CSA": 3, "WALLACE3_4": 12, "MOD_ADD4": 12,
             "ARRAY_MULT4": 8, "BOOTH_MULT4": 8, "SQ4": 8,
-            "REST_DIV4": 8, "NONREST_DIV4": 8,
+            "REST_DIV4": 8, "NONREST_DIV4": 8, "SRT_DIV4": 8,
+            "GF_ADD4": 8, "GF_MUL4": 8, "BOOTH4_MULT4": 8,
+            "DADDA4": 12, "BSR4": 6, "MOD_MUL4": 12,
             "SHREG_4BIT": 4, "CNT_4BIT": 5, "CNT_4BIT_UD": 5,
         }
         if bt in _BOX_H:

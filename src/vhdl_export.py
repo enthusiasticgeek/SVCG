@@ -101,6 +101,13 @@ ENTITY_MAP = {
     "SQ4":          "SQ4",
     "REST_DIV4":    "REST_DIV4",
     "NONREST_DIV4": "NONREST_DIV4",
+    "SRT_DIV4":     "SRT_DIV4",
+    "GF_ADD4":      "GF_ADD4",
+    "GF_MUL4":      "GF_MUL4",
+    "BOOTH4_MULT4": "BOOTH4_MULT4",
+    "DADDA4":       "DADDA4",
+    "BSR4":         "BSR4",
+    "MOD_MUL4":     "MOD_MUL4",
     # sequential
     "SHREG_4BIT":   "SHREG_4BIT",
     "CNT_4BIT":     "CNT_4BIT",
