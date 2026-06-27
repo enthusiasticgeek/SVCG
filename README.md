@@ -11,14 +11,19 @@ A GTK3-based Python desktop application for visually designing digital circuits 
 ## Features
 
 - **Visual schematic editor** — drag-and-drop blocks on a scrollable 5000×5000 canvas with zoom
-- **Logic gates** — AND, OR, NOT, NAND, NOR, XOR, XNOR, BUF (44 library blocks total)
+- **Logic gates** — AND, OR, NOT, NAND, NOR, XOR, XNOR, BUF (56 library blocks total)
   - 3-input: AND3, OR3, NAND3, NOR3, XOR3
   - 4-input: AND4, OR4, NAND4, NOR4
 - **Flip-flops** — JK, SR, D (with pipeline variant), T
 - **Latches** — D latch (DLATCH), NOR SR latch (SRLATCH)
 - **Multiplexers** — 2×1, 4×1, 8×1 MUX
 - **Tristate buffers** — 2, 4, 8 channel
-- **Arithmetic** — Full Adder (standard, Gray Cell, White Cell), Half Adder, 4-bit ripple-carry adder (RCA_4BIT), 4-bit magnitude comparator (COMP_4BIT)
+- **Arithmetic** — 18 blocks covering adders, multipliers, dividers, and special functions:
+  - Primitives: Half Adder (HA), Full Adder (FA), Gray-Cell FA (FA_GC), White-Cell FA (FA_WC), 3:2 Carry-Save Compressor (CSA)
+  - Adders: 4-bit ripple-carry (RCA_4BIT), carry-lookahead (CLA4), carry-select (CARRY_SEL4), Kogge-Stone (KS4), Brent-Kung (BK4), modular (MOD_ADD4)
+  - Multipliers: 4×4 array (ARRAY_MULT4), signed Booth radix-2 (BOOTH_MULT4), squarer (SQ4)
+  - Dividers: 4-bit restoring (REST_DIV4), 4-bit non-restoring (NONREST_DIV4)
+  - Multi-operand: 3-operand Wallace tree (WALLACE3_4), 4-bit magnitude comparator (COMP_4BIT)
 - **Decoders / Encoders / Demux** — DEC_2TO4, DEC_3TO8, ENC_4TO2 (priority), DEMUX_1TO4, DEMUX_1TO8
 - **Sequential** — 4-bit SIPO shift register (SHREG_4BIT), 4-bit up counter (CNT_4BIT), 4-bit up/down counter (CNT_4BIT_UD)
 - **I/O primitives** — Input/Output/Bidirectional pins and buses, CLK, VDD (5V/3.3V/1.8V/1.2V), GND
@@ -370,14 +375,17 @@ SVCG/
 │   ├── custom_block_dialog.py   # Custom RTL block dialog + AI generation
 │   ├── testbench_gen.py         # VHDL testbench generator + GHDL/GTKWave launcher
 │   ├── yosys_importer.py        # Yosys JSON netlist importer
-│   ├── vhdl/                    # VHDL templates (one .vhd per block type)
-│   └── components/              # User-saved component sub-circuits (JSON)
-├── src/experimental/
-│   └── edif_convertor.py        # JSON -> EDIF netlist converter (CLI)
-├── src/
+│   ├── vhdl/                    # VHDL templates (one .vhd per block type, 56 files)
+│   ├── verilog/                 # Verilog templates (one .v per block type, 56 files)
+│   ├── components/              # User-saved component sub-circuits (JSON)
 │   ├── test_gui.py              # Automated GUI test suite (65 tests)
 │   ├── test_gui_adversarial.py  # Student-scenario adversarial tests (61 tests)
-│   └── test_hdl_adversarial.py  # VHDL + Verilog + EDIF + simulation tests (172 tests)
+│   ├── test_hdl_adversarial.py  # VHDL + Verilog + EDIF + simulation tests (172 tests)
+│   └── test_arith2_spot.sh      # GHDL exhaustive simulation tests for ECE 645 batch-2 blocks
+├── src/experimental/
+│   └── edif_convertor.py        # JSON -> EDIF netlist converter (CLI)
+├── docs/                        # mdbook source (User Guide + Developer docs)
+└── LICENSE
 ```
 
 ---
@@ -389,7 +397,11 @@ cd src
 python test_gui.py                 # 65 general GUI tests  → TESTING.md
 python test_gui_adversarial.py     # 61 student-scenario tests → TESTING_adversarial.md
 python test_hdl_adversarial.py     # 172 VHDL + Verilog + EDIF + sim tests → TESTING_hdl_adversarial.md
+bash test_arith2_spot.sh           # GHDL exhaustive simulation for 6 ECE 645 arithmetic blocks
 ```
+
+> `test_arith2_spot.sh` requires GHDL on `PATH` and must be run from an MSYS2 MinGW64
+> shell (or any bash environment with GHDL available). It exits non-zero if any block fails.
 
 ---
 
