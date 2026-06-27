@@ -212,10 +212,16 @@ class BlocksWindow(ProjectManagerMixin, EventHandlerMixin, VhdlViewerMixin, Comp
             ("4-bit Comparator", "COMP_4BIT"),
             ("4-bit CLA Adder", "CLA4"),
             ("4-bit Carry Select Adder", "CARRY_SEL4"),
+            ("4-bit Kogge-Stone Adder", "KS4"),
+            ("4-bit Brent-Kung Adder", "BK4"),
             ("Carry Save Adder (1-bit)", "CSA"),
+            ("3-operand Wallace Tree Adder", "WALLACE3_4"),
+            ("4-bit Modular Adder", "MOD_ADD4"),
             ("4x4 Array Multiplier", "ARRAY_MULT4"),
             ("4-bit Booth Multiplier", "BOOTH_MULT4"),
+            ("4-bit Squarer", "SQ4"),
             ("4-bit Restoring Divider", "REST_DIV4"),
+            ("4-bit Non-Restoring Divider", "NONREST_DIV4"),
         ]
         for label, block_type in arithmetic_buttons:
             button = Gtk.Button(label=label)
