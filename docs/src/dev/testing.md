@@ -8,6 +8,7 @@ python test_gui.py                 # 65 general GUI tests
 python test_gui_adversarial.py     # 61 student-scenario adversarial tests
 python test_hdl_adversarial.py     # 172 VHDL + Verilog + EDIF + simulation tests
 bash test_arith2_spot.sh           # GHDL exhaustive tests for 6 ECE 645 batch-2 blocks
+bash test_arith3_spot.sh           # GHDL exhaustive tests for 7 ECE 645 batch-3 blocks
 ```
 
 The Python suites write Markdown reports to the project root. The GHDL spot-test
@@ -84,5 +85,19 @@ Exhaustively simulates the batch-2 computer-arithmetic blocks using GHDL:
 | WALLACE3_4 | All 4096 triples A,B,C∈[0..15]; checks P=A+B+C |
 | MOD_ADD4 | All pairs for M=13 and M=7; checks R=(A+B) mod M |
 | SQ4 | All A∈[0..15]; checks P=A² |
+
+Requires GHDL on `PATH`. Run from an MSYS2 MinGW64 shell or any bash with GHDL available.
+
+## test_arith3_spot.sh — ECE 645 batch-3 computer arithmetic (7 blocks)
+
+| Block | Test coverage |
+|---|---|
+| GF_ADD4 | All 256 pairs A,B∈[0..15]; checks R=A XOR B |
+| GF_MUL4 | All 256 pairs; reference model computes polynomial multiply mod x⁴+x+1 |
+| BOOTH4_MULT4 | All 256 signed pairs A,B∈[-8..7]; checks P=A×B (8-bit signed) |
+| DADDA4 | All 4096 triples A,B,C∈[0..15]; checks P=A+B+C |
+| SRT_DIV4 | All 240 pairs N∈[0..15], D∈[1..15]; checks Q=N/D and R=N mod D |
+| BSR4 | All A∈[0..15] × shift∈[0..3] for all 3 modes (logical left, logical right, arithmetic right) |
+| MOD_MUL4 | All pairs for M=13 and M=7; checks R=(A×B) mod M |
 
 Requires GHDL on `PATH`. Run from an MSYS2 MinGW64 shell or any bash with GHDL available.

@@ -89,3 +89,15 @@ exhaustive simulation tests.
 | WALLACE3_4 | 3-operand 4-bit Wallace tree (CSA stage → ripple CPA, 6-bit sum) | Done |
 | MOD_ADD4 | 4-bit modular adder: R = (A+B) mod M | Done |
 | SQ4 | 4-bit squarer: P = A² (8-bit output) | Done |
+
+### Batch 3 — GF Arithmetic, Radix-4 Booth, Dadda, SRT, Barrel Shifter, Modular Multiply
+
+| Block | Algorithm | Status |
+|---|---|---|
+| GF_ADD4 | GF(2⁴) addition = bitwise XOR | Done |
+| GF_MUL4 | GF(2⁴) polynomial multiplier mod x⁴+x+1 (combinational, AES field) | Done |
+| BOOTH4_MULT4 | 4-bit signed radix-4 Modified Booth (2 partial products vs 4 for radix-2; 6-bit pp to handle A=−8 corner case) | Done |
+| DADDA4 | 3-operand 4-bit Dadda tree (minimum FA/HA stages, direct comparison with WALLACE3_4) | Done |
+| SRT_DIV4 | SRT radix-2 divider (digit ∈ {−1,0,+1}, no trial subtract, completes division trilogy) | Done |
+| BSR4 | 4-bit barrel shifter (logical left/right, arithmetic right; MODE[1:0] selects mode) | Done |
+| MOD_MUL4 | 4-bit modular multiplier R = (A×B) mod M (pairs with MOD_ADD4) | Done |

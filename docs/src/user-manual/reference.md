@@ -30,7 +30,7 @@
 
 ## Block Type Reference
 
-All 56 library block types, their panel section, and port names.
+All 63 library block types, their panel section, and port names.
 
 ### Digital Gates
 
@@ -104,6 +104,13 @@ All 56 library block types, their panel section, and port names.
 | SQ4 | A0–A3 | P0–P7 | 4-bit squarer: P = A² (8-bit product) |
 | REST_DIV4 | N0–N3, D0–D3 | Q0–Q3, R0–R3 | 4-bit unsigned restoring divider |
 | NONREST_DIV4 | N0–N3, D0–D3 | Q0–Q3, R0–R3 | 4-bit unsigned non-restoring divider (signed-digit quotient) |
+| SRT_DIV4 | N0–N3, D0–D3 | Q0–Q3, R0–R3 | 4-bit SRT radix-2 divider (digit ∈ {-1,0,+1}, no trial subtract) |
+| GF_ADD4 | A0–A3, B0–B3 | R0–R3 | GF(2⁴) addition = bitwise XOR |
+| GF_MUL4 | A0–A3, B0–B3 | R0–R3 | GF(2⁴) multiplier, poly mod x⁴+x+1 (AES field) |
+| BOOTH4_MULT4 | A0–A3, B0–B3 | P0–P7 | 4-bit signed radix-4 Modified Booth multiplier (2 partial products) |
+| DADDA4 | A0–A3, B0–B3, C0–C3 | P0–P5 | 3-operand 4-bit Dadda tree (min FA/HA + ripple CPA, 6-bit sum) |
+| BSR4 | A0–A3, AMT0, AMT1, MODE0, MODE1 | R0–R3 | 4-bit barrel shifter (MODE: 00=shl, 01=shr, 1x=sar) |
+| MOD_MUL4 | A0–A3, B0–B3, M0–M3 | R0–R3 | 4-bit modular multiplier: R = (A×B) mod M |
 
 ### Decoders / Encoders / Demux
 
