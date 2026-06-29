@@ -1,5 +1,7 @@
 # SVCG — Simple VHDL/Verilog Code Generator
 
+▀▄▀▄▀▄ 🇸‌🇻‌🇨‌🇬‌ ▄▀▄▀▄▀
+
 A GTK3-based Python desktop application for visually designing digital circuits and generating **VHDL or Verilog**. Place logic blocks on a schematic canvas, wire them together, and export a complete structural HDL file in your chosen language.
 
 ![SVCG — JK flip-flop schematic](SVCG1.png)
